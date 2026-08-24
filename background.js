@@ -1063,6 +1063,266 @@ async function quickClipArticle(
   }
 }
 
+
+/* ==================================================
+   Obsidian folder picker - V0.7.3
+   ================================================== */
+
+const OBSIDIAN_FOLDER_CACHE_KEY =
+  "obsidianFolderCacheByVault";
+
+const OBSIDIAN_FOLDER_CACHE_TTL =
+  5 * 60 * 1000;
+
+async function getObsidianFolders(
+  forceRefresh = false
+) {
+  const activeVaultId =
+    await ClipNestVaultStore
+      .getActiveVaultId();
+
+  if (!activeVaultId) {
+    return {
+      folders: [],
+      activeVaultId: "",
+      updatedAt: 0
+    };
+  }
+
+  const stored =
+    await chrome.storage.local.get([
+      OBSIDIAN_FOLDER_CACHE_KEY
+    ]);
+
+  const cache =
+    (
+      stored[
+        OBSIDIAN_FOLDER_CACHE_KEY
+      ] &&
+      typeof stored[
+        OBSIDIAN_FOLDER_CACHE_KEY
+      ] === "object"
+    )
+      ? stored[
+          OBSIDIAN_FOLDER_CACHE_KEY
+        ]
+      : {};
+
+  const current =
+    cache[activeVaultId];
+
+  if (
+    !forceRefresh &&
+    current &&
+    Array.isArray(current.folders) &&
+    (
+      Date.now() -
+      Number(current.updatedAt || 0)
+    ) < OBSIDIAN_FOLDER_CACHE_TTL
+  ) {
+    return {
+      folders: current.folders,
+      activeVaultId,
+      updatedAt:
+        Number(
+          current.updatedAt || 0
+        )
+    };
+  }
+
+  const handle =
+    await ClipNestVaultStore
+      .getVaultHandle(
+        activeVaultId
+      );
+
+  if (!handle) {
+    throw new Error(
+      "The selected Obsidian vault is no longer connected."
+    );
+  }
+
+  const permission =
+    await handle.queryPermission({
+      mode: "read"
+    });
+
+  if (permission !== "granted") {
+    throw new Error(
+      "Chrome needs permission to read this vault again. Open Settings and reconnect it."
+    );
+  }
+
+  const folders =
+    await scanObsidianFolders(
+      handle
+    );
+
+  const updatedAt =
+    Date.now();
+
+  cache[activeVaultId] = {
+    folders,
+    updatedAt
+  };
+
+  await chrome.storage.local.set({
+    [OBSIDIAN_FOLDER_CACHE_KEY]:
+      cache
+  });
+
+  return {
+    folders,
+    activeVaultId,
+    updatedAt
+  };
+}
+
+async function scanObsidianFolders(
+  root
+) {
+  const folders = [];
+
+  const skippedNames =
+    new Set([
+      ".obsidian",
+      ".git",
+      ".trash",
+      "node_modules"
+    ]);
+
+  const MAX_FOLDERS = 2000;
+  const MAX_DEPTH = 8;
+
+  async function visit(
+    directory,
+    prefix,
+    depth
+  ) {
+    if (
+      depth >= MAX_DEPTH ||
+      folders.length >= MAX_FOLDERS
+    ) {
+      return;
+    }
+
+    const entries = [];
+
+    for await (
+      const [name, handle]
+      of directory.entries()
+    ) {
+      if (
+        handle.kind !== "directory"
+      ) {
+        continue;
+      }
+
+      if (
+        !name ||
+        name.startsWith(".") ||
+        skippedNames.has(name)
+      ) {
+        continue;
+      }
+
+      entries.push({
+        name,
+        handle
+      });
+    }
+
+    entries.sort(
+      (a, b) =>
+        a.name.localeCompare(
+          b.name,
+          undefined,
+          {
+            numeric: true,
+            sensitivity: "base"
+          }
+        )
+    );
+
+    for (
+      const entry of entries
+    ) {
+      if (
+        folders.length >=
+        MAX_FOLDERS
+      ) {
+        break;
+      }
+
+      const path =
+        prefix
+          ? `${prefix}/${entry.name}`
+          : entry.name;
+
+      folders.push(path);
+
+      await visit(
+        entry.handle,
+        path,
+        depth + 1
+      );
+    }
+  }
+
+  await visit(
+    root,
+    "",
+    0
+  );
+
+  return folders;
+}
+
+chrome.runtime.onMessage.addListener(
+  (
+    message,
+    sender,
+    sendResponse
+  ) => {
+    if (
+      message?.type !==
+        "obsidian.folders.get" &&
+      message?.type !==
+        "obsidian.folders.refresh"
+    ) {
+      return;
+    }
+
+    const forceRefresh =
+      message.type ===
+        "obsidian.folders.refresh" ||
+      message.force === true;
+
+    getObsidianFolders(
+      forceRefresh
+    )
+      .then(
+        (result) => {
+          sendResponse({
+            ok: true,
+            ...result
+          });
+        }
+      )
+      .catch(
+        (error) => {
+          sendResponse({
+            ok: false,
+            error:
+              normalizeError(error)
+          });
+        }
+      );
+
+    return true;
+  }
+);
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "clipper.areaSelected") {
     const payload = message.payload || {};

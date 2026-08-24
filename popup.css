@@ -840,3 +840,27 @@ a {
 #notesField.hidden {
   display: none !important;
 }
+
+
+/* FOLDER PICKER - V0.7.3 */
+
+#folderSelect {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 40px;
+  height: 40px;
+  border: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+}
+
+#folderField {
+  margin-bottom: 7px !important;
+}
+
+#folderField.hidden {
+  display: none !important;
+}

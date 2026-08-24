@@ -18,6 +18,8 @@ async function init() {
   els.templateMeta = document.getElementById("templateMeta");
   els.vaultField = document.getElementById("vaultField");
   els.vaultSelect = document.getElementById("vaultSelect");
+  els.folderField = document.getElementById("folderField");
+  els.folderSelect = document.getElementById("folderSelect");
   els.notesField = document.getElementById("notesField");
   els.toggleNotes = document.getElementById("toggleNotes");
   els.notesInput = document.getElementById("notesInput");
@@ -45,6 +47,20 @@ async function init() {
     handleVaultPickerChange
   );
 
+  els.folderSelect?.addEventListener(
+    "change",
+    handleFolderPickerChange
+  );
+
+  els.folderSelect?.addEventListener(
+    "focus",
+    () => {
+      void loadObsidianFolders(
+        els.folderSelect.value || ""
+      );
+    }
+  );
+
   els.toggleNotes?.addEventListener(
     "click",
     () => {
@@ -62,7 +78,8 @@ async function init() {
   const settings = await chrome.storage.local.get([
     "defaultDestination",
     "obsidianDefaultTags",
-    "obsidianDefaultTemplatePath"
+    "obsidianDefaultTemplatePath",
+    "obsidianSubfolder"
   ]);
 
   setDestination(settings.defaultDestination === "notion" ? "notion" : "obsidian");
@@ -87,6 +104,13 @@ async function init() {
 
   const defaultTemplatePath =
     settings.obsidianDefaultTemplatePath || "";
+
+  const defaultSubfolder =
+    settings.obsidianSubfolder || "";
+
+  void loadObsidianFolders(
+    defaultSubfolder
+  );
 
   // Page capture is the primary popup task.
   // Never block it on vault/template scanning.
@@ -113,6 +137,11 @@ function setDestination(destination) {
   );
 
   els.vaultField?.classList.toggle(
+    "hidden",
+    destination !== "obsidian"
+  );
+
+  els.folderField?.classList.toggle(
     "hidden",
     destination !== "obsidian"
   );
@@ -281,7 +310,8 @@ async function refreshPopupVaultContext() {
   const settings =
     await chrome.storage.local.get([
       "obsidianDefaultTags",
-      "obsidianDefaultTemplatePath"
+      "obsidianDefaultTemplatePath",
+      "obsidianSubfolder"
     ]);
 
   els.tagsInput.value =
@@ -305,6 +335,11 @@ async function refreshPopupVaultContext() {
     loadObsidianTemplates(
       settings.obsidianDefaultTemplatePath ||
       ""
+    ),
+    loadObsidianFolders(
+      settings.obsidianSubfolder ||
+      "",
+      true
     )
   ]);
 }
@@ -1210,6 +1245,169 @@ async function startAreaSelection() {
   } catch (error) {
     setStatus(error.message || String(error), "error");
   }
+}
+
+async function loadObsidianFolders(
+  defaultPath = "",
+  forceRefresh = false
+) {
+  if (!els.folderSelect) {
+    return;
+  }
+
+  const previous =
+    String(
+      defaultPath ||
+      els.folderSelect.value ||
+      ""
+    );
+
+  try {
+    const response =
+      await chrome.runtime.sendMessage({
+        type:
+          forceRefresh
+            ? "obsidian.folders.refresh"
+            : "obsidian.folders.get"
+      });
+
+    if (!response?.ok) {
+      throw new Error(
+        response?.error?.message ||
+        "Could not read vault folders."
+      );
+    }
+
+    const folders =
+      Array.isArray(response.folders)
+        ? response.folders
+        : [];
+
+    els.folderSelect.replaceChildren();
+
+    const root =
+      document.createElement(
+        "option"
+      );
+
+    root.value = "";
+    root.textContent =
+      "Vault root";
+
+    els.folderSelect.append(
+      root
+    );
+
+    for (
+      const path of folders
+    ) {
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value = path;
+      option.textContent = path;
+
+      els.folderSelect.append(
+        option
+      );
+    }
+
+    if (
+      previous &&
+      !folders.includes(previous)
+    ) {
+      const current =
+        document.createElement(
+          "option"
+        );
+
+      current.value =
+        previous;
+
+      current.textContent =
+        `${previous} · current`;
+
+      els.folderSelect.append(
+        current
+      );
+    }
+
+    const separator =
+      document.createElement(
+        "option"
+      );
+
+    separator.disabled = true;
+    separator.textContent =
+      "──────────";
+
+    els.folderSelect.append(
+      separator
+    );
+
+    const refresh =
+      document.createElement(
+        "option"
+      );
+
+    refresh.value =
+      "__refresh__";
+
+    refresh.textContent =
+      "Refresh folders…";
+
+    els.folderSelect.append(
+      refresh
+    );
+
+    els.folderSelect.value =
+      previous;
+  } catch (error) {
+    setStatus(
+      error.message ||
+        String(error),
+      "error"
+    );
+  }
+}
+
+async function handleFolderPickerChange() {
+  if (!els.folderSelect) {
+    return;
+  }
+
+  const value =
+    els.folderSelect.value;
+
+  if (
+    value === "__refresh__"
+  ) {
+    const settings =
+      await chrome.storage.local.get([
+        "obsidianSubfolder"
+      ]);
+
+    await loadObsidianFolders(
+      settings.obsidianSubfolder ||
+        "",
+      true
+    );
+
+    return;
+  }
+
+  await chrome.storage.local.set({
+    obsidianSubfolder:
+      value || ""
+  });
+
+  await ClipNestVaultStore
+    .updateActiveConfig({
+      subfolder:
+        value || ""
+    });
 }
 
 async function loadObsidianTemplates(
