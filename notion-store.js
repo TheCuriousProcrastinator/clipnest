@@ -134,6 +134,32 @@
           raw.dataSourceId
         ),
 
+      destinationType:
+        cleanText(
+          raw.destinationType
+        ),
+
+      destinationId:
+        cleanText(
+          raw.destinationId
+        ),
+
+      destinationName:
+        cleanText(
+          raw.destinationName
+        ),
+
+      destinationIcon:
+        raw.destinationIcon ??
+        "",
+
+      destinationParents:
+        Array.isArray(
+          raw.destinationParents
+        )
+          ? raw.destinationParents
+          : [],
+
       titleProperty,
 
       urlProperty,
@@ -503,6 +529,21 @@
 
         dataSourceId:
           "",
+
+        destinationType:
+          "",
+
+        destinationId:
+          "",
+
+        destinationName:
+          "",
+
+        destinationIcon:
+          "",
+
+        destinationParents:
+          [],
 
         titleProperty:
           "Name",
