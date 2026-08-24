@@ -1668,6 +1668,15 @@
       ") "
     );
 
+    /*
+     * Repair malformed linked-image Markdown produced
+     * when the image closing bracket was escaped.
+     */
+    text = text.replace(
+      /!\[([^\n]*?)\\\]\(([^)\n]+)\)/g,
+      "![$1]($2)"
+    );
+
     return text
       .replace(/[ \t]+\n/g, "\n")
       .replace(/\n[ \t]+/g, "\n")

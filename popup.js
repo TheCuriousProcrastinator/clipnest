@@ -634,6 +634,19 @@ function cleanSharedClipMarkdown(markdown) {
   text =
     repairClipSpacing(text);
 
+  /*
+   * Repair linked images whose inner closing bracket
+   * was incorrectly escaped:
+   *
+   * [![alt\](image)](link)
+   * ->
+   * [![alt](image)](link)
+   */
+  text = text.replace(
+    /!\[([^\n]*?)\\\]\(([^)\n]+)\)/g,
+    "![$1]($2)"
+  );
+
   return text
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n[ \t]+/g, "\n")
