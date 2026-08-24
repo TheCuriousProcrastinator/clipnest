@@ -148,6 +148,11 @@ async function init() {
     }
   );
 
+  els.testNotion.addEventListener(
+    "click",
+    testNotion
+  );
+
   els.chooseVault.addEventListener(
     "click",
     chooseVault
@@ -1966,7 +1971,12 @@ function prepareNotionDestinationField(
   );
 
   els.testNotion.disabled =
-    true;
+    !(
+      preset?.workspaceId &&
+      preset?.workspaceUserId &&
+      preset?.destinationId &&
+      preset?.destinationType
+    );
 }
 
 async function refreshNotionWorkspacePicker({
@@ -2903,6 +2913,9 @@ async function handleNotionDataSourceChange() {
     updated
   );
 
+  els.testNotion.disabled =
+    false;
+
   if (
     destination.type ===
       "collection"
@@ -3101,10 +3114,246 @@ async function removeNotionPreset() {
 }
 
 async function testNotion() {
+  const preset =
+    await ClipNestNotionStore
+      .getActivePreset();
+
+  if (!preset) {
+    showStatus(
+      els.notionStatus,
+      "Create a Notion preset first.",
+      "error"
+    );
+
+    return;
+  }
+
+  if (
+    !preset.workspaceId ||
+    !preset.workspaceUserId
+  ) {
+    showStatus(
+      els.notionStatus,
+      "Choose a Notion workspace first.",
+      "error"
+    );
+
+    return;
+  }
+
+  if (
+    !preset.destinationId ||
+    !preset.destinationType
+  ) {
+    showStatus(
+      els.notionStatus,
+      "Choose a Notion destination first.",
+      "error"
+    );
+
+    return;
+  }
+
+  const now =
+    new Date();
+
+  const title =
+    `ClipNest test - ${
+      now.toLocaleString()
+    }`;
+
+  const originalLabel =
+    els.testNotion.textContent;
+
+  els.testNotion.disabled =
+    true;
+
+  els.testNotion.textContent =
+    "Creating test page…";
+
   showStatus(
     els.notionStatus,
-    "Choose a workspace and destination first."
+    `Creating one test page in ${
+      preset.destinationName ||
+      "Notion"
+    }…`
   );
+
+  try {
+    let result =
+      null;
+
+    if (
+      preset.destinationType ===
+        "collection"
+    ) {
+      const titlePropertyId =
+        preset.propertyIds
+          ?.title ||
+        "";
+
+      if (!titlePropertyId) {
+        throw new Error(
+          "Choose a Title property before testing this database."
+        );
+      }
+
+      const properties =
+        ClipNestNotionSession
+          .encodeDatabaseProperties({
+            title,
+
+            propertyIds: {
+              title:
+                titlePropertyId,
+
+              url:
+                "",
+
+              tags:
+                ""
+            }
+          });
+
+      result =
+        await ClipNestNotionSession
+          .createPage({
+            workspaceId:
+              preset.workspaceId,
+
+            userId:
+              preset.workspaceUserId,
+
+            parentId:
+              preset.destinationId,
+
+            parentTable:
+              "collection",
+
+            title:
+              "",
+
+            properties
+          });
+    } else if (
+      preset.destinationType ===
+        "page"
+    ) {
+      result =
+        await ClipNestNotionSession
+          .createPage({
+            workspaceId:
+              preset.workspaceId,
+
+            userId:
+              preset.workspaceUserId,
+
+            parentId:
+              preset.destinationId,
+
+            parentTable:
+              "block",
+
+            title,
+
+            properties:
+              {}
+          });
+    } else {
+      throw new Error(
+        "This Notion destination type is not supported."
+      );
+    }
+
+    console.log(
+      "ClipNest Notion write test succeeded:",
+      {
+        preset:
+          preset.name,
+
+        destination:
+          preset.destinationName,
+
+        destinationType:
+          preset.destinationType,
+
+        pageId:
+          result?.id,
+
+        pageUrl:
+          result?.url
+      }
+    );
+
+    showStatus(
+      els.notionStatus,
+      `Created "${title}" in ${
+        preset.destinationName ||
+        "Notion"
+      }.`,
+      "success"
+    );
+  } catch (error) {
+    console.error(
+      "ClipNest Notion write test failed:",
+      error,
+      error?.attempts ||
+      []
+    );
+
+    let message =
+      error?.message ||
+      String(error);
+
+    if (
+      Array.isArray(
+        error?.attempts
+      ) &&
+      error.attempts.length
+    ) {
+      const details =
+        error.attempts
+          .map(
+            (attempt) => {
+              const status =
+                attempt.httpStatus
+                  ? ` HTTP ${attempt.httpStatus}`
+                  : "";
+
+              return (
+                `${attempt.host}${status}: ` +
+                `${attempt.error || attempt.status}`
+              );
+            }
+          )
+          .join(" | ");
+
+      message =
+        `${message} ${details}`;
+    }
+
+    showStatus(
+      els.notionStatus,
+      message,
+      "error"
+    );
+  } finally {
+    els.testNotion.textContent =
+      originalLabel ||
+      "Create test page";
+
+    const currentPreset =
+      await ClipNestNotionStore
+        .getActivePreset();
+
+    els.testNotion.disabled =
+      !(
+        currentPreset?.workspaceId &&
+        currentPreset?.workspaceUserId &&
+        currentPreset?.destinationId &&
+        currentPreset?.destinationType
+      );
+  }
 }
 
 async function chooseVault() {
