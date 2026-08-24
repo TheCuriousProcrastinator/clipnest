@@ -41,10 +41,17 @@
       <h2>Notion</h2>
       <p class="help">ClipNest uses a personal/internal Notion integration. The token is stored only in Chrome local extension storage.</p>
 
-      <label class="field">
-        <span>Integration token</span>
-        <input id="notionToken" type="password" autocomplete="off" placeholder="ntn_… or secret_…" />
-      </label>
+      <div class="notion-connection">
+        <div>
+          <strong id="notionConnectionTitle">Not connected</strong>
+          <div id="notionConnectionStatus" class="help">Connect ClipNest to Notion with OAuth.</div>
+        </div>
+
+        <div class="vault-actions notion-connection-actions">
+          <button id="connectNotion" class="secondary" type="button">Connect to Notion</button>
+          <button id="disconnectNotion" class="vault-remove" type="button">Disconnect</button>
+        </div>
+      </div>
 
       <label class="field">
         <span>Preset</span>

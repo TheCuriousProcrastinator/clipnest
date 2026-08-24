@@ -5,7 +5,10 @@ document.addEventListener("DOMContentLoaded", init);
 async function init() {
   for (const id of [
     "defaultDestination",
-    "notionToken",
+    "notionConnectionTitle",
+    "notionConnectionStatus",
+    "connectNotion",
+    "disconnectNotion",
     "notionPresetSelect",
     "newNotionPreset",
     "removeNotionPreset",
@@ -37,6 +40,16 @@ async function init() {
   els.testNotion.addEventListener(
     "click",
     testNotion
+  );
+
+  els.connectNotion.addEventListener(
+    "click",
+    connectNotion
+  );
+
+  els.disconnectNotion.addEventListener(
+    "click",
+    disconnectNotion
   );
 
   els.newNotionPreset.addEventListener(
@@ -102,7 +115,6 @@ async function loadSettings() {
   const settings =
     await chrome.storage.local.get([
       "defaultDestination",
-      "notionToken",
       "obsidianSubfolder",
       "obsidianDefaultTags"
     ]);
@@ -110,10 +122,6 @@ async function loadSettings() {
   els.defaultDestination.value =
     settings.defaultDestination ||
     "obsidian";
-
-  els.notionToken.value =
-    settings.notionToken ||
-    "";
 
   els.obsidianSubfolder.value =
     settings.obsidianSubfolder ||
@@ -163,6 +171,8 @@ async function loadSettings() {
 
   els.removeNotionPreset.disabled =
     disabled;
+
+  await refreshNotionConnectionStatus();
 }
 
 async function saveSettings() {
@@ -177,9 +187,6 @@ async function saveSettings() {
   await chrome.storage.local.set({
     defaultDestination:
       els.defaultDestination.value,
-
-    notionToken:
-      els.notionToken.value.trim(),
 
     obsidianSubfolder:
       obsidianConfig.subfolder,
@@ -219,6 +226,105 @@ async function saveSettings() {
   showStatus(
     els.saveStatus,
     "Saved.",
+    "success"
+  );
+}
+
+async function refreshNotionConnectionStatus() {
+  const status =
+    await ClipNestNotionOAuth
+      .getStatus();
+
+  if (status.connected) {
+    els.notionConnectionTitle.textContent =
+      "Connected to Notion";
+
+    els.notionConnectionStatus.textContent =
+      status.workspaceName
+        ? `Workspace: ${status.workspaceName}`
+        : "OAuth connection active.";
+
+    els.connectNotion.textContent =
+      "Reconnect";
+
+    els.disconnectNotion.style.display =
+      "";
+  } else {
+    els.notionConnectionTitle.textContent =
+      "Not connected";
+
+    els.notionConnectionStatus.textContent =
+      "Connect ClipNest to Notion with OAuth.";
+
+    els.connectNotion.textContent =
+      "Connect to Notion";
+
+    els.disconnectNotion.style.display =
+      "none";
+  }
+}
+
+async function connectNotion() {
+  els.connectNotion.disabled =
+    true;
+
+  els.disconnectNotion.disabled =
+    true;
+
+  showStatus(
+    els.notionStatus,
+    "Opening Notion…"
+  );
+
+  try {
+    const result =
+      await ClipNestNotionOAuth
+        .connect();
+
+    await refreshNotionConnectionStatus();
+
+    showStatus(
+      els.notionStatus,
+      result.workspaceName
+        ? `Connected to ${result.workspaceName}.`
+        : "Connected to Notion.",
+      "success"
+    );
+  } catch (error) {
+    showStatus(
+      els.notionStatus,
+      error.message ||
+        String(error),
+      "error"
+    );
+  } finally {
+    els.connectNotion.disabled =
+      false;
+
+    els.disconnectNotion.disabled =
+      false;
+  }
+}
+
+async function disconnectNotion() {
+  const confirmed =
+    window.confirm(
+      "Disconnect ClipNest from Notion?\n\n" +
+      "Your Notion presets will stay in ClipNest."
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  await ClipNestNotionOAuth
+    .disconnect();
+
+  await refreshNotionConnectionStatus();
+
+  showStatus(
+    els.notionStatus,
+    "Disconnected from Notion.",
     "success"
   );
 }
@@ -358,7 +464,12 @@ async function testNotion() {
     const response = await chrome.runtime.sendMessage({
       type: "notion.test",
       payload: {
-        token: els.notionToken.value.trim(),
+        token:
+          (
+            await chrome.storage.local.get(
+              "notionToken"
+            )
+          ).notionToken || "",
         dataSourceId: els.notionDataSourceId.value.trim()
       }
     });

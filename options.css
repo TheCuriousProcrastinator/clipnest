@@ -480,3 +480,27 @@ button:active {
   display: block;
   margin-bottom: 14px;
 }
+
+/* NOTION OAUTH */
+
+.notion-connection {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 0 18px;
+}
+
+.notion-connection strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.notion-connection .help {
+  margin: 0;
+}
+
+.notion-connection-actions {
+  flex-shrink: 0;
+  margin: 0;
+}
