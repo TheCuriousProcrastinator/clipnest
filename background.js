@@ -132,11 +132,15 @@ async function quickClipSelectedText(
       hostname = "";
     }
 
-    const body =
-      `## Selected text\n\n` +
-      quickQuoteMarkdown(
+    const selectionMarkdown =
+      await getQuickSelectionMarkdown(
+        tab?.id,
         selectedText
       );
+
+    const body =
+      `## Selected text\n\n` +
+      selectionMarkdown;
 
     const markdown =
       destination === "notion"
@@ -262,6 +266,228 @@ function quickQuoteMarkdown(text) {
         `> ${line}`
     )
     .join("\n");
+}
+
+async function getQuickSelectionMarkdown(
+  tabId,
+  fallbackText
+) {
+  if (!Number.isInteger(tabId)) {
+    return quickQuoteMarkdown(
+      fallbackText
+    );
+  }
+
+  try {
+    const results =
+      await chrome.scripting.executeScript({
+        target: {
+          tabId
+        },
+
+        func: () => {
+          const selection =
+            window.getSelection();
+
+          if (
+            !selection ||
+            selection.rangeCount < 1 ||
+            selection.isCollapsed
+          ) {
+            return null;
+          }
+
+          const range =
+            selection.getRangeAt(0);
+
+          const selectedText =
+            selection.toString();
+
+          const normalize = (value) =>
+            String(value || "")
+              .replace(/\s+/g, " ")
+              .trim();
+
+          let ancestor =
+            range.commonAncestorContainer;
+
+          if (
+            ancestor.nodeType !==
+            Node.ELEMENT_NODE
+          ) {
+            ancestor =
+              ancestor.parentElement;
+          }
+
+          if (!ancestor) {
+            return {
+              kind: "text",
+              text: selectedText
+            };
+          }
+
+          const listRoot =
+            ancestor.closest?.("ol, ul") ||
+            ancestor;
+
+          let candidates = [];
+
+          if (
+            listRoot.matches?.("li")
+          ) {
+            candidates = [
+              listRoot
+            ];
+          } else {
+            candidates = [
+              ...listRoot.querySelectorAll(
+                "li"
+              )
+            ];
+          }
+
+          const selectedItems =
+            candidates.filter(
+              (item) => {
+                try {
+                  return range.intersectsNode(
+                    item
+                  );
+                } catch {
+                  return false;
+                }
+              }
+            );
+
+          const items =
+            selectedItems
+              .map((item) => {
+                const clone =
+                  item.cloneNode(true);
+
+                clone
+                  .querySelectorAll(
+                    "ol, ul"
+                  )
+                  .forEach(
+                    (nested) =>
+                      nested.remove()
+                  );
+
+                const text =
+                  normalize(
+                    clone.innerText ||
+                    clone.textContent ||
+                    ""
+                  );
+
+                const parent =
+                  item.parentElement;
+
+                let prefix = "-";
+
+                if (
+                  parent?.tagName ===
+                  "OL"
+                ) {
+                  const siblings = [
+                    ...parent.children
+                  ].filter(
+                    (child) =>
+                      child.tagName ===
+                      "LI"
+                  );
+
+                  const start =
+                    Number(
+                      parent.getAttribute(
+                        "start"
+                      )
+                    ) || 1;
+
+                  const index =
+                    siblings.indexOf(
+                      item
+                    );
+
+                  prefix =
+                    `${
+                      start +
+                      Math.max(index, 0)
+                    }.`;
+                }
+
+                return {
+                  text,
+                  prefix
+                };
+              })
+              .filter(
+                (item) =>
+                  item.text
+              );
+
+          if (items.length >= 2) {
+            const selectedNormalized =
+              normalize(
+                selectedText
+              );
+
+            const itemsNormalized =
+              normalize(
+                items
+                  .map(
+                    (item) =>
+                      item.text
+                  )
+                  .join(" ")
+              );
+
+            if (
+              selectedNormalized ===
+              itemsNormalized
+            ) {
+              return {
+                kind: "list",
+                items
+              };
+            }
+          }
+
+          return {
+            kind: "text",
+            text: selectedText
+          };
+        }
+      });
+
+    const result =
+      results?.[0]?.result;
+
+    if (
+      result?.kind === "list" &&
+      Array.isArray(result.items)
+    ) {
+      return result.items
+        .map(
+          (item) =>
+            `> ${item.prefix} ${item.text}`
+        )
+        .join("\n");
+    }
+
+    if (result?.text) {
+      return quickQuoteMarkdown(
+        result.text
+      );
+    }
+  } catch {
+    // Fall back to Chrome's context-menu text.
+  }
+
+  return quickQuoteMarkdown(
+    fallbackText
+  );
 }
 
 async function showQuickClipToast(
