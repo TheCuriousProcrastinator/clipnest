@@ -1100,62 +1100,144 @@
     value,
     fallback = ""
   ) {
-    if (
-      value === null ||
-      value === undefined
-    ) {
-      return fallback;
-    }
-
-    if (
-      typeof value ===
-        "string"
-    ) {
-      return (
-        value.trim() ||
-        fallback
-      );
-    }
-
-    if (
-      !Array.isArray(value)
-    ) {
-      return fallback;
-    }
-
     const parts =
       [];
 
-    const visit =
-      (item) => {
-        if (
-          typeof item ===
-            "string"
-        ) {
+    const seen =
+      new Set();
+
+    function visit(
+      item
+    ) {
+      if (
+        item === null ||
+        item === undefined
+      ) {
+        return;
+      }
+
+      if (
+        typeof item ===
+          "string"
+      ) {
+        if (item) {
           parts.push(
             item
           );
-
-          return;
         }
 
-        if (
-          Array.isArray(item)
+        return;
+      }
+
+      if (
+        typeof item ===
+          "number" ||
+        typeof item ===
+          "boolean"
+      ) {
+        return;
+      }
+
+      if (
+        typeof item !==
+          "object"
+      ) {
+        return;
+      }
+
+      if (seen.has(item)) {
+        return;
+      }
+
+      seen.add(item);
+
+      if (
+        Array.isArray(item)
+      ) {
+        for (
+          const child of item
         ) {
-          for (
-            const child of item
-          ) {
-            visit(child);
-          }
+          visit(child);
         }
-      };
 
-    visit(value);
+        return;
+      }
 
-    return (
+      if (
+        Object.prototype.hasOwnProperty.call(
+          item,
+          "value"
+        )
+      ) {
+        visit(
+          item.value
+        );
+
+        return;
+      }
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          item,
+          "content"
+        )
+      ) {
+        visit(
+          item.content
+        );
+
+        return;
+      }
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          item,
+          "text"
+        )
+      ) {
+        visit(
+          item.text
+        );
+
+        return;
+      }
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          item,
+          "plain_text"
+        )
+      ) {
+        visit(
+          item.plain_text
+        );
+
+        return;
+      }
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          item,
+          "title"
+        )
+      ) {
+        visit(
+          item.title
+        );
+      }
+    }
+
+    visit(
+      value
+    );
+
+    const result =
       parts
         .join("")
-        .trim() ||
+        .trim();
+
+    return (
+      result ||
       fallback
     );
   }
@@ -1172,10 +1254,30 @@
   function notionCollectionName(
     collection
   ) {
-    return notionPlainText(
+    const candidates = [
       collection?.name,
-      "Untitled database"
-    );
+      collection?.title,
+      collection?.properties?.title,
+      collection?.properties?.Name,
+      collection?.properties?.name
+    ];
+
+    for (
+      const candidate of
+        candidates
+    ) {
+      const name =
+        notionPlainText(
+          candidate,
+          ""
+        );
+
+      if (name) {
+        return name;
+      }
+    }
+
+    return "Untitled database";
   }
 
   function notionRecord(
