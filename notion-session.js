@@ -1096,6 +1096,649 @@
     return diagnostics;
   }
 
+  function notionPlainText(
+    value,
+    fallback = ""
+  ) {
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return fallback;
+    }
+
+    if (
+      typeof value ===
+        "string"
+    ) {
+      return (
+        value.trim() ||
+        fallback
+      );
+    }
+
+    if (
+      !Array.isArray(value)
+    ) {
+      return fallback;
+    }
+
+    const parts =
+      [];
+
+    const visit =
+      (item) => {
+        if (
+          typeof item ===
+            "string"
+        ) {
+          parts.push(
+            item
+          );
+
+          return;
+        }
+
+        if (
+          Array.isArray(item)
+        ) {
+          for (
+            const child of item
+          ) {
+            visit(child);
+          }
+        }
+      };
+
+    visit(value);
+
+    return (
+      parts
+        .join("")
+        .trim() ||
+      fallback
+    );
+  }
+
+  function notionPageName(
+    page
+  ) {
+    return notionPlainText(
+      page?.properties?.title,
+      "Untitled"
+    );
+  }
+
+  function notionCollectionName(
+    collection
+  ) {
+    return notionPlainText(
+      collection?.name,
+      "Untitled database"
+    );
+  }
+
+  function notionRecord(
+    recordMap,
+    table,
+    id
+  ) {
+    if (
+      !recordMap ||
+      !table ||
+      !id
+    ) {
+      return null;
+    }
+
+    return unwrapRecord(
+      recordMap
+        ?.[table]
+        ?.[id]
+    );
+  }
+
+  function notionParentPath(
+    recordMap,
+    parentId,
+    parentTable = "block"
+  ) {
+    const parents =
+      [];
+
+    const seen =
+      new Set();
+
+    let currentId =
+      parentId;
+
+    let currentTable =
+      parentTable ||
+      "block";
+
+    for (
+      let depth = 0;
+      depth < 20;
+      depth += 1
+    ) {
+      if (!currentId) {
+        break;
+      }
+
+      const key =
+        `${currentTable}:${currentId}`;
+
+      if (seen.has(key)) {
+        break;
+      }
+
+      seen.add(key);
+
+      const collection =
+        notionRecord(
+          recordMap,
+          "collection",
+          currentId
+        );
+
+      let current =
+        notionRecord(
+          recordMap,
+          currentTable,
+          currentId
+        );
+
+      if (
+        !current &&
+        currentTable !==
+          "block"
+      ) {
+        current =
+          notionRecord(
+            recordMap,
+            "block",
+            currentId
+          );
+      }
+
+      if (collection) {
+        parents.push({
+          id:
+            collection.id ||
+            currentId,
+
+          type:
+            "collection",
+
+          name:
+            notionCollectionName(
+              collection
+            ),
+
+          icon:
+            collection.icon ||
+            ""
+        });
+
+        current =
+          collection;
+      } else if (
+        current?.type ===
+          "page"
+      ) {
+        parents.push({
+          id:
+            current.id ||
+            currentId,
+
+          type:
+            "page",
+
+          name:
+            notionPageName(
+              current
+            ),
+
+          icon:
+            current.format
+              ?.page_icon ||
+            ""
+        });
+      }
+
+      if (!current) {
+        break;
+      }
+
+      currentId =
+        current.parent_id ||
+        "";
+
+      currentTable =
+        current.parent_table ||
+        "block";
+    }
+
+    return parents.reverse();
+  }
+
+  function notionSearchSessionId() {
+    if (
+      globalThis.crypto
+        ?.randomUUID
+    ) {
+      return crypto.randomUUID();
+    }
+
+    return (
+      `${Date.now()}-` +
+      Math.random()
+        .toString(16)
+        .slice(2)
+    );
+  }
+
+  function normalizeDestinationSearch(
+    payload,
+    workspaceId
+  ) {
+    const recordMap =
+      payload?.recordMap ||
+      {};
+
+    const destinations =
+      [];
+
+    const seen =
+      new Set();
+
+    for (
+      const [
+        recordId,
+        record
+      ] of Object.entries(
+        recordMap.collection ||
+        {}
+      )
+    ) {
+      const collection =
+        unwrapRecord(
+          record
+        );
+
+      if (
+        !collection ||
+        collection.alive ===
+          false
+      ) {
+        continue;
+      }
+
+      const id =
+        String(
+          collection.id ||
+          recordId
+        );
+
+      const key =
+        `collection:${id}`;
+
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+
+      const parents =
+        notionParentPath(
+          recordMap,
+          collection.parent_id,
+          "block"
+        );
+
+      destinations.push({
+        key,
+
+        id,
+
+        type:
+          "collection",
+
+        name:
+          notionCollectionName(
+            collection
+          ),
+
+        icon:
+          collection.icon ||
+          "",
+
+        parents,
+
+        breadcrumb:
+          parents
+            .map(
+              (parent) =>
+                parent.name
+            )
+            .filter(Boolean)
+            .join(" / "),
+
+        workspaceId,
+
+        parentId:
+          collection.parent_id ||
+          "",
+
+        parentTable:
+          "block",
+
+        role:
+          record?.role ||
+          ""
+      });
+    }
+
+    for (
+      const [
+        recordId,
+        record
+      ] of Object.entries(
+        recordMap.block ||
+        {}
+      )
+    ) {
+      const page =
+        unwrapRecord(
+          record
+        );
+
+      if (
+        !page ||
+        page.type !==
+          "page" ||
+        page.alive ===
+          false ||
+        page.is_template
+      ) {
+        continue;
+      }
+
+      const id =
+        String(
+          page.id ||
+          recordId
+        );
+
+      const key =
+        `page:${id}`;
+
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+
+      const parents =
+        notionParentPath(
+          recordMap,
+          page.parent_id,
+          page.parent_table ||
+          "block"
+        );
+
+      destinations.push({
+        key,
+
+        id,
+
+        type:
+          "page",
+
+        name:
+          notionPageName(
+            page
+          ),
+
+        icon:
+          page.format
+            ?.page_icon ||
+          "",
+
+        parents,
+
+        breadcrumb:
+          parents
+            .map(
+              (parent) =>
+                parent.name
+            )
+            .filter(Boolean)
+            .join(" / "),
+
+        workspaceId,
+
+        parentId:
+          page.parent_id ||
+          "",
+
+        parentTable:
+          page.parent_table ||
+          "block",
+
+        role:
+          record?.role ||
+          ""
+      });
+    }
+
+    return destinations.sort(
+      (a, b) => {
+        if (
+          a.type !==
+          b.type
+        ) {
+          return (
+            a.type ===
+              "collection"
+              ? -1
+              : 1
+          );
+        }
+
+        return a.name
+          .localeCompare(
+            b.name
+          );
+      }
+    );
+  }
+
+  async function searchDestinations({
+    workspaceId,
+    userId,
+    query = ""
+  } = {}) {
+    const spaceId =
+      String(
+        workspaceId ||
+        ""
+      ).trim();
+
+    const activeUserId =
+      String(
+        userId ||
+        ""
+      ).trim();
+
+    if (!spaceId) {
+      throw new Error(
+        "Choose a Notion workspace first."
+      );
+    }
+
+    if (!activeUserId) {
+      throw new Error(
+        "ClipNest could not determine the Notion user for this workspace."
+      );
+    }
+
+    const request = {
+      type:
+        "BlocksInSpace",
+
+      query:
+        String(
+          query ||
+          ""
+        ),
+
+      spaceId,
+
+      limit:
+        20,
+
+      filters: {
+        isDeletedOnly:
+          false,
+
+        excludeTemplates:
+          false,
+
+        navigableBlockContentOnly:
+          false,
+
+        requireEditPermissions:
+          false,
+
+        includePublicPagesWithoutExplicitAccess:
+          false,
+
+        ancestors:
+          [],
+
+        createdBy:
+          [],
+
+        editedBy:
+          [],
+
+        lastEditedTime:
+          {},
+
+        createdTime:
+          {},
+
+        inTeams:
+          [],
+
+        excludeSurrogateCollections:
+          false,
+
+        excludedParentCollectionIds:
+          []
+      },
+
+      sort: {
+        field:
+          "relevance"
+      },
+
+      source:
+        "quick_find_input_change",
+
+      searchExperimentOverrides:
+        {},
+
+      searchSessionId:
+        notionSearchSessionId(),
+
+      searchSessionFlowNumber:
+        2,
+
+      recentPagesForBoosting:
+        [],
+
+      excludedBlockIds:
+        []
+    };
+
+    const attempts =
+      [];
+
+    for (
+      const host of
+        NOTION_HOSTS
+    ) {
+      try {
+        const payload =
+          await postNotion(
+            host,
+            "search",
+            request,
+            {
+              userId:
+                activeUserId,
+
+              spaceId
+            }
+          );
+
+        const destinations =
+          normalizeDestinationSearch(
+            payload,
+            spaceId
+          );
+
+        attempts.push({
+          host,
+
+          status:
+            "ok",
+
+          destinationCount:
+            destinations.length
+        });
+
+        return {
+          host,
+
+          query:
+            request.query,
+
+          destinations,
+
+          attempts
+        };
+      } catch (error) {
+        attempts.push({
+          host,
+
+          status:
+            "error",
+
+          httpStatus:
+            error.status ||
+            null,
+
+          error:
+            error.message ||
+            String(error)
+        });
+      }
+    }
+
+    const error =
+      new Error(
+        "ClipNest could not search this Notion workspace."
+      );
+
+    error.attempts =
+      attempts;
+
+    throw error;
+  }
+
   async function getWorkspaces({
     requestPermission:
       shouldRequestPermission =
@@ -1192,6 +1835,7 @@
       hasPermission,
       requestPermission,
       getWorkspaces,
+      searchDestinations,
       postNotion
     });
 })();
