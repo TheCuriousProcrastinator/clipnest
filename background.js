@@ -300,189 +300,226 @@ async function getQuickSelectionMarkdown(
           const range =
             selection.getRangeAt(0);
 
-          const selectedText =
-            selection.toString();
+          const fragment =
+            range.cloneContents();
 
-          const normalize = (value) =>
+          const cleanText = (value) =>
             String(value || "")
-              .replace(/\s+/g, " ")
+              .replace(/[ \t]+/g, " ")
               .trim();
 
-          let ancestor =
-            range.commonAncestorContainer;
-
-          if (
-            ancestor.nodeType !==
-            Node.ELEMENT_NODE
-          ) {
-            ancestor =
-              ancestor.parentElement;
-          }
-
-          if (!ancestor) {
-            return {
-              kind: "text",
-              text: selectedText
-            };
-          }
-
-          const listRoot =
-            ancestor.closest?.("ol, ul") ||
-            ancestor;
-
-          let candidates = [];
-
-          if (
-            listRoot.matches?.("li")
-          ) {
-            candidates = [
-              listRoot
-            ];
-          } else {
-            candidates = [
-              ...listRoot.querySelectorAll(
-                "li"
+          const renderChildren = (
+            node
+          ) => {
+            return [
+              ...node.childNodes
+            ]
+              .map(
+                (child) =>
+                  renderNode(child)
               )
-            ];
-          }
+              .join("");
+          };
 
-          const selectedItems =
-            candidates.filter(
-              (item) => {
-                try {
-                  return range.intersectsNode(
+          const renderListItem = (
+            item
+          ) => {
+            let text = "";
+
+            for (
+              const child of item.childNodes
+            ) {
+              if (
+                child.nodeType ===
+                  Node.ELEMENT_NODE &&
+                (
+                  child.tagName === "OL" ||
+                  child.tagName === "UL"
+                )
+              ) {
+                continue;
+              }
+
+              text +=
+                renderNode(child);
+            }
+
+            return cleanText(text);
+          };
+
+          const renderList = (
+            list,
+            depth = 0
+          ) => {
+            const ordered =
+              list.tagName === "OL";
+
+            const startNumber =
+              ordered
+                ? (
+                    Number(
+                      list.getAttribute(
+                        "start"
+                      )
+                    ) || 1
+                  )
+                : 1;
+
+            const items = [
+              ...list.children
+            ].filter(
+              (child) =>
+                child.tagName === "LI"
+            );
+
+            const lines = [];
+
+            items.forEach(
+              (item, index) => {
+                const itemText =
+                  renderListItem(
                     item
                   );
-                } catch {
-                  return false;
+
+                if (itemText) {
+                  const prefix =
+                    ordered
+                      ? `${
+                          startNumber +
+                          index
+                        }. `
+                      : "- ";
+
+                  lines.push(
+                    `${"  ".repeat(depth)}${prefix}${itemText}`
+                  );
+                }
+
+                for (
+                  const child of
+                    item.children
+                ) {
+                  if (
+                    child.tagName ===
+                      "OL" ||
+                    child.tagName ===
+                      "UL"
+                  ) {
+                    const nested =
+                      renderList(
+                        child,
+                        depth + 1
+                      );
+
+                    if (nested) {
+                      lines.push(
+                        nested
+                      );
+                    }
+                  }
                 }
               }
             );
 
-          const items =
-            selectedItems
-              .map((item) => {
-                const clone =
-                  item.cloneNode(true);
+            return (
+              lines.join("\n") +
+              "\n\n"
+            );
+          };
 
-                clone
-                  .querySelectorAll(
-                    "ol, ul"
-                  )
-                  .forEach(
-                    (nested) =>
-                      nested.remove()
-                  );
-
-                const text =
-                  normalize(
-                    clone.innerText ||
-                    clone.textContent ||
-                    ""
-                  );
-
-                const parent =
-                  item.parentElement;
-
-                let prefix = "-";
-
-                if (
-                  parent?.tagName ===
-                  "OL"
-                ) {
-                  const siblings = [
-                    ...parent.children
-                  ].filter(
-                    (child) =>
-                      child.tagName ===
-                      "LI"
-                  );
-
-                  const start =
-                    Number(
-                      parent.getAttribute(
-                        "start"
-                      )
-                    ) || 1;
-
-                  const index =
-                    siblings.indexOf(
-                      item
-                    );
-
-                  prefix =
-                    `${
-                      start +
-                      Math.max(index, 0)
-                    }.`;
-                }
-
-                return {
-                  text,
-                  prefix
-                };
-              })
-              .filter(
-                (item) =>
-                  item.text
-              );
-
-          if (items.length >= 2) {
-            const selectedNormalized =
-              normalize(
-                selectedText
-              );
-
-            const itemsNormalized =
-              normalize(
-                items
-                  .map(
-                    (item) =>
-                      item.text
-                  )
-                  .join(" ")
-              );
+          const renderNode = (
+            node
+          ) => {
+            if (
+              node.nodeType ===
+              Node.TEXT_NODE
+            ) {
+              return node.nodeValue || "";
+            }
 
             if (
-              selectedNormalized ===
-              itemsNormalized
+              node.nodeType !==
+              Node.ELEMENT_NODE
             ) {
-              return {
-                kind: "list",
-                items
-              };
+              return "";
             }
-          }
 
-          return {
-            kind: "text",
-            text: selectedText
+            const tag =
+              node.tagName;
+
+            if (tag === "BR") {
+              return "\n";
+            }
+
+            if (
+              tag === "OL" ||
+              tag === "UL"
+            ) {
+              return renderList(
+                node
+              );
+            }
+
+            const content =
+              renderChildren(node);
+
+            if (
+              /^(P|DIV|SECTION|ARTICLE|H1|H2|H3|H4|H5|H6|BLOCKQUOTE)$/.test(
+                tag
+              )
+            ) {
+              return (
+                content.trim() +
+                "\n\n"
+              );
+            }
+
+            return content;
           };
+
+          let markdown =
+            renderChildren(
+              fragment
+            );
+
+          markdown = markdown
+            .replace(
+              /[ \t]+\n/g,
+              "\n"
+            )
+            .replace(
+              /\n[ \t]+/g,
+              "\n"
+            )
+            .replace(
+              /\n{3,}/g,
+              "\n\n"
+            )
+            .trim();
+
+          return markdown || null;
         }
       });
 
-    const result =
-      results?.[0]?.result;
+    const markdown =
+      String(
+        results?.[0]?.result ||
+        ""
+      ).trim();
 
-    if (
-      result?.kind === "list" &&
-      Array.isArray(result.items)
-    ) {
-      return result.items
+    if (markdown) {
+      return markdown
+        .split(/\r?\n/)
         .map(
-          (item) =>
-            `> ${item.prefix} ${item.text}`
+          (line) =>
+            line.trim()
+              ? `> ${line}`
+              : ">"
         )
         .join("\n");
     }
-
-    if (result?.text) {
-      return quickQuoteMarkdown(
-        result.text
-      );
-    }
   } catch {
-    // Fall back to Chrome's context-menu text.
+    // Fall back to Chrome's plain selection text.
   }
 
   return quickQuoteMarkdown(
