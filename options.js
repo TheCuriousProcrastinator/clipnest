@@ -2318,11 +2318,93 @@ async function handleNotionDataSourceChange() {
     updated
   );
 
-  els.notionDataSourceHelp.textContent =
+  if (
     destination.type ===
       "collection"
-      ? "Database selected. Property mapping comes next."
-      : "Page selected. ClipNest will save beneath this page.";
+  ) {
+    els.notionDataSourceHelp.textContent =
+      "Reading database properties…";
+
+    try {
+      const database =
+        await ClipNestNotionSession
+          .getDatabaseSchema({
+            workspaceId:
+              updated.workspaceId,
+
+            userId:
+              updated.workspaceUserId,
+
+            collectionId:
+              destination.id,
+
+            parentPageId:
+              destination.parentId
+          });
+
+      const titleProperties =
+        database.properties.filter(
+          (property) =>
+            property.type ===
+            "title"
+        );
+
+      const urlProperties =
+        database.properties.filter(
+          (property) =>
+            property.type ===
+            "url"
+        );
+
+      if (
+        titleProperties.length ===
+          1
+      ) {
+        els.notionTitleProperty.value =
+          titleProperties[0].name;
+      }
+
+      if (
+        urlProperties.length ===
+          1
+      ) {
+        els.notionUrlProperty.value =
+          urlProperties[0].name;
+      }
+
+      await ClipNestNotionStore
+        .updateActivePreset({
+          titleProperty:
+            els.notionTitleProperty.value,
+
+          urlProperty:
+            els.notionUrlProperty.value
+        });
+
+      const preview =
+        database.properties
+          .slice(0, 8)
+          .map(
+            (property) =>
+              `${property.name} (${property.type})`
+          )
+          .join(", ");
+
+      els.notionDataSourceHelp.textContent =
+        `${database.properties.length} properties found${
+          preview
+            ? `: ${preview}`
+            : ""
+        }.`;
+    } catch (error) {
+      els.notionDataSourceHelp.textContent =
+        error.message ||
+        String(error);
+    }
+  } else {
+    els.notionDataSourceHelp.textContent =
+      "Page selected. ClipNest will save beneath this page.";
+  }
 
   showStatus(
     els.notionStatus,

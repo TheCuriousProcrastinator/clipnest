@@ -1780,6 +1780,239 @@
     return destinations;
   }
 
+  async function getDatabaseSchema({
+    workspaceId,
+    userId,
+    collectionId,
+    parentPageId
+  } = {}) {
+    const spaceId =
+      String(
+        workspaceId ||
+        ""
+      ).trim();
+
+    const activeUserId =
+      String(
+        userId ||
+        ""
+      ).trim();
+
+    const databaseId =
+      String(
+        collectionId ||
+        ""
+      ).trim();
+
+    const pageId =
+      String(
+        parentPageId ||
+        ""
+      ).trim();
+
+    if (!spaceId) {
+      throw new Error(
+        "Notion workspace is missing."
+      );
+    }
+
+    if (!activeUserId) {
+      throw new Error(
+        "Notion user is missing."
+      );
+    }
+
+    if (!databaseId) {
+      throw new Error(
+        "Notion database is missing."
+      );
+    }
+
+    if (!pageId) {
+      throw new Error(
+        "Notion database parent page is missing."
+      );
+    }
+
+    const attempts =
+      [];
+
+    for (
+      const host of
+        NOTION_HOSTS
+    ) {
+      try {
+        const payload =
+          await postNotion(
+            host,
+            "loadPageChunk",
+            {
+              pageId,
+
+              limit:
+                100,
+
+              cursor: {
+                stack:
+                  []
+              },
+
+              chunkNumber:
+                0,
+
+              verticalColumns:
+                false
+            },
+            {
+              userId:
+                activeUserId,
+
+              spaceId
+            }
+          );
+
+        const raw =
+          payload
+            ?.recordMap
+            ?.collection
+            ?.[databaseId];
+
+        const normalized =
+          deepUnwrapNotionRecord(
+            raw
+          );
+
+        const collection =
+          normalized.value;
+
+        if (!collection) {
+          throw new Error(
+            "Database record was not returned by Notion."
+          );
+        }
+
+        const schema =
+          collection.schema &&
+          typeof collection.schema ===
+            "object"
+            ? collection.schema
+            : {};
+
+        const properties =
+          Object.entries(
+            schema
+          )
+            .map(
+              ([
+                id,
+                property
+              ]) => ({
+                id,
+
+                name:
+                  String(
+                    property?.name ||
+                    ""
+                  ).trim() ||
+                  id,
+
+                type:
+                  String(
+                    property?.type ||
+                    ""
+                  ).trim(),
+
+                options:
+                  Array.isArray(
+                    property?.options
+                  )
+                    ? property.options
+                    : [],
+
+                collectionId:
+                  property?.collection_id ||
+                  property
+                    ?.collection_pointer
+                    ?.id ||
+                  ""
+              })
+            )
+            .sort(
+              (a, b) =>
+                a.name.localeCompare(
+                  b.name
+                )
+            );
+
+        attempts.push({
+          host,
+
+          status:
+            "ok",
+
+          propertyCount:
+            properties.length
+        });
+
+        return {
+          host,
+
+          collectionId:
+            databaseId,
+
+          parentPageId:
+            pageId,
+
+          name:
+            notionPlainText(
+              collection.name,
+              "Untitled database"
+            ),
+
+          icon:
+            collection.icon ||
+            "",
+
+          role:
+            normalized.role ||
+            raw?.role ||
+            "",
+
+          schema,
+
+          properties,
+
+          attempts
+        };
+      } catch (error) {
+        attempts.push({
+          host,
+
+          status:
+            "error",
+
+          httpStatus:
+            error.status ||
+            null,
+
+          error:
+            error.message ||
+            String(error)
+        });
+      }
+    }
+
+    const error =
+      new Error(
+        "ClipNest could not read this Notion database schema."
+      );
+
+    error.attempts =
+      attempts;
+
+    throw error;
+  }
+
   async function searchDestinations({
     workspaceId,
     userId,
@@ -2062,6 +2295,7 @@
       requestPermission,
       getWorkspaces,
       searchDestinations,
+      getDatabaseSchema,
       postNotion
     });
 })();
