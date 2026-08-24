@@ -368,8 +368,41 @@ async function testNotion() {
     const titleProps = response.result.properties.filter((property) => property.type === "title");
     const urlProps = response.result.properties.filter((property) => property.type === "url");
 
-    if (titleProps.length === 1) els.notionTitleProperty.value = titleProps[0].name;
-    if (!els.notionUrlProperty.value && urlProps.length === 1) els.notionUrlProperty.value = urlProps[0].name;
+    if (titleProps.length === 1) {
+      els.notionTitleProperty.value =
+        titleProps[0].name;
+    }
+
+    if (
+      !els.notionUrlProperty.value &&
+      urlProps.length === 1
+    ) {
+      els.notionUrlProperty.value =
+        urlProps[0].name;
+    }
+
+    const activePreset =
+      await ClipNestNotionStore
+        .getActivePreset();
+
+    if (activePreset) {
+      await ClipNestNotionStore
+        .updateActivePreset({
+          name:
+            els.notionPresetName.value,
+
+          dataSourceId:
+            els.notionDataSourceId.value,
+
+          titleProperty:
+            els.notionTitleProperty.value,
+
+          urlProperty:
+            els.notionUrlProperty.value
+        });
+
+      await refreshNotionPresetList();
+    }
 
     const propertySummary = response.result.properties
       .slice(0, 8)

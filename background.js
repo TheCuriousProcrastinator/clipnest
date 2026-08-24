@@ -1,4 +1,5 @@
 import "./vault-store.js";
+import "./notion-store.js";
 import "./article-engine.js";
 
 const NOTION_VERSION = "2026-03-11";
@@ -1634,18 +1635,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function getNotionConfig() {
-  const config = await chrome.storage.local.get([
-    "notionToken",
-    "notionDataSourceId",
-    "notionTitleProperty",
-    "notionUrlProperty"
-  ]);
+  /*
+   * Ensure preset state and the legacy Notion
+   * configuration mirror are synchronized before
+   * every save, including background Quick Clips.
+   */
+  await ClipNestNotionStore
+    .migrateLegacy();
+
+  const config =
+    await chrome.storage.local.get([
+      "notionToken",
+      "notionDataSourceId",
+      "notionTitleProperty",
+      "notionUrlProperty"
+    ]);
 
   return {
-    token: (config.notionToken || "").trim(),
-    dataSourceId: normalizeNotionId(config.notionDataSourceId || ""),
-    titleProperty: (config.notionTitleProperty || "Name").trim(),
-    urlProperty: (config.notionUrlProperty || "").trim()
+    token:
+      String(
+        config.notionToken ||
+        ""
+      ).trim(),
+
+    dataSourceId:
+      normalizeNotionId(
+        config.notionDataSourceId ||
+        ""
+      ),
+
+    titleProperty:
+      String(
+        config.notionTitleProperty ||
+        "Name"
+      ).trim() ||
+      "Name",
+
+    urlProperty:
+      String(
+        config.notionUrlProperty ||
+        ""
+      ).trim()
   };
 }
 
