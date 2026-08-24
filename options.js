@@ -6,6 +6,10 @@ async function init() {
   for (const id of [
     "defaultDestination",
     "notionToken",
+    "notionPresetSelect",
+    "newNotionPreset",
+    "removeNotionPreset",
+    "notionPresetName",
     "notionDataSourceId",
     "notionTitleProperty",
     "notionUrlProperty",
@@ -33,6 +37,21 @@ async function init() {
   els.testNotion.addEventListener(
     "click",
     testNotion
+  );
+
+  els.newNotionPreset.addEventListener(
+    "click",
+    createNotionPreset
+  );
+
+  els.removeNotionPreset.addEventListener(
+    "click",
+    removeNotionPreset
+  );
+
+  els.notionPresetSelect.addEventListener(
+    "change",
+    switchNotionPreset
   );
 
   els.chooseVault.addEventListener(
@@ -69,31 +88,81 @@ async function init() {
     }
   );
 
-  await ClipNestVaultStore
-    .migrateLegacy();
+  await Promise.all([
+    ClipNestVaultStore.migrateLegacy(),
+    ClipNestNotionStore.migrateLegacy()
+  ]);
 
   await refreshVaultList();
+  await refreshNotionPresetList();
   await loadSettings();
 }
 
 async function loadSettings() {
-  const settings = await chrome.storage.local.get([
-    "defaultDestination",
-    "notionToken",
-    "notionDataSourceId",
-    "notionTitleProperty",
-    "notionUrlProperty",
-    "obsidianSubfolder",
-    "obsidianDefaultTags"
-  ]);
+  const settings =
+    await chrome.storage.local.get([
+      "defaultDestination",
+      "notionToken",
+      "obsidianSubfolder",
+      "obsidianDefaultTags"
+    ]);
 
-  els.defaultDestination.value = settings.defaultDestination || "obsidian";
-  els.notionToken.value = settings.notionToken || "";
-  els.notionDataSourceId.value = settings.notionDataSourceId || "";
-  els.notionTitleProperty.value = settings.notionTitleProperty || "Name";
-  els.notionUrlProperty.value = settings.notionUrlProperty || "";
-  els.obsidianSubfolder.value = settings.obsidianSubfolder || "";
-  els.obsidianDefaultTags.value = settings.obsidianDefaultTags || "";
+  els.defaultDestination.value =
+    settings.defaultDestination ||
+    "obsidian";
+
+  els.notionToken.value =
+    settings.notionToken ||
+    "";
+
+  els.obsidianSubfolder.value =
+    settings.obsidianSubfolder ||
+    "";
+
+  els.obsidianDefaultTags.value =
+    settings.obsidianDefaultTags ||
+    "";
+
+  const preset =
+    await ClipNestNotionStore
+      .getActivePreset();
+
+  els.notionPresetName.value =
+    preset?.name ||
+    "";
+
+  els.notionDataSourceId.value =
+    preset?.dataSourceId ||
+    "";
+
+  els.notionTitleProperty.value =
+    preset?.titleProperty ||
+    "Name";
+
+  els.notionUrlProperty.value =
+    preset?.urlProperty ||
+    "";
+
+  const disabled =
+    !preset;
+
+  els.notionPresetName.disabled =
+    disabled;
+
+  els.notionDataSourceId.disabled =
+    disabled;
+
+  els.notionTitleProperty.disabled =
+    disabled;
+
+  els.notionUrlProperty.disabled =
+    disabled;
+
+  els.testNotion.disabled =
+    disabled;
+
+  els.removeNotionPreset.disabled =
+    disabled;
 }
 
 async function saveSettings() {
@@ -112,16 +181,6 @@ async function saveSettings() {
     notionToken:
       els.notionToken.value.trim(),
 
-    notionDataSourceId:
-      els.notionDataSourceId.value.trim(),
-
-    notionTitleProperty:
-      els.notionTitleProperty.value.trim() ||
-      "Name",
-
-    notionUrlProperty:
-      els.notionUrlProperty.value.trim(),
-
     obsidianSubfolder:
       obsidianConfig.subfolder,
 
@@ -134,9 +193,159 @@ async function saveSettings() {
       obsidianConfig
     );
 
+  const preset =
+    await ClipNestNotionStore
+      .getActivePreset();
+
+  if (preset) {
+    await ClipNestNotionStore
+      .updateActivePreset({
+        name:
+          els.notionPresetName.value,
+
+        dataSourceId:
+          els.notionDataSourceId.value,
+
+        titleProperty:
+          els.notionTitleProperty.value,
+
+        urlProperty:
+          els.notionUrlProperty.value
+      });
+
+    await refreshNotionPresetList();
+  }
+
   showStatus(
     els.saveStatus,
     "Saved.",
+    "success"
+  );
+}
+
+async function refreshNotionPresetList() {
+  const info =
+    await ClipNestNotionStore
+      .listPresets();
+
+  els.notionPresetSelect
+    .replaceChildren();
+
+  if (!info.presets.length) {
+    const option =
+      document.createElement(
+        "option"
+      );
+
+    option.value = "";
+
+    option.textContent =
+      "No presets configured";
+
+    els.notionPresetSelect.append(
+      option
+    );
+  } else {
+    for (
+      const preset of
+        info.presets
+    ) {
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        preset.id;
+
+      option.textContent =
+        preset.name;
+
+      els.notionPresetSelect.append(
+        option
+      );
+    }
+
+    els.notionPresetSelect.value =
+      info.activePresetId;
+  }
+}
+
+async function switchNotionPreset() {
+  const id =
+    els.notionPresetSelect.value;
+
+  if (!id) {
+    return;
+  }
+
+  await ClipNestNotionStore
+    .setActivePreset(id);
+
+  await loadSettings();
+
+  showStatus(
+    els.notionStatus,
+    ""
+  );
+}
+
+async function createNotionPreset() {
+  const name =
+    window.prompt(
+      "Preset name:",
+      "New preset"
+    );
+
+  if (name === null) {
+    return;
+  }
+
+  await ClipNestNotionStore
+    .createPreset(name);
+
+  await refreshNotionPresetList();
+  await loadSettings();
+
+  els.notionDataSourceId.focus();
+
+  showStatus(
+    els.notionStatus,
+    "Preset created. Add its data source ID, test it, then Save Settings.",
+    "success"
+  );
+}
+
+async function removeNotionPreset() {
+  const preset =
+    await ClipNestNotionStore
+      .getActivePreset();
+
+  if (!preset) {
+    return;
+  }
+
+  const confirmed =
+    window.confirm(
+      `Remove "${preset.name}" from ClipNest?\n\n` +
+      "Nothing will be removed from Notion."
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  await ClipNestNotionStore
+    .removePreset(
+      preset.id
+    );
+
+  await refreshNotionPresetList();
+  await loadSettings();
+
+  showStatus(
+    els.notionStatus,
+    `${preset.name} removed.`,
     "success"
   );
 }

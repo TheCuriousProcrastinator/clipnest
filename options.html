@@ -47,6 +47,23 @@
       </label>
 
       <label class="field">
+        <span>Preset</span>
+        <select id="notionPresetSelect">
+          <option value="">No presets configured</option>
+        </select>
+      </label>
+
+      <div class="vault-actions">
+        <button id="newNotionPreset" class="secondary" type="button">New preset</button>
+        <button id="removeNotionPreset" class="vault-remove" type="button">Remove selected preset</button>
+      </div>
+
+      <label class="field">
+        <span>Preset name</span>
+        <input id="notionPresetName" type="text" autocomplete="off" placeholder="Reading Inbox" />
+      </label>
+
+      <label class="field">
         <span>Data source ID</span>
         <input id="notionDataSourceId" type="text" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
         <small>In Notion: database menu → Manage data sources → data source menu → Copy data source ID.</small>
@@ -64,7 +81,7 @@
         </label>
       </div>
 
-      <button id="testNotion" class="secondary" type="button">Test Notion connection</button>
+      <button id="testNotion" class="secondary" type="button">Test selected preset</button>
       <div id="notionStatus" class="status"></div>
     </section>
 
@@ -108,6 +125,7 @@
   </main>
 
   <script src="vault-store.js"></script>
+  <script src="notion-store.js"></script>
   <script src="fs-store.js"></script>
   <script src="options.js"></script>
 </body>
