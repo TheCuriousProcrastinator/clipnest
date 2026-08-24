@@ -96,6 +96,12 @@
         mappings.url
       );
 
+    const tagsProperty =
+      cleanText(
+        raw.tagsProperty ??
+        mappings.tags
+      );
+
     return {
       id:
         cleanText(
@@ -194,6 +200,8 @@
 
       urlProperty,
 
+      tagsProperty,
+
       propertyMappings: {
         ...mappings,
 
@@ -201,7 +209,10 @@
           titleProperty,
 
         url:
-          urlProperty
+          urlProperty,
+
+        tags:
+          tagsProperty
       },
 
       propertyDefaults: {
@@ -596,6 +607,9 @@
           "Name",
 
         urlProperty:
+          "",
+
+        tagsProperty:
           "",
 
         propertyDefaults:

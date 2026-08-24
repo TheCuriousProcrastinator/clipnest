@@ -108,6 +108,19 @@ async function init() {
     }
   );
 
+  for (
+    const select of [
+      els.notionTitleProperty,
+      els.notionUrlProperty,
+      els.notionTagsProperty
+    ]
+  ) {
+    select.addEventListener(
+      "change",
+      handleNotionPropertyMappingChange
+    );
+  }
+
   els.notionWorkspacePickerButton.addEventListener(
     "click",
     toggleNotionWorkspacePicker
@@ -242,6 +255,52 @@ async function loadSettings() {
       ""
     );
   }
+
+  const refreshedPreset =
+    await ClipNestNotionStore
+      .getActivePreset();
+
+  if (
+    refreshedPreset
+      ?.destinationType ===
+        "collection"
+  ) {
+    try {
+      const result =
+        await loadNotionDatabaseSchemaForPreset(
+          refreshedPreset
+        );
+
+      const preview =
+        result.database.properties
+          .slice(0, 8)
+          .map(
+            (property) =>
+              `${property.name} (${property.type})`
+          )
+          .join(", ");
+
+      els.notionDataSourceHelp.textContent =
+        `${result.database.properties.length} properties found${
+          preview
+            ? `: ${preview}`
+            : ""
+        }.`;
+    } catch (error) {
+      setNotionPropertySelectorsUnavailable(
+        "Could not load properties"
+      );
+
+      els.notionDataSourceHelp.textContent =
+        error.message ||
+        String(error);
+    }
+  } else {
+    renderNotionPropertySelectors(
+      refreshedPreset,
+      []
+    );
+  }
 }
 
 async function saveSettings() {
@@ -298,6 +357,9 @@ let notionDestinationCache =
 
 let notionDestinationSearchTimer =
   null;
+
+let notionSchemaProperties =
+  [];
 
 function notionWorkspaceIconValue(
   workspace
@@ -1233,6 +1295,512 @@ function renderNotionDestinationResults(
   }
 }
 
+function findNotionSchemaProperty(
+  id
+) {
+  return (
+    notionSchemaProperties.find(
+      (property) =>
+        property.id ===
+        id
+    ) ||
+    null
+  );
+}
+
+function findNotionSchemaPropertyByName(
+  name,
+  type
+) {
+  const target =
+    String(
+      name ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (!target) {
+    return null;
+  }
+
+  return (
+    notionSchemaProperties.find(
+      (property) =>
+        property.type ===
+          type &&
+        property.name
+          .trim()
+          .toLowerCase() ===
+          target
+    ) ||
+    null
+  );
+}
+
+function fillNotionPropertySelect(
+  select,
+  properties,
+  {
+    selectedId = "",
+    optional = false,
+    emptyLabel = "None"
+  } = {}
+) {
+  select.replaceChildren();
+
+  if (
+    optional ||
+    properties.length !==
+      1
+  ) {
+    const empty =
+      document.createElement(
+        "option"
+      );
+
+    empty.value =
+      "";
+
+    empty.textContent =
+      optional
+        ? emptyLabel
+        : "Choose a property…";
+
+    select.append(
+      empty
+    );
+  }
+
+  for (
+    const property of
+      properties
+  ) {
+    const option =
+      document.createElement(
+        "option"
+      );
+
+    option.value =
+      property.id;
+
+    option.textContent =
+      property.name;
+
+    select.append(
+      option
+    );
+  }
+
+  if (
+    selectedId &&
+    properties.some(
+      (property) =>
+        property.id ===
+        selectedId
+    )
+  ) {
+    select.value =
+      selectedId;
+  } else if (
+    properties.length ===
+      1
+  ) {
+    select.value =
+      properties[0].id;
+  } else {
+    select.value =
+      "";
+  }
+
+  select.disabled =
+    properties.length ===
+      0;
+}
+
+function setNotionPropertySelectorsUnavailable(
+  message
+) {
+  notionSchemaProperties =
+    [];
+
+  for (
+    const select of [
+      els.notionTitleProperty,
+      els.notionUrlProperty,
+      els.notionTagsProperty
+    ]
+  ) {
+    select.replaceChildren();
+
+    const option =
+      document.createElement(
+        "option"
+      );
+
+    option.value =
+      "";
+
+    option.textContent =
+      message;
+
+    select.append(
+      option
+    );
+
+    select.disabled =
+      true;
+  }
+}
+
+function resolveNotionPropertyIds(
+  preset
+) {
+  const titleProperties =
+    notionSchemaProperties.filter(
+      (property) =>
+        property.type ===
+        "title"
+    );
+
+  const urlProperties =
+    notionSchemaProperties.filter(
+      (property) =>
+        property.type ===
+        "url"
+    );
+
+  const tagsProperties =
+    notionSchemaProperties.filter(
+      (property) =>
+        property.type ===
+        "multi_select"
+    );
+
+  let titleId =
+    preset?.propertyIds
+      ?.title ||
+    "";
+
+  let urlId =
+    preset?.propertyIds
+      ?.url ||
+    "";
+
+  let tagsId =
+    preset?.propertyIds
+      ?.tags ||
+    "";
+
+  if (
+    !titleProperties.some(
+      (property) =>
+        property.id ===
+        titleId
+    )
+  ) {
+    titleId =
+      findNotionSchemaPropertyByName(
+        preset?.titleProperty,
+        "title"
+      )?.id ||
+      (
+        titleProperties.length ===
+          1
+          ? titleProperties[0].id
+          : ""
+      );
+  }
+
+  if (
+    !urlProperties.some(
+      (property) =>
+        property.id ===
+        urlId
+    )
+  ) {
+    urlId =
+      findNotionSchemaPropertyByName(
+        preset?.urlProperty,
+        "url"
+      )?.id ||
+      (
+        urlProperties.length ===
+          1
+          ? urlProperties[0].id
+          : ""
+      );
+  }
+
+  if (
+    !tagsProperties.some(
+      (property) =>
+        property.id ===
+        tagsId
+    )
+  ) {
+    tagsId =
+      findNotionSchemaPropertyByName(
+        preset?.tagsProperty ||
+        preset?.propertyMappings
+          ?.tags,
+        "multi_select"
+      )?.id ||
+      (
+        tagsProperties.length ===
+          1
+          ? tagsProperties[0].id
+          : ""
+      );
+  }
+
+  return {
+    titleProperties,
+    urlProperties,
+    tagsProperties,
+    titleId,
+    urlId,
+    tagsId
+  };
+}
+
+function renderNotionPropertySelectors(
+  preset,
+  properties
+) {
+  notionSchemaProperties =
+    Array.isArray(
+      properties
+    )
+      ? properties
+      : [];
+
+  if (
+    preset?.destinationType !==
+      "collection"
+  ) {
+    setNotionPropertySelectorsUnavailable(
+      preset?.destinationType ===
+        "page"
+        ? "Not used for page destinations"
+        : "Choose a database first"
+    );
+
+    return;
+  }
+
+  if (!notionSchemaProperties.length) {
+    setNotionPropertySelectorsUnavailable(
+      "Loading database properties…"
+    );
+
+    return;
+  }
+
+  const mapping =
+    resolveNotionPropertyIds(
+      preset
+    );
+
+  fillNotionPropertySelect(
+    els.notionTitleProperty,
+    mapping.titleProperties,
+    {
+      selectedId:
+        mapping.titleId
+    }
+  );
+
+  fillNotionPropertySelect(
+    els.notionUrlProperty,
+    mapping.urlProperties,
+    {
+      selectedId:
+        mapping.urlId,
+
+      optional:
+        true
+    }
+  );
+
+  fillNotionPropertySelect(
+    els.notionTagsProperty,
+    mapping.tagsProperties,
+    {
+      selectedId:
+        mapping.tagsId,
+
+      optional:
+        true
+    }
+  );
+}
+
+async function saveNotionPropertyMappings() {
+  const title =
+    findNotionSchemaProperty(
+      els.notionTitleProperty.value
+    );
+
+  const url =
+    findNotionSchemaProperty(
+      els.notionUrlProperty.value
+    );
+
+  const tags =
+    findNotionSchemaProperty(
+      els.notionTagsProperty.value
+    );
+
+  return ClipNestNotionStore
+    .updateActivePreset({
+      propertyIds: {
+        title:
+          title?.id ||
+          "",
+
+        url:
+          url?.id ||
+          "",
+
+        tags:
+          tags?.id ||
+          ""
+      },
+
+      titleProperty:
+        title?.name ||
+        "Name",
+
+      urlProperty:
+        url?.name ||
+        "",
+
+      tagsProperty:
+        tags?.name ||
+        "",
+
+      propertyMappings: {
+        title:
+          title?.name ||
+          "Name",
+
+        url:
+          url?.name ||
+          "",
+
+        tags:
+          tags?.name ||
+          ""
+      }
+    });
+}
+
+async function applyNotionDatabaseSchema(
+  preset,
+  database
+) {
+  renderNotionPropertySelectors(
+    preset,
+    database?.properties ||
+    []
+  );
+
+  return saveNotionPropertyMappings();
+}
+
+async function loadNotionDatabaseSchemaForPreset(
+  preset
+) {
+  if (
+    !preset ||
+    preset.destinationType !==
+      "collection" ||
+    !preset.destinationId
+  ) {
+    renderNotionPropertySelectors(
+      preset,
+      []
+    );
+
+    return preset;
+  }
+
+  renderNotionPropertySelectors(
+    preset,
+    []
+  );
+
+  const destination =
+    notionDestinationCache.find(
+      (candidate) =>
+        candidate.type ===
+          "collection" &&
+        candidate.id ===
+          preset.destinationId
+    );
+
+  const parentPageId =
+    destination?.parentId ||
+    preset.destinationParentId ||
+    "";
+
+  if (!parentPageId) {
+    throw new Error(
+      "ClipNest could not determine this database's parent page."
+    );
+  }
+
+  const database =
+    await ClipNestNotionSession
+      .getDatabaseSchema({
+        workspaceId:
+          preset.workspaceId,
+
+        userId:
+          preset.workspaceUserId,
+
+        collectionId:
+          preset.destinationId,
+
+        parentPageId
+      });
+
+  const updated =
+    await applyNotionDatabaseSchema(
+      preset,
+      database
+    );
+
+  return {
+    preset:
+      updated,
+
+    database
+  };
+}
+
+async function handleNotionPropertyMappingChange() {
+  const preset =
+    await ClipNestNotionStore
+      .getActivePreset();
+
+  if (
+    preset?.destinationType !==
+      "collection"
+  ) {
+    return;
+  }
+
+  await saveNotionPropertyMappings();
+
+  showStatus(
+    els.notionStatus,
+    "Notion property mapping saved.",
+    "success"
+  );
+}
+
 function notionDestinationValue(
   destination
 ) {
@@ -1392,19 +1960,10 @@ function prepareNotionDestinationField(
   els.notionDestinationSearch.value =
     "";
 
-  els.notionTitleProperty.value =
-    preset?.titleProperty ||
-    "Name";
-
-  els.notionUrlProperty.value =
-    preset?.urlProperty ||
-    "";
-
-  els.notionTitleProperty.disabled =
-    true;
-
-  els.notionUrlProperty.disabled =
-    true;
+  renderNotionPropertySelectors(
+    preset,
+    []
+  );
 
   els.testNotion.disabled =
     true;
@@ -2368,44 +2927,10 @@ async function handleNotionDataSourceChange() {
               destination.parentId
           });
 
-      const titleProperties =
-        database.properties.filter(
-          (property) =>
-            property.type ===
-            "title"
-        );
-
-      const urlProperties =
-        database.properties.filter(
-          (property) =>
-            property.type ===
-            "url"
-        );
-
-      if (
-        titleProperties.length ===
-          1
-      ) {
-        els.notionTitleProperty.value =
-          titleProperties[0].name;
-      }
-
-      if (
-        urlProperties.length ===
-          1
-      ) {
-        els.notionUrlProperty.value =
-          urlProperties[0].name;
-      }
-
-      await ClipNestNotionStore
-        .updateActivePreset({
-          titleProperty:
-            els.notionTitleProperty.value,
-
-          urlProperty:
-            els.notionUrlProperty.value
-        });
+      await applyNotionDatabaseSchema(
+        updated,
+        database
+      );
 
       const preview =
         database.properties
@@ -2428,6 +2953,11 @@ async function handleNotionDataSourceChange() {
         String(error);
     }
   } else {
+    renderNotionPropertySelectors(
+      updated,
+      []
+    );
+
     els.notionDataSourceHelp.textContent =
       "Page selected. ClipNest will save beneath this page.";
   }
