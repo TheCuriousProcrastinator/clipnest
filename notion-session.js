@@ -2013,6 +2013,543 @@
     throw error;
   }
 
+  function createNotionId() {
+    if (
+      globalThis.crypto
+        ?.randomUUID
+    ) {
+      return crypto.randomUUID();
+    }
+
+    const hex =
+      "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
+
+    return hex.replace(
+      /[xy]/g,
+      (char) => {
+        const random =
+          Math.random() *
+          16 |
+          0;
+
+        const value =
+          char === "x"
+            ? random
+            : (
+                random &
+                0x3 |
+                0x8
+              );
+
+        return value.toString(
+          16
+        );
+      }
+    );
+  }
+
+  function normalizeNotionRecordId(
+    value
+  ) {
+    const raw =
+      String(
+        value ||
+        ""
+      )
+        .replace(
+          /-/g,
+          ""
+        )
+        .slice(
+          -32
+        );
+
+    if (
+      !/^[0-9a-f]{32}$/i.test(
+        raw
+      )
+    ) {
+      return String(
+        value ||
+        ""
+      ).trim();
+    }
+
+    return [
+      raw.slice(
+        0,
+        8
+      ),
+      raw.slice(
+        8,
+        12
+      ),
+      raw.slice(
+        12,
+        16
+      ),
+      raw.slice(
+        16,
+        20
+      ),
+      raw.slice(
+        20
+      )
+    ].join(
+      "-"
+    );
+  }
+
+  function notionPageUrl(
+    pageId
+  ) {
+    return (
+      "https://www.notion.so/" +
+      String(
+        pageId ||
+        ""
+      ).replace(
+        /-/g,
+        ""
+      )
+    );
+  }
+
+  function encodeDatabaseProperties({
+    title = "",
+    url = "",
+    tags = [],
+    propertyIds = {}
+  } = {}) {
+    const properties =
+      {};
+
+    const titleId =
+      String(
+        propertyIds.title ||
+        ""
+      ).trim();
+
+    const urlId =
+      String(
+        propertyIds.url ||
+        ""
+      ).trim();
+
+    const tagsId =
+      String(
+        propertyIds.tags ||
+        ""
+      ).trim();
+
+    if (titleId) {
+      properties[
+        titleId
+      ] = [
+        [
+          String(
+            title ||
+            ""
+          )
+        ]
+      ];
+    }
+
+    if (
+      urlId &&
+      url
+    ) {
+      properties[
+        urlId
+      ] = [
+        [
+          String(
+            url
+          )
+        ]
+      ];
+    }
+
+    const cleanTags =
+      Array.isArray(
+        tags
+      )
+        ? [
+            ...new Set(
+              tags
+                .map(
+                  (tag) =>
+                    String(
+                      tag ||
+                      ""
+                    ).trim()
+                )
+                .filter(Boolean)
+            )
+          ]
+        : [];
+
+    if (
+      tagsId &&
+      cleanTags.length
+    ) {
+      properties[
+        tagsId
+      ] = [
+        [
+          cleanTags.join(
+            ","
+          )
+        ]
+      ];
+    }
+
+    return properties;
+  }
+
+  function buildCreatePageOperations({
+    pageId,
+    workspaceId,
+    userId,
+    parentId,
+    parentTable,
+    title = "",
+    properties = {}
+  }) {
+    const id =
+      normalizeNotionRecordId(
+        pageId
+      );
+
+    const spaceId =
+      normalizeNotionRecordId(
+        workspaceId
+      );
+
+    const parent =
+      normalizeNotionRecordId(
+        parentId
+      );
+
+    const table =
+      parentTable ===
+        "collection"
+        ? "collection"
+        : "block";
+
+    const now =
+      Date.now();
+
+    const pageProperties = {
+      ...(
+        table ===
+          "block" &&
+        title
+          ? {
+              title: [
+                [
+                  String(
+                    title
+                  )
+                ]
+              ]
+            }
+          : {}
+      ),
+
+      ...(
+        properties &&
+        typeof properties ===
+          "object"
+          ? properties
+          : {}
+      )
+    };
+
+    const operations = [
+      {
+        id,
+
+        table:
+          "block",
+
+        path:
+          [],
+
+        command:
+          "update",
+
+        args: {
+          type:
+            "page",
+
+          id,
+
+          space_id:
+            spaceId,
+
+          parent_id:
+            parent,
+
+          parent_table:
+            table,
+
+          alive:
+            true,
+
+          version:
+            1,
+
+          created_time:
+            now,
+
+          last_edited_time:
+            now,
+
+          ...(
+            userId
+              ? {
+                  created_by_table:
+                    "notion_user",
+
+                  created_by_id:
+                    userId,
+
+                  last_edited_by_table:
+                    "notion_user",
+
+                  last_edited_by_id:
+                    userId
+                }
+              : {}
+          ),
+
+          properties:
+            pageProperties
+        }
+      }
+    ];
+
+    if (
+      table ===
+        "block"
+    ) {
+      operations.push({
+        table:
+          "block",
+
+        id:
+          parent,
+
+        path: [
+          "content"
+        ],
+
+        command:
+          "listAfter",
+
+        args: {
+          id
+        }
+      });
+    }
+
+    return operations;
+  }
+
+  async function submitOperations({
+    workspaceId,
+    userId,
+    operations
+  } = {}) {
+    const spaceId =
+      String(
+        workspaceId ||
+        ""
+      ).trim();
+
+    const activeUserId =
+      String(
+        userId ||
+        ""
+      ).trim();
+
+    if (!spaceId) {
+      throw new Error(
+        "Notion workspace is missing."
+      );
+    }
+
+    if (!activeUserId) {
+      throw new Error(
+        "Notion user is missing."
+      );
+    }
+
+    if (
+      !Array.isArray(
+        operations
+      ) ||
+      !operations.length
+    ) {
+      throw new Error(
+        "No Notion operations were provided."
+      );
+    }
+
+    const normalizedOperations =
+      operations.map(
+        (operation) => {
+          if (
+            operation.pointer
+              ?.id &&
+            operation.pointer
+              ?.table &&
+            operation.pointer
+              ?.spaceId
+          ) {
+            return operation;
+          }
+
+          return {
+            ...operation,
+
+            pointer: {
+              id:
+                operation.id ??
+                operation.pointer
+                  ?.id,
+
+              table:
+                operation.table ??
+                operation.pointer
+                  ?.table,
+
+              spaceId:
+                operation.spaceId ??
+                operation.space_id ??
+                spaceId
+            }
+          };
+        }
+      );
+
+    const attempts =
+      [];
+
+    for (
+      const host of
+        NOTION_HOSTS
+    ) {
+      try {
+        const response =
+          await postNotion(
+            host,
+            "saveTransactionsFanout",
+            {
+              requestId:
+                createNotionId(),
+
+              transactions: [
+                {
+                  id:
+                    createNotionId(),
+
+                  spaceId,
+
+                  operations:
+                    normalizedOperations
+                }
+              ]
+            },
+            {
+              userId:
+                activeUserId,
+
+              spaceId
+            }
+          );
+
+        attempts.push({
+          host,
+
+          status:
+            "ok"
+        });
+
+        return {
+          host,
+          response,
+          attempts
+        };
+      } catch (error) {
+        attempts.push({
+          host,
+
+          status:
+            "error",
+
+          httpStatus:
+            error.status ||
+            null,
+
+          error:
+            error.message ||
+            String(error)
+        });
+      }
+    }
+
+    const error =
+      new Error(
+        "ClipNest could not write to this Notion workspace."
+      );
+
+    error.attempts =
+      attempts;
+
+    throw error;
+  }
+
+  async function createPage({
+    workspaceId,
+    userId,
+    parentId,
+    parentTable = "block",
+    title = "",
+    properties = {}
+  } = {}) {
+    const pageId =
+      createNotionId();
+
+    const operations =
+      buildCreatePageOperations({
+        pageId,
+        workspaceId,
+        userId,
+        parentId,
+        parentTable,
+        title,
+        properties
+      });
+
+    await submitOperations({
+      workspaceId,
+      userId,
+      operations
+    });
+
+    return {
+      id:
+        pageId,
+
+      url:
+        notionPageUrl(
+          pageId
+        )
+    };
+  }
+
   async function searchDestinations({
     workspaceId,
     userId,
@@ -2296,6 +2833,10 @@
       getWorkspaces,
       searchDestinations,
       getDatabaseSchema,
+      encodeDatabaseProperties,
+      buildCreatePageOperations,
+      submitOperations,
+      createPage,
       postNotion
     });
 })();
