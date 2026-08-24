@@ -21,6 +21,13 @@
       <button class="destination-button" data-destination="notion" type="button">Notion</button>
     </div>
 
+    <label id="notionPresetField" class="field hidden">
+      <span>Preset</span>
+      <select id="notionPresetSelect">
+        <option value="">No presets configured</option>
+      </select>
+    </label>
+
     <label id="vaultField" class="field hidden">
       <span>Vault</span>
       <select id="vaultSelect">
@@ -40,7 +47,7 @@
       <input id="titleInput" type="text" autocomplete="off" />
     </label>
 
-    <label class="field">
+    <label id="tagsField" class="field">
       <span>Tags</span>
       <input id="tagsInput" type="text" autocomplete="off" placeholder="reading, ai, research" />
     </label>
@@ -95,6 +102,7 @@
   </main>
 
   <script src="vault-store.js"></script>
+  <script src="notion-store.js"></script>
   <script src="fs-store.js"></script>
   <script src="article-engine.js"></script>
   <script src="popup.js"></script>

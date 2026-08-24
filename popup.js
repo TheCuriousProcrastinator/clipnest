@@ -16,6 +16,9 @@ async function init() {
   els.templateField = document.getElementById("templateField");
   els.templateSelect = document.getElementById("templateSelect");
   els.templateMeta = document.getElementById("templateMeta");
+  els.notionPresetField = document.getElementById("notionPresetField");
+  els.notionPresetSelect = document.getElementById("notionPresetSelect");
+  els.tagsField = document.getElementById("tagsField");
   els.vaultField = document.getElementById("vaultField");
   els.vaultSelect = document.getElementById("vaultSelect");
   els.folderField = document.getElementById("folderField");
@@ -41,6 +44,11 @@ async function init() {
   els.destinationButtons.forEach((button) => {
     button.addEventListener("click", () => setDestination(button.dataset.destination));
   });
+
+  els.notionPresetSelect?.addEventListener(
+    "change",
+    handleNotionPresetChange
+  );
 
   els.vaultSelect?.addEventListener(
     "change",
@@ -73,7 +81,12 @@ async function init() {
   );
 
   await ClipNestVaultStore.migrateLegacy();
-  await loadVaultPicker();
+  await ClipNestNotionStore.migrateLegacy();
+
+  await Promise.all([
+    loadVaultPicker(),
+    loadNotionPresetPicker()
+  ]);
 
   const settings = await chrome.storage.local.get([
     "defaultDestination",
@@ -124,7 +137,11 @@ async function init() {
 }
 
 function setDestination(destination) {
-  state.destination = destination;
+  state.destination =
+    destination;
+
+  document.body.dataset.destination =
+    destination;
 
   els.destinationButtons?.forEach(
     (button) => {
@@ -145,6 +162,118 @@ function setDestination(destination) {
     "hidden",
     destination !== "obsidian"
   );
+
+  els.notionPresetField?.classList.toggle(
+    "hidden",
+    destination !== "notion"
+  );
+}
+
+async function loadNotionPresetPicker() {
+  if (
+    !els.notionPresetSelect
+  ) {
+    return;
+  }
+
+  const info =
+    await ClipNestNotionStore
+      .listPresets();
+
+  els.notionPresetSelect
+    .replaceChildren();
+
+  if (!info.presets.length) {
+    const empty =
+      document.createElement(
+        "option"
+      );
+
+    empty.value = "";
+
+    empty.textContent =
+      "No presets configured";
+
+    els.notionPresetSelect.append(
+      empty
+    );
+  } else {
+    for (
+      const preset of
+        info.presets
+    ) {
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        preset.id;
+
+      option.textContent =
+        preset.name;
+
+      els.notionPresetSelect.append(
+        option
+      );
+    }
+  }
+
+  const manage =
+    document.createElement(
+      "option"
+    );
+
+  manage.value =
+    "__manage__";
+
+  manage.textContent =
+    "Manage presets…";
+
+  els.notionPresetSelect.append(
+    manage
+  );
+
+  els.notionPresetSelect.value =
+    info.activePresetId ||
+    "";
+}
+
+async function handleNotionPresetChange() {
+  const value =
+    els.notionPresetSelect?.value ||
+    "";
+
+  if (
+    value === "__manage__"
+  ) {
+    await loadNotionPresetPicker();
+
+    chrome.runtime.openOptionsPage();
+
+    return;
+  }
+
+  if (!value) {
+    return;
+  }
+
+  try {
+    await ClipNestNotionStore
+      .setActivePreset(value);
+
+    await loadNotionPresetPicker();
+
+    setStatus("");
+  } catch (error) {
+    setStatus(
+      error.message ||
+        String(error),
+      "error"
+    );
+
+    await loadNotionPresetPicker();
+  }
 }
 
 function setNotesExpanded(expanded) {

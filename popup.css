@@ -917,3 +917,37 @@ body > :last-child,
 main > :last-child {
   margin-bottom: 0 !important;
 }
+
+/* NOTION PRESETS - STEP 2 */
+
+#notionPresetSelect {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 40px;
+  height: 40px;
+  border: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+}
+
+#notionPresetField {
+  margin-bottom: 7px !important;
+}
+
+#notionPresetField.hidden {
+  display: none !important;
+}
+
+body[data-destination="notion"] #vaultField,
+body[data-destination="notion"] #folderField,
+body[data-destination="notion"] #templateField,
+body[data-destination="notion"] #tagsField {
+  display: none !important;
+}
+
+body[data-destination="obsidian"] #notionPresetField {
+  display: none !important;
+}
