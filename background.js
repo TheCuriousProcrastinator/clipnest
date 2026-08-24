@@ -8,6 +8,390 @@ try {
   // Older Chromium builds may not expose setAccessLevel. V1 still functions.
 }
 
+
+/* ==================================================
+   ClipNest Quick Clip - V0.6.0
+   ================================================== */
+
+const QUICK_CLIP_TEXT_MENU_ID =
+  "clipnest.quickClip.selectedText";
+
+function ensureQuickClipContextMenu() {
+  chrome.contextMenus.create(
+    {
+      id: QUICK_CLIP_TEXT_MENU_ID,
+      title: "Clip selected text to ClipNest",
+      contexts: ["selection"],
+      documentUrlPatterns: [
+        "http://*/*",
+        "https://*/*"
+      ]
+    },
+    () => {
+      /*
+       * The service worker can restart while the
+       * context menu already exists. Ignore the
+       * duplicate-ID error in that case.
+       */
+      void chrome.runtime.lastError;
+    }
+  );
+}
+
+ensureQuickClipContextMenu();
+
+chrome.runtime.onInstalled.addListener(() => {
+  ensureQuickClipContextMenu();
+});
+
+chrome.contextMenus.onClicked.addListener(
+  (info, tab) => {
+    if (
+      info.menuItemId !==
+      QUICK_CLIP_TEXT_MENU_ID
+    ) {
+      return;
+    }
+
+    void quickClipSelectedText(
+      info,
+      tab
+    );
+  }
+);
+
+async function quickClipSelectedText(
+  info,
+  tab
+) {
+  const selectedText =
+    String(
+      info.selectionText || ""
+    ).trim();
+
+  if (!selectedText) {
+    await showQuickClipToast(
+      tab?.id,
+      "Nothing selected.",
+      "error"
+    );
+
+    return;
+  }
+
+  const url =
+    String(
+      tab?.url ||
+      info.pageUrl ||
+      ""
+    );
+
+  if (!/^https?:/i.test(url)) {
+    await showQuickClipToast(
+      tab?.id,
+      "ClipNest only clips normal webpages.",
+      "error"
+    );
+
+    return;
+  }
+
+  try {
+    const settings =
+      await chrome.storage.local.get([
+        "defaultDestination",
+        "obsidianDefaultTags",
+        "obsidianDefaultTemplatePath",
+        "obsidianSubfolder"
+      ]);
+
+    const destination =
+      settings.defaultDestination ===
+      "notion"
+        ? "notion"
+        : "obsidian";
+
+    const tags =
+      parseQuickTags(
+        settings.obsidianDefaultTags || ""
+      );
+
+    const title =
+      String(
+        tab?.title ||
+        "Untitled"
+      ).trim() ||
+      "Untitled";
+
+    let hostname = "";
+
+    try {
+      hostname =
+        new URL(url).hostname;
+    } catch {
+      hostname = "";
+    }
+
+    const body =
+      `## Selected text\n\n` +
+      quickQuoteMarkdown(
+        selectedText
+      );
+
+    const markdown =
+      destination === "notion"
+        ? `[Source](${url})\n\n${body}`
+        : body;
+
+    let template = null;
+
+    const templatePath =
+      String(
+        settings.obsidianDefaultTemplatePath ||
+        ""
+      ).trim();
+
+    if (
+      destination === "obsidian" &&
+      templatePath
+    ) {
+      template =
+        await getCachedObsidianTemplate(
+          templatePath
+        );
+
+      if (!template) {
+        try {
+          await refreshObsidianTemplateCache();
+
+          template =
+            await getCachedObsidianTemplate(
+              templatePath
+            );
+        } catch {
+          /*
+           * The actual save below will still provide
+           * a useful permission error when applicable.
+           */
+        }
+      }
+
+      if (!template) {
+        throw new Error(
+          "Your default Obsidian template could not " +
+          "be loaded. Open ClipNest once and try again."
+        );
+      }
+    }
+
+    const payload = {
+      title,
+      url,
+      hostname,
+      siteName: hostname,
+      author: "",
+      description: "",
+      image: "",
+      tags,
+      notes: "",
+      contentMode: "text",
+      markdown,
+      template
+    };
+
+    let successMessage = "";
+
+    if (destination === "notion") {
+      await saveToNotion(
+        payload
+      );
+
+      successMessage =
+        "Saved selected text to Notion";
+    } else {
+      const filename =
+        await quickSaveToObsidian(
+          payload,
+          settings.obsidianSubfolder || ""
+        );
+
+      if (tags.length) {
+        try {
+          await rememberObsidianTags(
+            tags
+          );
+        } catch {
+          /*
+           * Tag cache is non-critical after a
+           * successful file save.
+           */
+        }
+      }
+
+      successMessage =
+        filename
+          ? `Saved to Obsidian · ${filename}`
+          : "Saved selected text to Obsidian";
+    }
+
+    await showQuickClipToast(
+      tab?.id,
+      successMessage,
+      "success"
+    );
+  } catch (error) {
+    console.error(
+      "ClipNest Quick Clip failed:",
+      error
+    );
+
+    await showQuickClipToast(
+      tab?.id,
+      normalizeError(error).message ||
+        "Quick Clip failed.",
+      "error"
+    );
+  }
+}
+
+function quickQuoteMarkdown(text) {
+  return String(text || "")
+    .split(/\r?\n/)
+    .map(
+      (line) =>
+        `> ${line}`
+    )
+    .join("\n");
+}
+
+async function showQuickClipToast(
+  tabId,
+  message,
+  kind = "success"
+) {
+  if (!Number.isInteger(tabId)) {
+    return;
+  }
+
+  try {
+    await chrome.scripting.executeScript({
+      target: {
+        tabId
+      },
+
+      func: (
+        toastMessage,
+        toastKind
+      ) => {
+        const ID =
+          "__clipnestQuickClipToast";
+
+        document
+          .getElementById(ID)
+          ?.remove();
+
+        const toast =
+          document.createElement("div");
+
+        toast.id = ID;
+
+        toast.textContent =
+          toastMessage;
+
+        const success =
+          toastKind === "success";
+
+        Object.assign(
+          toast.style,
+          {
+            position: "fixed",
+            right: "20px",
+            bottom: "20px",
+            zIndex: "2147483647",
+
+            maxWidth: "420px",
+            padding: "12px 16px",
+
+            border:
+              `1px solid ${
+                success
+                  ? "#9027db"
+                  : "#db5b27"
+              }`,
+
+            borderRadius: "12px",
+
+            background:
+              "rgba(28,28,30,.96)",
+
+            color: "#ffffff",
+
+            boxShadow:
+              "0 10px 35px rgba(0,0,0,.32)",
+
+            fontFamily:
+              '-apple-system,BlinkMacSystemFont,' +
+              '"Segoe UI",sans-serif',
+
+            fontSize: "14px",
+            fontWeight: "650",
+            lineHeight: "1.35",
+
+            opacity: "0",
+            transform:
+              "translateY(8px)",
+
+            transition:
+              "opacity 140ms ease," +
+              "transform 140ms ease",
+
+            pointerEvents: "none"
+          }
+        );
+
+        document.documentElement
+          .appendChild(toast);
+
+        requestAnimationFrame(
+          () => {
+            toast.style.opacity =
+              "1";
+
+            toast.style.transform =
+              "translateY(0)";
+          }
+        );
+
+        setTimeout(
+          () => {
+            toast.style.opacity =
+              "0";
+
+            toast.style.transform =
+              "translateY(8px)";
+
+            setTimeout(
+              () => toast.remove(),
+              180
+            );
+          },
+          2600
+        );
+      },
+
+      args: [
+        String(message || ""),
+        kind
+      ]
+    });
+  } catch {
+    /*
+     * The save itself succeeded/failed independently
+     * of whether the webpage permits a toast.
+     */
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "clipper.areaSelected") {
     const payload = message.payload || {};
