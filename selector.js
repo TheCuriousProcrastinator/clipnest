@@ -1170,8 +1170,8 @@
     "position:fixed",
     "z-index:2147483646",
     "pointer-events:none",
-    "border:2px solid #0a84ff",
-    "background:rgba(10,132,255,.08)",
+    "border:2px solid #9027db",
+    "background:rgba(144,39,219,.10)",
     "border-radius:4px",
     "box-sizing:border-box",
     "display:none"
@@ -1403,7 +1403,7 @@
       "border:0",
       "border-radius:8px",
       "padding:9px 12px",
-      "background:#0a84ff",
+      "background:#9027db",
       "color:white",
       "font:600 13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
       "cursor:pointer"

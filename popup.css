@@ -782,3 +782,10 @@ a {
   accent-color: var(--clipper-purple);
 }
 
+
+
+/* CLIPNEST AREA COMPACT - V0.5.21 */
+
+.clipper-ux-area-main-save-hidden {
+  display: none !important;
+}
