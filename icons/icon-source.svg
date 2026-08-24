@@ -1,24 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <path
-    d="M164 56
-       H578
-       L860 338
-       V916
-       Q860 968 808 968
-       H216
-       Q164 968 164 916
-       V108
-       Q164 56 216 56
+    d="M143 56
+       H625
+       L881 312
+       V881
+       Q881 968 794 968
+       H230
+       Q143 968 143 881
+       V143
+       Q143 56 230 56
        Z"
     fill="#ffffff"
     stroke="#db5b27"
-    stroke-width="54"
+    stroke-width="66"
     stroke-linejoin="round"
   />
   <path
-    d="M578 56
-       L860 338
-       H578
+    d="M625 56
+       L881 312
+       H625
        Z"
     fill="#db5b27"
   />
