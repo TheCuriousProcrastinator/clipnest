@@ -90,9 +90,48 @@
       <label class="field">
         <span>Workspace</span>
 
-        <select id="notionWorkspaceSelect">
-          <option value="">Choose a Notion workspace…</option>
-        </select>
+        <div class="notion-workspace-picker">
+          <button
+            id="notionWorkspacePickerButton"
+            class="notion-workspace-picker-button"
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+          >
+            <span
+              id="notionWorkspacePickerIcon"
+              class="notion-workspace-avatar notion-workspace-avatar-fallback"
+            >
+              N
+            </span>
+
+            <span
+              id="notionWorkspacePickerLabel"
+              class="notion-workspace-picker-label"
+            >
+              Choose a Notion workspace…
+            </span>
+
+            <span class="notion-workspace-picker-chevron">
+              ▾
+            </span>
+          </button>
+
+          <div
+            id="notionWorkspacePickerMenu"
+            class="notion-workspace-picker-menu hidden"
+            role="listbox"
+          ></div>
+
+          <select
+            id="notionWorkspaceSelect"
+            class="notion-workspace-native-select"
+            tabindex="-1"
+            aria-hidden="true"
+          >
+            <option value="">Choose a Notion workspace…</option>
+          </select>
+        </div>
 
         <small id="notionWorkspaceHelp">
           Each preset remembers its own workspace.

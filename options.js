@@ -13,6 +13,10 @@ async function init() {
     "removeNotionPreset",
     "notionPresetName",
     "notionWorkspaceSelect",
+    "notionWorkspacePickerButton",
+    "notionWorkspacePickerIcon",
+    "notionWorkspacePickerLabel",
+    "notionWorkspacePickerMenu",
     "notionWorkspaceHelp",
     "notionDataSourceId",
     "notionDataSourceHelp",
@@ -75,6 +79,33 @@ async function init() {
   els.notionWorkspaceSelect.addEventListener(
     "change",
     handleNotionWorkspaceChange
+  );
+
+  els.notionWorkspacePickerButton.addEventListener(
+    "click",
+    toggleNotionWorkspacePicker
+  );
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (
+        !event.target.closest(
+          ".notion-workspace-picker"
+        )
+      ) {
+        closeNotionWorkspacePicker();
+      }
+    }
+  );
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key === "Escape") {
+        closeNotionWorkspacePicker();
+      }
+    }
   );
 
   els.chooseVault.addEventListener(
@@ -158,6 +189,9 @@ async function loadSettings() {
   els.notionWorkspaceSelect.disabled =
     disabled;
 
+  els.notionWorkspacePickerButton.disabled =
+    disabled;
+
   els.removeNotionPreset.disabled =
     disabled;
 
@@ -223,6 +257,441 @@ async function saveSettings() {
 
 let notionWorkspaceCache =
   [];
+
+function notionWorkspaceIconValue(
+  workspace
+) {
+  const icon =
+    workspace?.icon;
+
+  if (!icon) {
+    return {
+      type:
+        "fallback",
+
+      value:
+        String(
+          workspace?.name ||
+          "N"
+        )
+          .trim()
+          .charAt(0)
+          .toUpperCase() ||
+        "N"
+    };
+  }
+
+  if (
+    typeof icon ===
+      "string"
+  ) {
+    const value =
+      icon.trim();
+
+    if (
+      /^https?:\/\//i.test(
+        value
+      ) ||
+      /^data:/i.test(
+        value
+      )
+    ) {
+      return {
+        type:
+          "image",
+
+        value
+      };
+    }
+
+    if (
+      value.startsWith(
+        "/"
+      )
+    ) {
+      return {
+        type:
+          "image",
+
+        value:
+          `https://app.notion.com${value}`
+      };
+    }
+
+    return {
+      type:
+        "emoji",
+
+      value
+    };
+  }
+
+  if (
+    typeof icon ===
+      "object"
+  ) {
+    const url =
+      icon.url ||
+      icon.external?.url ||
+      icon.file?.url ||
+      icon.file_upload?.url ||
+      "";
+
+    if (url) {
+      return {
+        type:
+          "image",
+
+        value:
+          url
+      };
+    }
+
+    const emoji =
+      icon.emoji ||
+      icon.value ||
+      "";
+
+    if (emoji) {
+      return {
+        type:
+          "emoji",
+
+        value:
+          emoji
+      };
+    }
+  }
+
+  return {
+    type:
+      "fallback",
+
+    value:
+      String(
+        workspace?.name ||
+        "N"
+      )
+        .trim()
+        .charAt(0)
+        .toUpperCase() ||
+      "N"
+  };
+}
+
+function fillNotionWorkspaceAvatar(
+  container,
+  workspace
+) {
+  container.replaceChildren();
+
+  container.classList.remove(
+    "notion-workspace-avatar-fallback"
+  );
+
+  const icon =
+    notionWorkspaceIconValue(
+      workspace
+    );
+
+  if (
+    icon.type ===
+      "image"
+  ) {
+    const image =
+      document.createElement(
+        "img"
+      );
+
+    image.alt = "";
+
+    image.src =
+      icon.value;
+
+    image.addEventListener(
+      "error",
+      () => {
+        container.replaceChildren();
+
+        container.classList.add(
+          "notion-workspace-avatar-fallback"
+        );
+
+        container.textContent =
+          String(
+            workspace?.name ||
+            "N"
+          )
+            .trim()
+            .charAt(0)
+            .toUpperCase() ||
+          "N";
+      },
+      {
+        once:
+          true
+      }
+    );
+
+    container.append(
+      image
+    );
+
+    return;
+  }
+
+  container.textContent =
+    icon.value;
+
+  if (
+    icon.type ===
+      "fallback"
+  ) {
+    container.classList.add(
+      "notion-workspace-avatar-fallback"
+    );
+  }
+}
+
+function notionWorkspaceMeta(
+  workspace
+) {
+  const user =
+    getNotionWorkspaceUser(
+      workspace
+    );
+
+  const identity =
+    user?.email ||
+    user?.name ||
+    "";
+
+  const plan =
+    workspace?.planInfo ||
+    "";
+
+  if (
+    identity &&
+    plan
+  ) {
+    return (
+      `${identity} · ${plan}`
+    );
+  }
+
+  return (
+    identity ||
+    plan ||
+    ""
+  );
+}
+
+function renderNotionWorkspacePicker() {
+  const selectedId =
+    els.notionWorkspaceSelect
+      .value ||
+    "";
+
+  const selected =
+    notionWorkspaceCache.find(
+      (workspace) =>
+        workspace.id ===
+        selectedId
+    );
+
+  els.notionWorkspacePickerMenu
+    .replaceChildren();
+
+  for (
+    const workspace of
+      notionWorkspaceCache
+  ) {
+    const item =
+      document.createElement(
+        "button"
+      );
+
+    item.type =
+      "button";
+
+    item.className =
+      "notion-workspace-picker-item";
+
+    item.setAttribute(
+      "role",
+      "option"
+    );
+
+    item.setAttribute(
+      "aria-selected",
+      workspace.id ===
+        selectedId
+        ? "true"
+        : "false"
+    );
+
+    const avatar =
+      document.createElement(
+        "span"
+      );
+
+    avatar.className =
+      "notion-workspace-avatar";
+
+    fillNotionWorkspaceAvatar(
+      avatar,
+      workspace
+    );
+
+    const copy =
+      document.createElement(
+        "span"
+      );
+
+    copy.className =
+      "notion-workspace-picker-item-copy";
+
+    const name =
+      document.createElement(
+        "span"
+      );
+
+    name.className =
+      "notion-workspace-picker-item-name";
+
+    name.textContent =
+      workspace.name;
+
+    const meta =
+      document.createElement(
+        "span"
+      );
+
+    meta.className =
+      "notion-workspace-picker-item-meta";
+
+    meta.textContent =
+      notionWorkspaceMeta(
+        workspace
+      );
+
+    copy.append(
+      name,
+      meta
+    );
+
+    const check =
+      document.createElement(
+        "span"
+      );
+
+    check.className =
+      "notion-workspace-picker-check";
+
+    check.textContent =
+      workspace.id ===
+        selectedId
+        ? "✓"
+        : "";
+
+    item.append(
+      avatar,
+      copy,
+      check
+    );
+
+    item.addEventListener(
+      "click",
+      async () => {
+        els.notionWorkspaceSelect.value =
+          workspace.id;
+
+        closeNotionWorkspacePicker();
+
+        await handleNotionWorkspaceChange();
+
+        renderNotionWorkspacePicker();
+      }
+    );
+
+    els.notionWorkspacePickerMenu.append(
+      item
+    );
+  }
+
+  if (selected) {
+    els.notionWorkspacePickerLabel.textContent =
+      selected.name;
+
+    fillNotionWorkspaceAvatar(
+      els.notionWorkspacePickerIcon,
+      selected
+    );
+  } else {
+    els.notionWorkspacePickerLabel.textContent =
+      "Choose a Notion workspace…";
+
+    els.notionWorkspacePickerIcon
+      .replaceChildren();
+
+    els.notionWorkspacePickerIcon
+      .classList.add(
+        "notion-workspace-avatar-fallback"
+      );
+
+    els.notionWorkspacePickerIcon.textContent =
+      "N";
+  }
+}
+
+function openNotionWorkspacePicker() {
+  if (
+    els.notionWorkspacePickerButton
+      .disabled
+  ) {
+    return;
+  }
+
+  renderNotionWorkspacePicker();
+
+  els.notionWorkspacePickerMenu
+    .classList.remove(
+      "hidden"
+    );
+
+  els.notionWorkspacePickerButton
+    .setAttribute(
+      "aria-expanded",
+      "true"
+    );
+}
+
+function closeNotionWorkspacePicker() {
+  els.notionWorkspacePickerMenu
+    .classList.add(
+      "hidden"
+    );
+
+  els.notionWorkspacePickerButton
+    .setAttribute(
+      "aria-expanded",
+      "false"
+    );
+}
+
+function toggleNotionWorkspacePicker() {
+  const isOpen =
+    !els.notionWorkspacePickerMenu
+      .classList.contains(
+        "hidden"
+      );
+
+  if (isOpen) {
+    closeNotionWorkspacePicker();
+  } else {
+    openNotionWorkspacePicker();
+  }
+}
 
 function getNotionWorkspaceUser(
   workspace
@@ -367,6 +836,11 @@ async function refreshNotionWorkspacePicker({
       els.notionWorkspaceHelp.textContent =
         "ClipNest only asks Chrome for access to Notion websites.";
 
+      els.notionWorkspacePickerButton.disabled =
+        true;
+
+      renderNotionWorkspacePicker();
+
       return;
     }
 
@@ -431,6 +905,8 @@ async function refreshNotionWorkspacePicker({
         preferredWorkspaceId;
     }
 
+    renderNotionWorkspacePicker();
+
     els.notionConnectionTitle.textContent =
       "Notion browser session detected";
 
@@ -447,11 +923,19 @@ async function refreshNotionWorkspacePicker({
     els.notionWorkspaceHelp.textContent =
       "Each preset can use a different workspace.";
 
-    els.notionWorkspaceSelect.disabled =
-      !(
+    const hasActivePreset =
+      Boolean(
         await ClipNestNotionStore
           .getActivePreset()
       );
+
+    els.notionWorkspaceSelect.disabled =
+      !hasActivePreset;
+
+    els.notionWorkspacePickerButton.disabled =
+      !hasActivePreset;
+
+    renderNotionWorkspacePicker();
   } catch (error) {
     notionWorkspaceCache =
       [];
@@ -983,7 +1467,7 @@ async function createNotionPreset() {
   await refreshNotionPresetList();
   await loadSettings();
 
-  els.notionWorkspaceSelect.focus();
+  els.notionWorkspacePickerButton.focus();
 
   showStatus(
     els.notionStatus,
