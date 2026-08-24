@@ -654,3 +654,36 @@ button:active {
 .notion-workspace-picker-menu.hidden {
   display: none;
 }
+
+/* NOTION WORKSPACE PICKER - TEXT LAYOUT FIX */
+
+.notion-workspace-picker-item-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.notion-workspace-picker-item-name,
+.notion-workspace-picker-item-meta {
+  display: block;
+  width: 100%;
+}
+
+.notion-workspace-picker-item-name {
+  line-height: 1.25;
+}
+
+.notion-workspace-picker-item-meta {
+  line-height: 1.3;
+}
+
+.notion-workspace-picker-item {
+  min-height: 58px;
+}
+
+.notion-workspace-picker-menu {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
