@@ -24,6 +24,7 @@ async function init() {
     "notionDataSourceHelp",
     "notionTitleProperty",
     "notionUrlProperty",
+    "notionTagsProperty",
     "testNotion",
     "notionStatus",
     "chooseVault",

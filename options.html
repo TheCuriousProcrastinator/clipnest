@@ -168,25 +168,31 @@
         <label class="field">
           <span>Title property</span>
 
-          <input
-            id="notionTitleProperty"
-            type="text"
-            value="Name"
-            disabled
-          />
+          <select id="notionTitleProperty" disabled>
+            <option value="">Choose a database first</option>
+          </select>
         </label>
 
         <label class="field">
           <span>URL property <em>optional</em></span>
 
-          <input
-            id="notionUrlProperty"
-            type="text"
-            placeholder="URL"
-            disabled
-          />
+          <select id="notionUrlProperty" disabled>
+            <option value="">None</option>
+          </select>
         </label>
       </div>
+
+      <label class="field">
+        <span>Tags property <em>optional</em></span>
+
+        <select id="notionTagsProperty" disabled>
+          <option value="">None</option>
+        </select>
+
+        <small>
+          Uses a Notion multi-select property.
+        </small>
+      </label>
 
       <button id="testNotion" class="secondary" type="button" disabled>
         Test selected preset
