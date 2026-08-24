@@ -6,9 +6,9 @@
     "https://*.notion.com/*"
   ];
 
-  const ENDPOINTS = [
-    "https://www.notion.so/api/v3/getSpaces",
-    "https://app.notion.com/api/v3/getSpaces"
+  const NOTION_HOSTS = [
+    "https://app.notion.com",
+    "https://www.notion.so"
   ];
 
   const els = {};
@@ -64,272 +64,487 @@
       `status ${type}`.trim();
   }
 
-  function recordValue(
+  function unwrapRecord(
     record
   ) {
-    if (
-      record &&
-      typeof record === "object" &&
-      record.value &&
-      typeof record.value === "object"
-    ) {
-      return record.value;
-    }
-
-    return record;
-  }
-
-  function workspaceName(
-    value,
-    fallback
-  ) {
-    return String(
-      value?.name ||
-      value?.display_name ||
-      value?.displayName ||
-      value?.title ||
-      fallback ||
-      "Untitled workspace"
-    ).trim();
-  }
-
-  function workspaceIcon(
-    value
-  ) {
-    const icon =
-      value?.icon ||
-      value?.emoji ||
-      "";
-
-    if (
-      typeof icon === "string" &&
-      icon.length <= 12
-    ) {
-      return icon;
-    }
-
-    return "N";
-  }
-
-  function addWorkspace(
-    map,
-    id,
-    record,
-    account = ""
-  ) {
-    const value =
-      recordValue(record);
-
-    if (
-      !value ||
-      typeof value !== "object"
-    ) {
-      return;
-    }
-
-    const resolvedId =
-      String(
-        value.id ||
-        value.space_id ||
-        value.spaceId ||
-        id ||
-        ""
-      ).trim();
-
-    if (!resolvedId) {
-      return;
-    }
-
-    const name =
-      workspaceName(
-        value,
-        resolvedId
-      );
-
-    const existing =
-      map.get(resolvedId);
-
-    map.set(
-      resolvedId,
-      {
-        id:
-          resolvedId,
-
-        name:
-          existing?.name &&
-          existing.name !==
-            existing.id
-            ? existing.name
-            : name,
-
-        icon:
-          existing?.icon ||
-          workspaceIcon(value),
-
-        account:
-          existing?.account ||
-          account ||
-          ""
-      }
-    );
-  }
-
-  function accountEmail(
-    data
-  ) {
-    const notionUsers =
-      data?.notion_user ||
-      data?.recordMap
-        ?.notion_user ||
-      {};
+    let current =
+      record;
 
     for (
-      const record of
-        Object.values(
-          notionUsers
-        )
+      let depth = 0;
+      depth < 4;
+      depth += 1
     ) {
-      const value =
-        recordValue(record);
-
-      if (value?.email) {
-        return String(
-          value.email
-        );
+      if (
+        !current ||
+        typeof current !==
+          "object" ||
+        !Object.prototype
+          .hasOwnProperty.call(
+            current,
+            "value"
+          )
+      ) {
+        break;
       }
+
+      const keys =
+        Object.keys(
+          current
+        );
+
+      const wrapperKeys =
+        new Set([
+          "value",
+          "role",
+          "version"
+        ]);
+
+      const looksLikeWrapper =
+        keys.length <= 3 &&
+        keys.every(
+          (key) =>
+            wrapperKeys.has(
+              key
+            )
+        );
+
+      if (!looksLikeWrapper) {
+        break;
+      }
+
+      current =
+        current.value;
     }
 
-    return "";
+    return current;
   }
 
-  function extractWorkspaces(
-    payload
+  function capitalize(
+    value
   ) {
-    const map =
-      new Map();
+    const text =
+      String(
+        value ||
+        ""
+      );
 
-    const inspectContainer =
-      (
-        container,
-        account = ""
-      ) => {
-        if (
-          !container ||
-          typeof container !==
-            "object"
-        ) {
-          return;
-        }
+    if (!text) {
+      return "";
+    }
 
-        const directSpace =
-          container.space;
-
-        if (
-          directSpace &&
-          typeof directSpace ===
-            "object"
-        ) {
-          for (
-            const [
-              id,
-              record
-            ] of Object.entries(
-              directSpace
-            )
-          ) {
-            addWorkspace(
-              map,
-              id,
-              record,
-              account
-            );
-          }
-        }
-
-        const recordMapSpace =
-          container.recordMap
-            ?.space;
-
-        if (
-          recordMapSpace &&
-          typeof recordMapSpace ===
-            "object"
-        ) {
-          for (
-            const [
-              id,
-              record
-            ] of Object.entries(
-              recordMapSpace
-            )
-          ) {
-            addWorkspace(
-              map,
-              id,
-              record,
-              account
-            );
-          }
-        }
-
-        const spaces =
-          container.spaces;
-
-        if (
-          Array.isArray(spaces)
-        ) {
-          for (
-            const record of spaces
-          ) {
-            const value =
-              recordValue(record);
-
-            addWorkspace(
-              map,
-              value?.id ||
-              value?.spaceId ||
-              "",
-              record,
-              account
-            );
-          }
-        } else if (
-          spaces &&
-          typeof spaces ===
-            "object"
-        ) {
-          for (
-            const [
-              id,
-              record
-            ] of Object.entries(
-              spaces
-            )
-          ) {
-            addWorkspace(
-              map,
-              id,
-              record,
-              account
-            );
-          }
-        }
-      };
-
-    inspectContainer(
-      payload,
-      accountEmail(payload)
+    return (
+      text.charAt(0)
+        .toUpperCase() +
+      text.slice(1)
     );
+  }
+
+  function getUser(
+    payload,
+    userId
+  ) {
+    const bundle =
+      payload?.[userId];
+
+    const value =
+      unwrapRecord(
+        bundle
+          ?.notion_user
+          ?.[userId]
+      );
+
+    return {
+      id:
+        value?.id ||
+        userId,
+
+      name:
+        value?.name ||
+        value?.given_name ||
+        "",
+
+      email:
+        value?.email ||
+        ""
+    };
+  }
+
+  function getSpaceIdsForUser(
+    payload,
+    userId
+  ) {
+    const bundle =
+      payload?.[userId] ||
+      {};
+
+    const ids =
+      new Set();
+
+    const spaceViews =
+      bundle.space_view;
 
     if (
-      payload &&
-      typeof payload ===
+      spaceViews &&
+      typeof spaceViews ===
         "object"
     ) {
       for (
-        const value of
-          Object.values(payload)
+        const record of
+          Object.values(
+            spaceViews
+          )
       ) {
+        const value =
+          unwrapRecord(
+            record
+          );
+
+        const spaceId =
+          value?.space_id ||
+          value?.spaceId;
+
+        if (spaceId) {
+          ids.add(
+            String(spaceId)
+          );
+        }
+      }
+    }
+
+    if (!ids.size) {
+      const userRoot =
+        unwrapRecord(
+          bundle
+            ?.user_root
+            ?.[userId]
+        );
+
+      const pointers =
+        Array.isArray(
+          userRoot
+            ?.space_view_pointers
+        )
+          ? userRoot
+              .space_view_pointers
+          : [];
+
+      for (
+        const pointer of
+          pointers
+      ) {
+        const spaceId =
+          pointer?.spaceId ||
+          pointer?.space_id;
+
+        if (spaceId) {
+          ids.add(
+            String(spaceId)
+          );
+        }
+      }
+    }
+
+    return [
+      ...ids
+    ];
+  }
+
+  function getSpaceViewIds(
+    payload,
+    userId
+  ) {
+    const bundle =
+      payload?.[userId] ||
+      {};
+
+    const result =
+      {};
+
+    const spaceViews =
+      bundle.space_view;
+
+    if (
+      spaceViews &&
+      typeof spaceViews ===
+        "object"
+    ) {
+      for (
+        const [
+          viewId,
+          record
+        ] of Object.entries(
+          spaceViews
+        )
+      ) {
+        const value =
+          unwrapRecord(
+            record
+          );
+
+        const spaceId =
+          value?.space_id ||
+          value?.spaceId;
+
+        if (!spaceId) {
+          continue;
+        }
+
+        if (!result[spaceId]) {
+          result[spaceId] =
+            [];
+        }
+
+        result[spaceId].push(
+          viewId
+        );
+      }
+
+      return result;
+    }
+
+    const userRoot =
+      unwrapRecord(
+        bundle
+          ?.user_root
+          ?.[userId]
+      );
+
+    const pointers =
+      Array.isArray(
+        userRoot
+          ?.space_view_pointers
+      )
+        ? userRoot
+            .space_view_pointers
+        : [];
+
+    for (
+      const pointer of
+        pointers
+    ) {
+      const spaceId =
+        pointer?.spaceId ||
+        pointer?.space_id;
+
+      const viewId =
+        pointer?.id;
+
+      if (
+        !spaceId ||
+        !viewId
+      ) {
+        continue;
+      }
+
+      if (!result[spaceId]) {
+        result[spaceId] =
+          [];
+      }
+
+      result[spaceId].push(
+        viewId
+      );
+    }
+
+    return result;
+  }
+
+  function getMembershipType(
+    payload,
+    userId,
+    spaceId
+  ) {
+    const record =
+      payload?.[userId]
+        ?.space_user
+        ?.[`${userId}|${spaceId}`];
+
+    const value =
+      unwrapRecord(
+        record
+      );
+
+    return (
+      value?.membership_type ||
+      "none"
+    );
+  }
+
+  function membershipRank(
+    type
+  ) {
+    if (type === "owner") {
+      return 0;
+    }
+
+    if (type === "member") {
+      return 1;
+    }
+
+    return 2;
+  }
+
+  function linkedUsersForSpace(
+    payload,
+    users,
+    spaceId
+  ) {
+    return users
+      .filter(
+        (user) =>
+          user.spaceIds.includes(
+            spaceId
+          )
+      )
+      .map(
+        (user) => ({
+          ...user,
+
+          membershipType:
+            getMembershipType(
+              payload,
+              user.id,
+              spaceId
+            )
+        })
+      )
+      .sort(
+        (a, b) =>
+          membershipRank(
+            a.membershipType
+          ) -
+          membershipRank(
+            b.membershipType
+          )
+      );
+  }
+
+  function buildContext(
+    payload
+  ) {
+    const userIds =
+      Object.keys(
+        payload || {}
+      );
+
+    const users =
+      userIds
+        .map(
+          (userId) => ({
+            ...getUser(
+              payload,
+              userId
+            ),
+
+            spaceIds:
+              getSpaceIdsForUser(
+                payload,
+                userId
+              )
+          })
+        )
+        .filter(
+          (user) =>
+            user.id
+        );
+
+    const allSpaceViewIds =
+      {};
+
+    for (
+      const user of
+        users
+    ) {
+      const mapping =
+        getSpaceViewIds(
+          payload,
+          user.id
+        );
+
+      for (
+        const [
+          spaceId,
+          viewIds
+        ] of Object.entries(
+          mapping
+        )
+      ) {
+        if (
+          !allSpaceViewIds[
+            spaceId
+          ]
+        ) {
+          allSpaceViewIds[
+            spaceId
+          ] = [];
+        }
+
+        for (
+          const viewId of
+            viewIds
+        ) {
+          if (
+            !allSpaceViewIds[
+              spaceId
+            ].includes(
+              viewId
+            )
+          ) {
+            allSpaceViewIds[
+              spaceId
+            ].push(
+              viewId
+            );
+          }
+        }
+      }
+    }
+
+    return {
+      users,
+      allSpaceViewIds
+    };
+  }
+
+  function buildDirectSpaces(
+    payload,
+    users,
+    allSpaceViewIds
+  ) {
+    const spaces =
+      new Map();
+
+    for (
+      const bundle of
+        Object.values(
+          payload || {}
+        )
+    ) {
+      const directSpaces =
+        bundle?.space;
+
+      if (
+        !directSpaces ||
+        typeof directSpaces !==
+          "object"
+      ) {
+        continue;
+      }
+
+      for (
+        const [
+          recordId,
+          record
+        ] of Object.entries(
+          directSpaces
+        )
+      ) {
+        const value =
+          unwrapRecord(
+            record
+          );
+
         if (
           !value ||
           typeof value !==
@@ -338,57 +553,73 @@
           continue;
         }
 
-        inspectContainer(
-          value,
-          accountEmail(value)
+        const spaceId =
+          String(
+            value.id ||
+            recordId ||
+            ""
+          ).trim();
+
+        if (!spaceId) {
+          continue;
+        }
+
+        if (
+          spaces.has(
+            spaceId
+          )
+        ) {
+          continue;
+        }
+
+        const linkedUsers =
+          linkedUsersForSpace(
+            payload,
+            users,
+            spaceId
+          );
+
+        spaces.set(
+          spaceId,
+          {
+            id:
+              spaceId,
+
+            spaceId,
+
+            name:
+              value.name ||
+              "Untitled workspace",
+
+            icon:
+              value.icon ||
+              "",
+
+            planInfo:
+              value.plan_type
+                ? `${
+                    capitalize(
+                      value.plan_type
+                    )
+                  } Plan`
+                : "Guest Access - Invited",
+
+            linkedUsers,
+
+            spaceViewIds:
+              allSpaceViewIds[
+                spaceId
+              ] ||
+              [],
+
+            source:
+              "getSpaces"
+          }
         );
       }
     }
 
-    return [
-      ...map.values()
-    ].sort(
-      (a, b) =>
-        a.name.localeCompare(
-          b.name
-        )
-    );
-  }
-
-  function summarizePayload(
-    payload
-  ) {
-    if (
-      !payload ||
-      typeof payload !==
-        "object"
-    ) {
-      return {
-        type:
-          typeof payload
-      };
-    }
-
-    return {
-      topLevelKeys:
-        Object.keys(payload),
-
-      accountCount:
-        Object.values(payload)
-          .filter(
-            (value) =>
-              value &&
-              typeof value ===
-                "object" &&
-              (
-                value.space ||
-                value.recordMap
-                  ?.space ||
-                value.spaces
-              )
-          )
-          .length
-    };
+    return spaces;
   }
 
   async function requestPermissions() {
@@ -410,95 +641,129 @@
       });
   }
 
+  async function postNotion(
+    host,
+    path,
+    body = {},
+    extraHeaders = {}
+  ) {
+    const response =
+      await fetch(
+        `${host}/api/v3/${path}`,
+        {
+          method:
+            "POST",
+
+          credentials:
+            "include",
+
+          headers: {
+            Accept:
+              "application/json",
+
+            "Content-Type":
+              "application/json",
+
+            ...extraHeaders
+          },
+
+          body:
+            JSON.stringify(
+              body
+            )
+        }
+      );
+
+    const contentType =
+      response.headers.get(
+        "content-type"
+      ) || "";
+
+    let payload =
+      null;
+
+    if (
+      contentType.includes(
+        "application/json"
+      )
+    ) {
+      payload =
+        await response.json();
+    } else {
+      const text =
+        await response.text();
+
+      payload = {
+        nonJson:
+          true,
+
+        preview:
+          text.slice(
+            0,
+            160
+          )
+      };
+    }
+
+    return {
+      response,
+      payload,
+      contentType
+    };
+  }
+
   async function fetchSpaces() {
     const attempts =
       [];
 
     for (
-      const endpoint of
-        ENDPOINTS
+      const host of
+        NOTION_HOSTS
     ) {
       try {
-        const response =
-          await fetch(
-            endpoint,
-            {
-              method:
-                "POST",
-
-              credentials:
-                "include",
-
-              headers: {
-                Accept:
-                  "application/json",
-
-                "Content-Type":
-                  "application/json"
-              },
-
-              body:
-                "{}"
-            }
+        const result =
+          await postNotion(
+            host,
+            "getSpaces",
+            {}
           );
 
-        const contentType =
-          response.headers.get(
-            "content-type"
-          ) || "";
-
-        let payload =
-          null;
-
-        if (
-          contentType.includes(
-            "application/json"
-          )
-        ) {
-          payload =
-            await response.json();
-        } else {
-          const text =
-            await response.text();
-
-          attempts.push({
-            endpoint,
-            status:
-              response.status,
-            contentType,
-            bodyType:
-              "non-json",
-            preview:
-              text.slice(
-                0,
-                120
-              )
-          });
-
-          continue;
-        }
-
         attempts.push({
-          endpoint,
+          host,
+
           status:
-            response.status,
-          contentType,
-          summary:
-            summarizePayload(
-              payload
-            )
+            result.response.status,
+
+          contentType:
+            result.contentType,
+
+          topLevelKeys:
+            result.payload &&
+            typeof result.payload ===
+              "object"
+              ? Object.keys(
+                  result.payload
+                )
+              : []
         });
 
-        if (response.ok) {
+        if (
+          result.response.ok &&
+          result.payload &&
+          typeof result.payload ===
+            "object"
+        ) {
           return {
-            endpoint,
-            payload,
+            host,
+            payload:
+              result.payload,
             attempts
           };
         }
       } catch (error) {
         attempts.push({
-          endpoint,
+          host,
+
           error:
             error.message ||
             String(error)
@@ -506,15 +771,276 @@
       }
     }
 
-    const failure =
+    const error =
       new Error(
-        "Notion did not return a usable workspace response."
+        "Notion did not return a usable getSpaces response."
       );
 
-    failure.attempts =
+    error.attempts =
       attempts;
 
-    throw failure;
+    throw error;
+  }
+
+  async function fetchPublicSpaceData(
+    host,
+    spaceId,
+    userId
+  ) {
+    const result =
+      await postNotion(
+        host,
+        "getPublicSpaceData",
+        {
+          type:
+            "space-ids",
+
+          spaceIds: [
+            spaceId
+          ]
+        },
+        {
+          "x-notion-active-user-header":
+            userId,
+
+          "x-notion-space-id":
+            spaceId
+        }
+      );
+
+    if (!result.response.ok) {
+      throw new Error(
+        `getPublicSpaceData returned HTTP ${result.response.status}`
+      );
+    }
+
+    const results =
+      Array.isArray(
+        result.payload?.results
+      )
+        ? result.payload.results
+        : [];
+
+    return results;
+  }
+
+  async function resolveAdditionalSpaces(
+    host,
+    payload,
+    users,
+    allSpaceViewIds,
+    spaces
+  ) {
+    const diagnostics =
+      [];
+
+    for (
+      const user of
+        users
+    ) {
+      const directSpaceIds =
+        new Set(
+          Object.values(
+            payload?.[user.id]
+              ?.space ||
+            {}
+          )
+            .map(
+              (record) =>
+                unwrapRecord(
+                  record
+                )?.id
+            )
+            .filter(Boolean)
+            .map(String)
+        );
+
+      const missing =
+        user.spaceIds.filter(
+          (spaceId) =>
+            !directSpaceIds.has(
+              spaceId
+            ) &&
+            !spaces.has(
+              spaceId
+            )
+        );
+
+      for (
+        const spaceId of
+          missing
+      ) {
+        try {
+          const results =
+            await fetchPublicSpaceData(
+              host,
+              spaceId,
+              user.id
+            );
+
+          diagnostics.push({
+            userId:
+              user.id,
+
+            spaceId,
+
+            resultCount:
+              results.length,
+
+            status:
+              "ok"
+          });
+
+          for (
+            const result of
+              results
+          ) {
+            if (
+              !result ||
+              typeof result !==
+                "object"
+            ) {
+              continue;
+            }
+
+            const resolvedId =
+              String(
+                result.id ||
+                spaceId
+              );
+
+            const linkedUsers =
+              linkedUsersForSpace(
+                payload,
+                users,
+                resolvedId
+              );
+
+            spaces.set(
+              resolvedId,
+              {
+                id:
+                  resolvedId,
+
+                spaceId:
+                  resolvedId,
+
+                name:
+                  result.name ||
+                  "Untitled workspace",
+
+                icon:
+                  result.icon ||
+                  "",
+
+                planInfo:
+                  result.planType
+                    ? `${
+                        capitalize(
+                          result.planType
+                        )
+                      } Plan`
+                    : "Guest Access - Invited",
+
+                linkedUsers,
+
+                spaceViewIds:
+                  allSpaceViewIds[
+                    resolvedId
+                  ] ||
+                  [],
+
+                source:
+                  "getPublicSpaceData"
+              }
+            );
+          }
+        } catch (error) {
+          diagnostics.push({
+            userId:
+              user.id,
+
+            spaceId,
+
+            status:
+              "error",
+
+            error:
+              error.message ||
+              String(error)
+          });
+        }
+      }
+    }
+
+    return diagnostics;
+  }
+
+  function iconText(
+    workspace
+  ) {
+    const icon =
+      workspace.icon;
+
+    if (
+      typeof icon ===
+        "string" &&
+      icon.length > 0 &&
+      icon.length <= 12 &&
+      !/^https?:/i.test(
+        icon
+      )
+    ) {
+      return icon;
+    }
+
+    const first =
+      String(
+        workspace.name ||
+        "N"
+      )
+        .trim()
+        .charAt(0)
+        .toUpperCase();
+
+    return first || "N";
+  }
+
+  function workspaceAccountLabel(
+    workspace
+  ) {
+    const users =
+      workspace.linkedUsers ||
+      [];
+
+    if (!users.length) {
+      return workspace.planInfo ||
+        "";
+    }
+
+    const primary =
+      users[0];
+
+    const identity =
+      primary.email ||
+      primary.name ||
+      primary.id;
+
+    if (
+      identity &&
+      workspace.planInfo
+    ) {
+      return (
+        `${identity} · ` +
+        workspace.planInfo
+      );
+    }
+
+    return (
+      identity ||
+      workspace.planInfo ||
+      ""
+    );
   }
 
   function renderWorkspaces(
@@ -544,8 +1070,9 @@
         "workspace-icon";
 
       icon.textContent =
-        workspace.icon ||
-        "N";
+        iconText(
+          workspace
+        );
 
       const copy =
         document.createElement(
@@ -572,9 +1099,9 @@
         "workspace-meta";
 
       meta.textContent =
-        workspace.account
-          ? workspace.account
-          : workspace.id;
+        workspaceAccountLabel(
+          workspace
+        );
 
       copy.append(
         name,
@@ -594,6 +1121,107 @@
     els.results.classList.remove(
       "hidden"
     );
+  }
+
+  async function discoverWorkspaces() {
+    const getSpaces =
+      await fetchSpaces();
+
+    const {
+      users,
+      allSpaceViewIds
+    } =
+      buildContext(
+        getSpaces.payload
+      );
+
+    const spaces =
+      buildDirectSpaces(
+        getSpaces.payload,
+        users,
+        allSpaceViewIds
+      );
+
+    const directCount =
+      spaces.size;
+
+    const additionalAttempts =
+      await resolveAdditionalSpaces(
+        getSpaces.host,
+        getSpaces.payload,
+        users,
+        allSpaceViewIds,
+        spaces
+      );
+
+    const workspaces = [
+      ...spaces.values()
+    ].sort(
+      (a, b) =>
+        a.name.localeCompare(
+          b.name
+        )
+    );
+
+    return {
+      workspaces,
+
+      diagnostics: {
+        endpoint:
+          `${getSpaces.host}/api/v3/getSpaces`,
+
+        usersFound:
+          users.length,
+
+        users:
+          users.map(
+            (user) => ({
+              id:
+                user.id,
+
+              email:
+                user.email ||
+                "",
+
+              spaceCount:
+                user.spaceIds.length
+            })
+          ),
+
+        directSpacesFound:
+          directCount,
+
+        additionalSpaceAttempts:
+          additionalAttempts,
+
+        totalWorkspacesFound:
+          workspaces.length,
+
+        getSpacesAttempts:
+          getSpaces.attempts,
+
+        sources:
+          workspaces.reduce(
+            (
+              result,
+              workspace
+            ) => {
+              const source =
+                workspace.source ||
+                "unknown";
+
+              result[source] =
+                (
+                  result[source] ||
+                  0
+                ) + 1;
+
+              return result;
+            },
+            {}
+          )
+      }
+    };
   }
 
   async function runProbe() {
@@ -623,29 +1251,15 @@
       }
 
       setStatus(
-        "Checking your existing Notion browser session…"
+        "Reading workspace information from your existing Notion browser session…"
       );
 
       const result =
-        await fetchSpaces();
-
-      const workspaces =
-        extractWorkspaces(
-          result.payload
-        );
+        await discoverWorkspaces();
 
       els.diagnosticText.textContent =
         JSON.stringify(
-          {
-            endpoint:
-              result.endpoint,
-
-            workspacesFound:
-              workspaces.length,
-
-            attempts:
-              result.attempts
-          },
+          result.diagnostics,
           null,
           2
         );
@@ -654,19 +1268,23 @@
         "hidden"
       );
 
-      if (!workspaces.length) {
+      if (
+        !result.workspaces.length
+      ) {
         throw new Error(
-          "The Notion session responded, but ClipNest could not find workspace records in the response."
+          "Notion responded, but no workspaces could be resolved."
         );
       }
 
       renderWorkspaces(
-        workspaces
+        result.workspaces
       );
 
       setStatus(
-        `Success. Found ${workspaces.length} workspace${
-          workspaces.length === 1
+        `Success. Found ${
+          result.workspaces.length
+        } workspace${
+          result.workspaces.length === 1
             ? ""
             : "s"
         } through your existing Notion browser session.`,
