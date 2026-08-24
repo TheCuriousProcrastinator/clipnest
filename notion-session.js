@@ -1235,6 +1235,80 @@
     return "Untitled database";
   }
 
+  function deepUnwrapNotionRecord(
+    record
+  ) {
+    let current =
+      record;
+
+    let role =
+      record?.role ||
+      "";
+
+    for (
+      let depth = 0;
+      depth < 6;
+      depth += 1
+    ) {
+      if (
+        !current ||
+        typeof current !==
+          "object" ||
+        !Object.prototype
+          .hasOwnProperty
+          .call(
+            current,
+            "value"
+          )
+      ) {
+        break;
+      }
+
+      if (
+        !role &&
+        current.role
+      ) {
+        role =
+          current.role;
+      }
+
+      const next =
+        current.value;
+
+      if (
+        next === null ||
+        next === undefined
+      ) {
+        break;
+      }
+
+      if (
+        typeof next !==
+          "object"
+      ) {
+        break;
+      }
+
+      current =
+        next;
+    }
+
+    if (
+      !role &&
+      current?.role
+    ) {
+      role =
+        current.role;
+    }
+
+    return {
+      value:
+        current,
+
+      role
+    };
+  }
+
   function notionRecord(
     recordMap,
     table,
@@ -1248,11 +1322,14 @@
       return null;
     }
 
-    return unwrapRecord(
+    const record =
       recordMap
         ?.[table]
-        ?.[id]
-    );
+        ?.[id];
+
+    return deepUnwrapNotionRecord(
+      record
+    ).value;
   }
 
   function notionParentPath(
@@ -1436,13 +1513,19 @@
           ?.[id] ||
         null;
 
+      const normalized =
+        deepUnwrapNotionRecord(
+          wrapper
+        );
+
       return {
         wrapper,
 
         value:
-          unwrapRecord(
-            wrapper
-          )
+          normalized.value,
+
+        role:
+          normalized.role
       };
     }
 
@@ -1676,6 +1759,18 @@
               ),
 
         role:
+          (
+            type ===
+              "collection"
+              ? getRecord(
+                  "collection",
+                  id
+                ).role
+              : getRecord(
+                  "block",
+                  id
+                ).role
+          ) ||
           wrapper?.role ||
           result?.role ||
           ""
