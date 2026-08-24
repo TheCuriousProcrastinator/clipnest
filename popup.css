@@ -864,3 +864,22 @@ a {
 #folderField.hidden {
   display: none !important;
 }
+
+/* HIDDEN POPUP SCROLLBAR - V0.7.4 */
+
+/*
+ * Keep the popup fully scrollable with mouse wheel
+ * and trackpad, but don't show Chrome's scrollbar.
+ */
+html,
+body {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
