@@ -36,61 +36,109 @@
         </select>
       </label>
     </section>
-
     <section class="card">
       <h2>Notion</h2>
-      <p class="help">Connect ClipNest to Notion, then create presets for the databases you want to clip into. OAuth credentials are stored only in Chrome local extension storage.</p>
+
+      <p class="help">
+        ClipNest uses your existing Notion browser session to find the workspaces available to your account.
+      </p>
 
       <div class="notion-connection">
         <div>
-          <strong id="notionConnectionTitle">Not connected</strong>
-          <div id="notionConnectionStatus" class="help">Connect ClipNest to Notion with OAuth.</div>
+          <strong id="notionConnectionTitle">Checking Notion…</strong>
+          <div id="notionConnectionStatus" class="help">
+            Looking for your Notion browser session.
+          </div>
         </div>
 
         <div class="vault-actions notion-connection-actions">
-          <button id="connectNotion" class="secondary" type="button">Connect to Notion</button>
-          <button id="disconnectNotion" class="vault-remove" type="button">Disconnect</button>
+          <button id="refreshNotionWorkspaces" class="secondary" type="button">
+            Refresh workspaces
+          </button>
         </div>
       </div>
 
       <label class="field">
         <span>Preset</span>
+
         <select id="notionPresetSelect">
           <option value="">No presets configured</option>
         </select>
       </label>
 
       <div class="vault-actions">
-        <button id="newNotionPreset" class="secondary" type="button">New preset</button>
-        <button id="removeNotionPreset" class="vault-remove" type="button">Remove selected preset</button>
+        <button id="newNotionPreset" class="secondary" type="button">
+          New preset
+        </button>
+
+        <button id="removeNotionPreset" class="vault-remove" type="button">
+          Remove selected preset
+        </button>
       </div>
 
       <label class="field">
         <span>Preset name</span>
-        <input id="notionPresetName" type="text" autocomplete="off" placeholder="Reading Inbox" />
+
+        <input
+          id="notionPresetName"
+          type="text"
+          autocomplete="off"
+          placeholder="Reading Inbox"
+        />
+      </label>
+
+      <label class="field">
+        <span>Workspace</span>
+
+        <select id="notionWorkspaceSelect">
+          <option value="">Choose a Notion workspace…</option>
+        </select>
+
+        <small id="notionWorkspaceHelp">
+          Each preset remembers its own workspace.
+        </small>
       </label>
 
       <label class="field">
         <span>Database</span>
-        <select id="notionDataSourceId">
-          <option value="">Select a Notion database…</option>
+
+        <select id="notionDataSourceId" disabled>
+          <option value="">Choose a workspace first</option>
         </select>
-        <small id="notionDataSourceHelp">Only databases shared with ClipNest appear here.</small>
+
+        <small id="notionDataSourceHelp">
+          Database discovery will use the selected workspace.
+        </small>
       </label>
 
       <div class="grid2">
         <label class="field">
           <span>Title property</span>
-          <input id="notionTitleProperty" type="text" value="Name" />
+
+          <input
+            id="notionTitleProperty"
+            type="text"
+            value="Name"
+            disabled
+          />
         </label>
 
         <label class="field">
           <span>URL property <em>optional</em></span>
-          <input id="notionUrlProperty" type="text" placeholder="URL" />
+
+          <input
+            id="notionUrlProperty"
+            type="text"
+            placeholder="URL"
+            disabled
+          />
         </label>
       </div>
 
-      <button id="testNotion" class="secondary" type="button">Test selected preset</button>
+      <button id="testNotion" class="secondary" type="button" disabled>
+        Test selected preset
+      </button>
+
       <div id="notionStatus" class="status"></div>
     </section>
 

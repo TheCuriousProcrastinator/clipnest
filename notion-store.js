@@ -1,14 +1,11 @@
 /*
  * ClipNest Notion Presets
  *
- * The Notion integration token remains global.
- * Each preset stores its destination data source
- * and property mappings.
+ * A Preset now owns its Notion workspace context.
  *
- * The active preset is mirrored into ClipNest's
- * existing Notion storage keys so the existing
- * saveToNotion() and Quick Clip paths can continue
- * using the current save architecture.
+ * The old mirrored Notion keys remain temporarily so
+ * the existing popup/background code keeps working
+ * while the Notion save path is migrated.
  */
 
 (() => {
@@ -20,63 +17,158 @@
   const ACTIVE_KEY =
     "notionActivePresetId";
 
+  const STORE_VERSION_KEY =
+    "notionPresetStoreVersion";
+
+  const STORE_VERSION = 2;
+
   function createId() {
     if (
-      globalThis.crypto?.randomUUID
+      globalThis.crypto
+        ?.randomUUID
     ) {
       return crypto.randomUUID();
     }
 
     return (
-      Date.now().toString(36) +
-      "-" +
+      `notion-${Date.now()}-` +
       Math.random()
-        .toString(36)
+        .toString(16)
         .slice(2)
     );
   }
 
-  function normalizePresets(value) {
+  function cleanText(
+    value
+  ) {
+    return String(
+      value || ""
+    ).trim();
+  }
+
+  function cleanStringArray(
+    value
+  ) {
     if (!Array.isArray(value)) {
       return [];
     }
 
-    return value
-      .filter(
-        (item) =>
-          item &&
-          typeof item.id === "string"
+    return [
+      ...new Set(
+        value
+          .map(cleanText)
+          .filter(Boolean)
       )
-      .map(
-        (item) => ({
-          id:
-            item.id,
+    ];
+  }
 
-          name:
-            String(
-              item.name ||
-              "Notion preset"
-            ),
+  function normalizePreset(
+    raw = {},
+    index = 0
+  ) {
+    const mappings =
+      raw.propertyMappings &&
+      typeof raw.propertyMappings ===
+        "object"
+        ? raw.propertyMappings
+        : {};
 
-          dataSourceId:
-            String(
-              item.dataSourceId ||
-              ""
-            ),
+    const defaults =
+      raw.propertyDefaults &&
+      typeof raw.propertyDefaults ===
+        "object" &&
+      !Array.isArray(
+        raw.propertyDefaults
+      )
+        ? raw.propertyDefaults
+        : {};
 
-          titleProperty:
-            String(
-              item.titleProperty ||
-              "Name"
-            ),
+    const titleProperty =
+      cleanText(
+        raw.titleProperty ??
+        mappings.title
+      ) ||
+      "Name";
 
-          urlProperty:
-            String(
-              item.urlProperty ||
-              ""
-            )
-        })
+    const urlProperty =
+      cleanText(
+        raw.urlProperty ??
+        mappings.url
       );
+
+    return {
+      id:
+        cleanText(
+          raw.id
+        ) ||
+        createId(),
+
+      name:
+        cleanText(
+          raw.name
+        ) ||
+        `Notion preset ${index + 1}`,
+
+      workspaceId:
+        cleanText(
+          raw.workspaceId
+        ),
+
+      workspaceName:
+        cleanText(
+          raw.workspaceName
+        ),
+
+      workspaceUserId:
+        cleanText(
+          raw.workspaceUserId
+        ),
+
+      workspaceSpaceViewIds:
+        cleanStringArray(
+          raw.workspaceSpaceViewIds
+        ),
+
+      dataSourceId:
+        cleanText(
+          raw.dataSourceId
+        ),
+
+      titleProperty,
+
+      urlProperty,
+
+      propertyMappings: {
+        ...mappings,
+
+        title:
+          titleProperty,
+
+        url:
+          urlProperty
+      },
+
+      propertyDefaults: {
+        ...defaults
+      },
+
+      popupProperties:
+        cleanStringArray(
+          raw.popupProperties
+        )
+    };
+  }
+
+  function normalizePresets(
+    value
+  ) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value.map(
+      normalizePreset
+    );
   }
 
   async function mirrorPreset(
@@ -84,25 +176,120 @@
   ) {
     if (!preset) {
       await chrome.storage.local.set({
-        notionDataSourceId: "",
-        notionTitleProperty: "Name",
-        notionUrlProperty: ""
+        notionDataSourceId:
+          "",
+
+        notionTitleProperty:
+          "Name",
+
+        notionUrlProperty:
+          "",
+
+        notionWorkspaceId:
+          "",
+
+        notionWorkspaceName:
+          "",
+
+        notionWorkspaceUserId:
+          "",
+
+        notionWorkspaceSpaceViewIds:
+          []
       });
 
       return;
     }
 
+    const normalized =
+      normalizePreset(
+        preset
+      );
+
     await chrome.storage.local.set({
       notionDataSourceId:
-        preset.dataSourceId || "",
+        normalized.dataSourceId,
 
       notionTitleProperty:
-        preset.titleProperty ||
-        "Name",
+        normalized.titleProperty,
 
       notionUrlProperty:
-        preset.urlProperty || ""
+        normalized.urlProperty,
+
+      notionWorkspaceId:
+        normalized.workspaceId,
+
+      notionWorkspaceName:
+        normalized.workspaceName,
+
+      notionWorkspaceUserId:
+        normalized.workspaceUserId,
+
+      notionWorkspaceSpaceViewIds:
+        normalized
+          .workspaceSpaceViewIds
     });
+  }
+
+  async function writeState(
+    presets,
+    activePresetId = ""
+  ) {
+    const normalized =
+      normalizePresets(
+        presets
+      );
+
+    let activeId =
+      cleanText(
+        activePresetId
+      );
+
+    if (
+      !normalized.some(
+        (preset) =>
+          preset.id ===
+          activeId
+      )
+    ) {
+      activeId =
+        normalized[0]
+          ?.id ||
+        "";
+    }
+
+    const activePreset =
+      normalized.find(
+        (preset) =>
+          preset.id ===
+          activeId
+      ) ||
+      null;
+
+    await chrome.storage.local.set({
+      [PRESETS_KEY]:
+        normalized,
+
+      [ACTIVE_KEY]:
+        activeId,
+
+      [STORE_VERSION_KEY]:
+        STORE_VERSION
+    });
+
+    await mirrorPreset(
+      activePreset
+    );
+
+    return {
+      presets:
+        normalized,
+
+      activePresetId:
+        activeId,
+
+      activePreset
+    };
   }
 
   async function migrateLegacy() {
@@ -112,70 +299,101 @@
         ACTIVE_KEY,
         "notionDataSourceId",
         "notionTitleProperty",
-        "notionUrlProperty"
+        "notionUrlProperty",
+        "notionWorkspaceId",
+        "notionWorkspaceName",
+        "notionWorkspaceUserId",
+        "notionWorkspaceSpaceViewIds"
       ]);
 
-    let presets =
+    if (
+      Array.isArray(
+        data[PRESETS_KEY]
+      )
+    ) {
+      return writeState(
+        data[PRESETS_KEY],
+        data[ACTIVE_KEY]
+      );
+    }
+
+    const hasLegacyDestination =
+      Boolean(
+        cleanText(
+          data.notionDataSourceId
+        )
+      );
+
+    if (!hasLegacyDestination) {
+      return writeState(
+        [],
+        ""
+      );
+    }
+
+    const preset =
+      normalizePreset({
+        name:
+          "Default",
+
+        workspaceId:
+          data.notionWorkspaceId ||
+          "",
+
+        workspaceName:
+          data.notionWorkspaceName ||
+          "",
+
+        workspaceUserId:
+          data.notionWorkspaceUserId ||
+          "",
+
+        workspaceSpaceViewIds:
+          data
+            .notionWorkspaceSpaceViewIds ||
+          [],
+
+        dataSourceId:
+          data.notionDataSourceId ||
+          "",
+
+        titleProperty:
+          data.notionTitleProperty ||
+          "Name",
+
+        urlProperty:
+          data.notionUrlProperty ||
+          ""
+      });
+
+    return writeState(
+      [
+        preset
+      ],
+      preset.id
+    );
+  }
+
+  async function getState() {
+    await migrateLegacy();
+
+    const data =
+      await chrome.storage.local.get([
+        PRESETS_KEY,
+        ACTIVE_KEY
+      ]);
+
+    const presets =
       normalizePresets(
         data[PRESETS_KEY]
       );
 
     let activePresetId =
-      String(
-        data[ACTIVE_KEY] ||
-        ""
+      cleanText(
+        data[ACTIVE_KEY]
       );
 
-    if (!presets.length) {
-      const dataSourceId =
-        String(
-          data.notionDataSourceId ||
-          ""
-        ).trim();
-
-      if (dataSourceId) {
-        const preset = {
-          id:
-            createId(),
-
-          name:
-            "Default",
-
-          dataSourceId,
-
-          titleProperty:
-            String(
-              data.notionTitleProperty ||
-              "Name"
-            ).trim() ||
-            "Name",
-
-          urlProperty:
-            String(
-              data.notionUrlProperty ||
-              ""
-            ).trim()
-        };
-
-        presets = [
-          preset
-        ];
-
-        activePresetId =
-          preset.id;
-
-        await chrome.storage.local.set({
-          [PRESETS_KEY]:
-            presets,
-
-          [ACTIVE_KEY]:
-            activePresetId
-        });
-      }
-    }
-
     if (
-      presets.length &&
       !presets.some(
         (preset) =>
           preset.id ===
@@ -183,122 +401,133 @@
       )
     ) {
       activePresetId =
-        presets[0].id;
-
-      await chrome.storage.local.set({
-        [ACTIVE_KEY]:
-          activePresetId
-      });
-    }
-
-    const activePreset =
-      presets.find(
-        (preset) =>
-          preset.id ===
-          activePresetId
-      ) || null;
-
-    if (activePreset) {
-      await mirrorPreset(
-        activePreset
-      );
+        presets[0]
+          ?.id ||
+        "";
     }
 
     return {
       presets,
-      activePresetId
+
+      activePresetId,
+
+      activePreset:
+        presets.find(
+          (preset) =>
+            preset.id ===
+            activePresetId
+        ) ||
+        null
     };
   }
 
   async function listPresets() {
-    return migrateLegacy();
+    const state =
+      await getState();
+
+    return {
+      presets:
+        state.presets,
+
+      activePresetId:
+        state.activePresetId
+    };
   }
 
   async function getActivePreset() {
-    const info =
-      await migrateLegacy();
-
     return (
-      info.presets.find(
-        (preset) =>
-          preset.id ===
-          info.activePresetId
-      ) || null
-    );
+      await getState()
+    ).activePreset;
   }
 
   async function setActivePreset(
     id
   ) {
-    const info =
-      await migrateLegacy();
+    const state =
+      await getState();
 
-    const preset =
-      info.presets.find(
-        (item) =>
-          item.id === id
+    const target =
+      state.presets.find(
+        (preset) =>
+          preset.id ===
+          id
       );
 
-    if (!preset) {
+    if (!target) {
       throw new Error(
         "That Notion preset no longer exists."
       );
     }
 
-    await chrome.storage.local.set({
-      [ACTIVE_KEY]:
-        preset.id
-    });
-
-    await mirrorPreset(
-      preset
+    await writeState(
+      state.presets,
+      target.id
     );
 
-    return preset;
+    return target;
   }
 
   async function createPreset(
-    rawName = "New preset"
+    initial = {}
   ) {
-    const info =
-      await migrateLegacy();
+    const state =
+      await getState();
 
-    const preset = {
-      id:
-        createId(),
+    const raw =
+      typeof initial ===
+        "string"
+        ? {
+            name:
+              initial
+          }
+        : {
+            ...initial
+          };
 
-      name:
-        String(
-          rawName ||
-          ""
-        ).trim() ||
-        "New preset",
+    const preset =
+      normalizePreset({
+        name:
+          "New preset",
 
-      dataSourceId:
-        "",
+        workspaceId:
+          "",
 
-      titleProperty:
-        "Name",
+        workspaceName:
+          "",
 
-      urlProperty:
-        ""
-    };
+        workspaceUserId:
+          "",
 
-    const presets = [
-      ...info.presets,
-      preset
-    ];
+        workspaceSpaceViewIds:
+          [],
 
-    await chrome.storage.local.set({
-      [PRESETS_KEY]:
-        presets,
+        dataSourceId:
+          "",
 
-      [ACTIVE_KEY]:
-        preset.id
-    });
+        titleProperty:
+          "Name",
 
-    await mirrorPreset(
-      preset
+        urlProperty:
+          "",
+
+        propertyDefaults:
+          {},
+
+        popupProperties:
+          [],
+
+        ...raw,
+
+        id:
+          createId()
+      });
+
+    await writeState(
+      [
+        ...state.presets,
+        preset
+      ],
+      preset.id
     );
 
     return preset;
@@ -306,15 +535,16 @@
 
   async function updatePreset(
     id,
-    changes = {}
+    patch = {}
   ) {
-    const info =
-      await migrateLegacy();
+    const state =
+      await getState();
 
     const index =
-      info.presets.findIndex(
+      state.presets.findIndex(
         (preset) =>
-          preset.id === id
+          preset.id ===
+          id
       );
 
     if (index < 0) {
@@ -323,132 +553,114 @@
       );
     }
 
+    const current =
+      state.presets[
+        index
+      ];
+
+    const next =
+      normalizePreset({
+        ...current,
+        ...patch,
+
+        id:
+          current.id,
+
+        propertyMappings: {
+          ...current
+            .propertyMappings,
+
+          ...(
+            patch.propertyMappings &&
+            typeof patch.propertyMappings ===
+              "object"
+              ? patch.propertyMappings
+              : {}
+          )
+        },
+
+        propertyDefaults:
+          patch.propertyDefaults ??
+          current.propertyDefaults,
+
+        popupProperties:
+          patch.popupProperties ??
+          current.popupProperties
+      });
+
     const presets = [
-      ...info.presets
+      ...state.presets
     ];
-
-    const previous =
-      presets[index];
-
-    const next = {
-      ...previous,
-
-      name:
-        String(
-          changes.name ??
-          previous.name
-        ).trim() ||
-        "Notion preset",
-
-      dataSourceId:
-        String(
-          changes.dataSourceId ??
-          previous.dataSourceId
-        ).trim(),
-
-      titleProperty:
-        String(
-          changes.titleProperty ??
-          previous.titleProperty
-        ).trim() ||
-        "Name",
-
-      urlProperty:
-        String(
-          changes.urlProperty ??
-          previous.urlProperty
-        ).trim()
-    };
 
     presets[index] =
       next;
 
-    await chrome.storage.local.set({
-      [PRESETS_KEY]:
-        presets
-    });
-
-    if (
-      id ===
-      info.activePresetId
-    ) {
-      await mirrorPreset(
-        next
-      );
-    }
+    await writeState(
+      presets,
+      state.activePresetId
+    );
 
     return next;
   }
 
   async function updateActivePreset(
-    changes = {}
+    patch = {}
   ) {
-    const preset =
+    const active =
       await getActivePreset();
 
-    if (!preset) {
+    if (!active) {
       throw new Error(
         "Create a Notion preset first."
       );
     }
 
     return updatePreset(
-      preset.id,
-      changes
+      active.id,
+      patch
     );
   }
 
   async function removePreset(
     id
   ) {
-    const info =
-      await migrateLegacy();
+    const state =
+      await getState();
 
-    const presets =
-      info.presets.filter(
+    const exists =
+      state.presets.some(
         (preset) =>
-          preset.id !== id
+          preset.id ===
+          id
       );
 
-    let activePresetId =
-      info.activePresetId;
-
-    if (
-      activePresetId === id ||
-      !presets.some(
-        (preset) =>
-          preset.id ===
-          activePresetId
-      )
-    ) {
-      activePresetId =
-        presets[0]?.id ||
-        "";
+    if (!exists) {
+      throw new Error(
+        "That Notion preset no longer exists."
+      );
     }
 
-    await chrome.storage.local.set({
-      [PRESETS_KEY]:
-        presets,
-
-      [ACTIVE_KEY]:
-        activePresetId
-    });
-
-    const activePreset =
-      presets.find(
+    const presets =
+      state.presets.filter(
         (preset) =>
-          preset.id ===
-          activePresetId
-      ) || null;
+          preset.id !==
+          id
+      );
 
-    await mirrorPreset(
-      activePreset
-    );
+    const activePresetId =
+      state.activePresetId ===
+        id
+        ? (
+            presets[0]
+              ?.id ||
+            ""
+          )
+        : state.activePresetId;
 
-    return {
+    return writeState(
       presets,
       activePresetId
-    };
+    );
   }
 
   globalThis.ClipNestNotionStore =
@@ -457,6 +669,8 @@
       listPresets,
       getActivePreset,
       setActivePreset,
+      activatePreset:
+        setActivePreset,
       createPreset,
       updatePreset,
       updateActivePreset,

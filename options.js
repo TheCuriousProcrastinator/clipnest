@@ -7,12 +7,13 @@ async function init() {
     "defaultDestination",
     "notionConnectionTitle",
     "notionConnectionStatus",
-    "connectNotion",
-    "disconnectNotion",
+    "refreshNotionWorkspaces",
     "notionPresetSelect",
     "newNotionPreset",
     "removeNotionPreset",
     "notionPresetName",
+    "notionWorkspaceSelect",
+    "notionWorkspaceHelp",
     "notionDataSourceId",
     "notionDataSourceHelp",
     "notionTitleProperty",
@@ -38,19 +39,27 @@ async function init() {
     saveSettings
   );
 
-  els.testNotion.addEventListener(
+  els.refreshNotionWorkspaces.addEventListener(
     "click",
-    testNotion
+    async () => {
+      const preset =
+        await ClipNestNotionStore
+          .getActivePreset();
+
+      await refreshNotionWorkspacePicker({
+        preferredWorkspaceId:
+          preset?.workspaceId ||
+          "",
+
+        requestPermission:
+          true
+      });
+    }
   );
 
-  els.connectNotion.addEventListener(
-    "click",
-    connectNotion
-  );
-
-  els.disconnectNotion.addEventListener(
-    "click",
-    disconnectNotion
+  els.notionPresetSelect.addEventListener(
+    "change",
+    switchNotionPreset
   );
 
   els.newNotionPreset.addEventListener(
@@ -63,14 +72,9 @@ async function init() {
     removeNotionPreset
   );
 
-  els.notionPresetSelect.addEventListener(
+  els.notionWorkspaceSelect.addEventListener(
     "change",
-    switchNotionPreset
-  );
-
-  els.notionDataSourceId.addEventListener(
-    "change",
-    handleNotionDataSourceChange
+    handleNotionWorkspaceChange
   );
 
   els.chooseVault.addEventListener(
@@ -145,42 +149,29 @@ async function loadSettings() {
     preset?.name ||
     "";
 
-  els.notionDataSourceId.value =
-    preset?.dataSourceId ||
-    "";
-
-  els.notionTitleProperty.value =
-    preset?.titleProperty ||
-    "Name";
-
-  els.notionUrlProperty.value =
-    preset?.urlProperty ||
-    "";
-
   const disabled =
     !preset;
 
   els.notionPresetName.disabled =
     disabled;
 
-  els.notionDataSourceId.disabled =
-    disabled;
-
-  els.notionTitleProperty.disabled =
-    disabled;
-
-  els.notionUrlProperty.disabled =
-    disabled;
-
-  els.testNotion.disabled =
+  els.notionWorkspaceSelect.disabled =
     disabled;
 
   els.removeNotionPreset.disabled =
     disabled;
 
-  await refreshNotionConnectionStatus();
-  await refreshNotionDataSources(
-    preset?.dataSourceId || ""
+  await refreshNotionWorkspacePicker({
+    preferredWorkspaceId:
+      preset?.workspaceId ||
+      "",
+
+    requestPermission:
+      false
+  });
+
+  prepareNotionDestinationField(
+    preset
   );
 }
 
@@ -217,16 +208,7 @@ async function saveSettings() {
     await ClipNestNotionStore
       .updateActivePreset({
         name:
-          els.notionPresetName.value,
-
-        dataSourceId:
-          els.notionDataSourceId.value,
-
-        titleProperty:
-          els.notionTitleProperty.value,
-
-        urlProperty:
-          els.notionUrlProperty.value
+          els.notionPresetName.value
       });
 
     await refreshNotionPresetList();
@@ -239,38 +221,378 @@ async function saveSettings() {
   );
 }
 
-async function refreshNotionConnectionStatus() {
-  const status =
-    await ClipNestNotionOAuth
-      .getStatus();
+let notionWorkspaceCache =
+  [];
 
-  if (status.connected) {
-    els.notionConnectionTitle.textContent =
-      "Connected to Notion";
+function getNotionWorkspaceUser(
+  workspace
+) {
+  const users =
+    Array.isArray(
+      workspace?.linkedUsers
+    )
+      ? workspace.linkedUsers
+      : [];
 
-    els.notionConnectionStatus.textContent =
-      status.workspaceName
-        ? `Workspace: ${status.workspaceName}`
-        : "OAuth connection active.";
+  return (
+    users.find(
+      (user) =>
+        user.membershipType ===
+          "owner"
+    ) ||
+    users.find(
+      (user) =>
+        user.membershipType ===
+          "member"
+    ) ||
+    users[0] ||
+    null
+  );
+}
 
-    els.connectNotion.textContent =
-      "Reconnect";
+function prepareNotionDestinationField(
+  preset
+) {
+  els.notionDataSourceId
+    .replaceChildren();
 
-    els.disconnectNotion.style.display =
-      "";
+  const option =
+    document.createElement(
+      "option"
+    );
+
+  option.value = "";
+
+  if (!preset) {
+    option.textContent =
+      "Create a preset first";
+
+    els.notionDataSourceHelp.textContent =
+      "Create a preset, then choose its workspace.";
+  } else if (
+    !preset.workspaceId
+  ) {
+    option.textContent =
+      "Choose a workspace first";
+
+    els.notionDataSourceHelp.textContent =
+      "Choose the workspace this preset belongs to.";
   } else {
+    option.textContent =
+      "Destination discovery is next";
+
+    els.notionDataSourceHelp.textContent =
+      `Workspace saved: ${
+        preset.workspaceName ||
+        "Notion workspace"
+      }. Database discovery comes next.`;
+  }
+
+  els.notionDataSourceId.append(
+    option
+  );
+
+  els.notionDataSourceId.disabled =
+    true;
+
+  els.notionTitleProperty.value =
+    preset?.titleProperty ||
+    "Name";
+
+  els.notionUrlProperty.value =
+    preset?.urlProperty ||
+    "";
+
+  els.notionTitleProperty.disabled =
+    true;
+
+  els.notionUrlProperty.disabled =
+    true;
+
+  els.testNotion.disabled =
+    true;
+}
+
+async function refreshNotionWorkspacePicker({
+  preferredWorkspaceId = "",
+  requestPermission = false
+} = {}) {
+  els.notionWorkspaceSelect
+    .replaceChildren();
+
+  const loading =
+    document.createElement(
+      "option"
+    );
+
+  loading.value = "";
+
+  loading.textContent =
+    "Checking Notion…";
+
+  els.notionWorkspaceSelect.append(
+    loading
+  );
+
+  els.notionWorkspaceSelect.disabled =
+    true;
+
+  els.refreshNotionWorkspaces.disabled =
+    true;
+
+  try {
+    const hasPermission =
+      await ClipNestNotionSession
+        .hasPermission();
+
+    if (
+      !hasPermission &&
+      !requestPermission
+    ) {
+      notionWorkspaceCache =
+        [];
+
+      loading.textContent =
+        "Connect Notion browser session";
+
+      els.notionConnectionTitle.textContent =
+        "Notion browser access not enabled";
+
+      els.notionConnectionStatus.textContent =
+        "Click Connect Notion to allow ClipNest to use your existing Notion browser session.";
+
+      els.refreshNotionWorkspaces.textContent =
+        "Connect Notion";
+
+      els.notionWorkspaceHelp.textContent =
+        "ClipNest only asks Chrome for access to Notion websites.";
+
+      return;
+    }
+
+    const result =
+      await ClipNestNotionSession
+        .getWorkspaces({
+          requestPermission
+        });
+
+    notionWorkspaceCache =
+      result.workspaces ||
+      [];
+
+    els.notionWorkspaceSelect
+      .replaceChildren();
+
+    const placeholder =
+      document.createElement(
+        "option"
+      );
+
+    placeholder.value = "";
+
+    placeholder.textContent =
+      notionWorkspaceCache.length
+        ? "Choose a Notion workspace…"
+        : "No Notion workspaces found";
+
+    els.notionWorkspaceSelect.append(
+      placeholder
+    );
+
+    for (
+      const workspace of
+        notionWorkspaceCache
+    ) {
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        workspace.id;
+
+      option.textContent =
+        workspace.name;
+
+      els.notionWorkspaceSelect.append(
+        option
+      );
+    }
+
+    if (
+      preferredWorkspaceId &&
+      notionWorkspaceCache.some(
+        (workspace) =>
+          workspace.id ===
+          preferredWorkspaceId
+      )
+    ) {
+      els.notionWorkspaceSelect.value =
+        preferredWorkspaceId;
+    }
+
     els.notionConnectionTitle.textContent =
-      "Not connected";
+      "Notion browser session detected";
 
     els.notionConnectionStatus.textContent =
-      "Connect ClipNest to Notion with OAuth.";
+      `${notionWorkspaceCache.length} workspace${
+        notionWorkspaceCache.length === 1
+          ? ""
+          : "s"
+      } available.`;
 
-    els.connectNotion.textContent =
-      "Connect to Notion";
+    els.refreshNotionWorkspaces.textContent =
+      "Refresh workspaces";
 
-    els.disconnectNotion.style.display =
-      "none";
+    els.notionWorkspaceHelp.textContent =
+      "Each preset can use a different workspace.";
+
+    els.notionWorkspaceSelect.disabled =
+      !(
+        await ClipNestNotionStore
+          .getActivePreset()
+      );
+  } catch (error) {
+    notionWorkspaceCache =
+      [];
+
+    els.notionWorkspaceSelect
+      .replaceChildren();
+
+    const failed =
+      document.createElement(
+        "option"
+      );
+
+    failed.value = "";
+
+    failed.textContent =
+      "Could not read Notion workspaces";
+
+    els.notionWorkspaceSelect.append(
+      failed
+    );
+
+    els.notionConnectionTitle.textContent =
+      "Notion session unavailable";
+
+    els.notionConnectionStatus.textContent =
+      error.message ||
+      String(error);
+
+    els.refreshNotionWorkspaces.textContent =
+      "Try again";
+
+    els.notionWorkspaceHelp.textContent =
+      "Open Notion in Chrome and make sure you are signed in.";
+  } finally {
+    els.refreshNotionWorkspaces.disabled =
+      false;
   }
+}
+
+async function handleNotionWorkspaceChange() {
+  const workspaceId =
+    els.notionWorkspaceSelect.value;
+
+  if (!workspaceId) {
+    return;
+  }
+
+  const workspace =
+    notionWorkspaceCache.find(
+      (candidate) =>
+        candidate.id ===
+        workspaceId
+    );
+
+  if (!workspace) {
+    showStatus(
+      els.notionStatus,
+      "That Notion workspace is no longer available.",
+      "error"
+    );
+
+    return;
+  }
+
+  const preset =
+    await ClipNestNotionStore
+      .getActivePreset();
+
+  if (!preset) {
+    return;
+  }
+
+  const user =
+    getNotionWorkspaceUser(
+      workspace
+    );
+
+  const workspaceChanged =
+    preset.workspaceId !==
+      workspace.id;
+
+  const patch = {
+    workspaceId:
+      workspace.id,
+
+    workspaceName:
+      workspace.name,
+
+    workspaceUserId:
+      user?.id ||
+      "",
+
+    workspaceSpaceViewIds:
+      Array.isArray(
+        workspace.spaceViewIds
+      )
+        ? workspace.spaceViewIds
+        : []
+  };
+
+  if (workspaceChanged) {
+    patch.dataSourceId =
+      "";
+
+    patch.titleProperty =
+      "Name";
+
+    patch.urlProperty =
+      "";
+  }
+
+  const updated =
+    await ClipNestNotionStore
+      .updateActivePreset(
+        patch
+      );
+
+  prepareNotionDestinationField(
+    updated
+  );
+
+  showStatus(
+    els.notionStatus,
+    `Workspace selected: ${workspace.name}.`,
+    "success"
+  );
+}
+
+async function refreshNotionConnectionStatus() {
+  const preset =
+    await ClipNestNotionStore
+      .getActivePreset();
+
+  await refreshNotionWorkspacePicker({
+    preferredWorkspaceId:
+      preset?.workspaceId ||
+      "",
+
+    requestPermission:
+      false
+  });
 }
 
 async function connectNotion() {
@@ -562,227 +884,17 @@ function detectNotionProperties(
 async function refreshNotionDataSources(
   preferredId = ""
 ) {
-  if (
-    !els.notionDataSourceId
-  ) {
-    return;
-  }
-
-  const connection =
-    await ClipNestNotionOAuth
-      .getStatus();
-
-  const currentValue =
-    preferredId ||
-    els.notionDataSourceId.value ||
-    "";
-
-  els.notionDataSourceId
-    .replaceChildren();
-
-  const placeholder =
-    document.createElement(
-      "option"
-    );
-
-  placeholder.value = "";
-  placeholder.textContent =
-    connection.connected
-      ? "Loading databases…"
-      : "Connect to Notion first";
-
-  els.notionDataSourceId.append(
-    placeholder
-  );
-
-  if (!connection.connected) {
-    notionDataSourceCache =
-      [];
-
-    els.notionDataSourceHelp.textContent =
-      "Connect ClipNest to Notion first.";
-
-    return;
-  }
-
-  try {
-    notionDataSourceCache =
-      await fetchNotionDataSources();
-
-    els.notionDataSourceId
-      .replaceChildren();
-
-    const empty =
-      document.createElement(
-        "option"
-      );
-
-    empty.value = "";
-
-    empty.textContent =
-      notionDataSourceCache.length
-        ? "Select a Notion database…"
-        : "No shared databases found";
-
-    els.notionDataSourceId.append(
-      empty
-    );
-
-    const sorted = [
-      ...notionDataSourceCache
-    ].sort(
-      (a, b) =>
-        notionDataSourceName(a)
-          .localeCompare(
-            notionDataSourceName(b)
-          )
-    );
-
-    for (
-      const dataSource of sorted
-    ) {
-      const option =
-        document.createElement(
-          "option"
-        );
-
-      option.value =
-        dataSource.id;
-
-      option.textContent =
-        notionDataSourceName(
-          dataSource
-        );
-
-      els.notionDataSourceId.append(
-        option
-      );
-    }
-
-    if (
-      currentValue &&
-      !notionDataSourceCache.some(
-        (item) =>
-          item.id ===
-          currentValue
-      )
-    ) {
-      const unavailable =
-        document.createElement(
-          "option"
-        );
-
-      unavailable.value =
-        currentValue;
-
-      unavailable.textContent =
-        "Previously selected database";
-
-      els.notionDataSourceId.append(
-        unavailable
-      );
-    }
-
-    els.notionDataSourceId.value =
-      currentValue;
-
-    els.notionDataSourceHelp.textContent =
-      notionDataSourceCache.length
-        ? `${notionDataSourceCache.length} shared database${
-            notionDataSourceCache.length === 1
-              ? ""
-              : "s"
-          } available.`
-        : "No databases are currently shared with ClipNest. Reconnect and grant access to a database.";
-  } catch (error) {
-    notionDataSourceCache =
-      [];
-
-    els.notionDataSourceId
-      .replaceChildren();
-
-    const failed =
-      document.createElement(
-        "option"
-      );
-
-    failed.value =
-      currentValue;
-
-    failed.textContent =
-      currentValue
-        ? "Previously selected database"
-        : "Could not load databases";
-
-    els.notionDataSourceId.append(
-      failed
-    );
-
-    els.notionDataSourceId.value =
-      currentValue;
-
-    els.notionDataSourceHelp.textContent =
-      error.message ||
-      String(error);
-  }
-}
-
-async function handleNotionDataSourceChange() {
-  const id =
-    els.notionDataSourceId.value;
-
-  if (!id) {
-    return;
-  }
-
-  const dataSource =
-    notionDataSourceCache.find(
-      (item) =>
-        item.id === id
-    );
-
-  if (!dataSource) {
-    return;
-  }
-
-  const detected =
-    detectNotionProperties(
-      dataSource
-    );
-
-  if (detected.titleProperty) {
-    els.notionTitleProperty.value =
-      detected.titleProperty;
-  }
-
-  if (detected.urlProperty) {
-    els.notionUrlProperty.value =
-      detected.urlProperty;
-  }
-
   const preset =
     await ClipNestNotionStore
       .getActivePreset();
 
-  if (preset) {
-    await ClipNestNotionStore
-      .updateActivePreset({
-        dataSourceId:
-          id,
-
-        titleProperty:
-          els.notionTitleProperty.value,
-
-        urlProperty:
-          els.notionUrlProperty.value
-      });
-  }
-
-  showStatus(
-    els.notionStatus,
-    `Database selected: ${notionDataSourceName(dataSource)}.`,
-    "success"
+  prepareNotionDestinationField(
+    preset
   );
+}
+
+async function handleNotionDataSourceChange() {
+  return;
 }
 
 async function refreshNotionPresetList() {
@@ -864,18 +976,18 @@ async function createNotionPreset() {
   }
 
   await ClipNestNotionStore
-    .createPreset(name);
+    .createPreset(
+      name
+    );
 
   await refreshNotionPresetList();
   await loadSettings();
 
-  await refreshNotionDataSources();
-
-  els.notionDataSourceId.focus();
+  els.notionWorkspaceSelect.focus();
 
   showStatus(
     els.notionStatus,
-    "Preset created. Add its data source ID, test it, then Save Settings.",
+    "Preset created. Choose its Notion workspace.",
     "success"
   );
 }
@@ -915,79 +1027,10 @@ async function removeNotionPreset() {
 }
 
 async function testNotion() {
-  showStatus(els.notionStatus, "Testing…");
-  els.testNotion.disabled = true;
-
-  try {
-    const response = await chrome.runtime.sendMessage({
-      type: "notion.test",
-      payload: {
-        token:
-          (
-            await chrome.storage.local.get(
-              "notionToken"
-            )
-          ).notionToken || "",
-        dataSourceId: els.notionDataSourceId.value.trim()
-      }
-    });
-
-    if (!response?.ok) throw new Error(response?.error?.message || "Connection failed.");
-
-    const titleProps = response.result.properties.filter((property) => property.type === "title");
-    const urlProps = response.result.properties.filter((property) => property.type === "url");
-
-    if (titleProps.length === 1) {
-      els.notionTitleProperty.value =
-        titleProps[0].name;
-    }
-
-    if (
-      !els.notionUrlProperty.value &&
-      urlProps.length === 1
-    ) {
-      els.notionUrlProperty.value =
-        urlProps[0].name;
-    }
-
-    const activePreset =
-      await ClipNestNotionStore
-        .getActivePreset();
-
-    if (activePreset) {
-      await ClipNestNotionStore
-        .updateActivePreset({
-          name:
-            els.notionPresetName.value,
-
-          dataSourceId:
-            els.notionDataSourceId.value,
-
-          titleProperty:
-            els.notionTitleProperty.value,
-
-          urlProperty:
-            els.notionUrlProperty.value
-        });
-
-      await refreshNotionPresetList();
-    }
-
-    const propertySummary = response.result.properties
-      .slice(0, 8)
-      .map((property) => `${property.name} (${property.type})`)
-      .join(", ");
-
-    showStatus(
-      els.notionStatus,
-      `Connected. ${response.result.properties.length} properties found${propertySummary ? `: ${propertySummary}` : ""}.`,
-      "success"
-    );
-  } catch (error) {
-    showStatus(els.notionStatus, error.message || String(error), "error");
-  } finally {
-    els.testNotion.disabled = false;
-  }
+  showStatus(
+    els.notionStatus,
+    "Choose a workspace and destination first."
+  );
 }
 
 async function chooseVault() {
