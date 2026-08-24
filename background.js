@@ -16,14 +16,41 @@ try {
    ClipNest Quick Clip - V0.6.0
    ================================================== */
 
+const CLIPNEST_CONTEXT_MENU_ID =
+  "clipnest.contextMenu";
+
 const QUICK_CLIP_TEXT_MENU_ID =
   "clipnest.quickClip.selectedText";
 
+function ensureClipNestContextMenu() {
+  chrome.contextMenus.create(
+    {
+      id: CLIPNEST_CONTEXT_MENU_ID,
+      title: "ClipNest",
+      contexts: [
+        "page",
+        "selection"
+      ],
+      documentUrlPatterns: [
+        "http://*/*",
+        "https://*/*"
+      ]
+    },
+    () => {
+      void chrome.runtime.lastError;
+    }
+  );
+}
+
 function ensureQuickClipContextMenu() {
+  ensureClipNestContextMenu();
+
   chrome.contextMenus.create(
     {
       id: QUICK_CLIP_TEXT_MENU_ID,
-      title: "Clip selected text to ClipNest",
+      parentId:
+        CLIPNEST_CONTEXT_MENU_ID,
+      title: "Clip selected text",
       contexts: ["selection"],
       documentUrlPatterns: [
         "http://*/*",
@@ -31,11 +58,6 @@ function ensureQuickClipContextMenu() {
       ]
     },
     () => {
-      /*
-       * The service worker can restart while the
-       * context menu already exists. Ignore the
-       * duplicate-ID error in that case.
-       */
       void chrome.runtime.lastError;
     }
   );
@@ -667,12 +689,17 @@ const QUICK_CLIP_ARTICLE_MENU_ID =
   "clipnest.quickClip.article";
 
 function ensureQuickArticleContextMenu() {
+  ensureClipNestContextMenu();
+
   chrome.contextMenus.create(
     {
       id: QUICK_CLIP_ARTICLE_MENU_ID,
-      title: "Clip article to ClipNest",
+      parentId:
+        CLIPNEST_CONTEXT_MENU_ID,
+      title: "Clip article",
       contexts: [
-        "page"
+        "page",
+        "selection"
       ],
       documentUrlPatterns: [
         "http://*/*",
