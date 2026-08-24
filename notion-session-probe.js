@@ -64,6 +64,181 @@
       `status ${type}`.trim();
   }
 
+  function normalizeRecordTable(
+    table
+  ) {
+    const normalized =
+      {};
+
+    for (
+      const [
+        id,
+        record
+      ] of Object.entries(
+        table || {}
+      )
+    ) {
+      if (
+        !record ||
+        typeof record !==
+          "object" ||
+        !record.value
+      ) {
+        normalized[id] =
+          record;
+
+        continue;
+      }
+
+      if (
+        record.value &&
+        typeof record.value ===
+          "object" &&
+        record.value.value
+      ) {
+        normalized[id] = {
+          value:
+            record.value.value,
+
+          role:
+            record.value.role
+        };
+
+        continue;
+      }
+
+      normalized[id] =
+        record;
+    }
+
+    return normalized;
+  }
+
+  function normalizeAccountBundle(
+    bundle
+  ) {
+    if (
+      !bundle ||
+      typeof bundle !==
+        "object"
+    ) {
+      return bundle;
+    }
+
+    const firstEntry =
+      Object.entries(
+        bundle
+      ).find(
+        ([key]) =>
+          key !==
+          "__version__"
+      )?.[1];
+
+    const firstRecord =
+      firstEntry &&
+      typeof firstEntry ===
+        "object"
+        ? Object.values(
+            firstEntry
+          )[0]
+        : null;
+
+    if (
+      !firstRecord?.value
+        ?.value
+    ) {
+      return bundle;
+    }
+
+    const normalized = {
+      ...bundle
+    };
+
+    for (
+      const [
+        tableName,
+        table
+      ] of Object.entries(
+        normalized
+      )
+    ) {
+      if (
+        tableName ===
+          "__version__" ||
+        !table ||
+        typeof table !==
+          "object"
+      ) {
+        continue;
+      }
+
+      normalized[
+        tableName
+      ] =
+        normalizeRecordTable(
+          table
+        );
+    }
+
+    return normalized;
+  }
+
+  function normalizeGetSpacesPayload(
+    payload
+  ) {
+    if (
+      !payload ||
+      typeof payload !==
+        "object"
+    ) {
+      return payload;
+    }
+
+    const firstBundle =
+      Object.values(
+        payload
+      )[0];
+
+    if (
+      !firstBundle
+        ?.notion_user
+    ) {
+      return payload;
+    }
+
+    const normalized = {
+      ...payload
+    };
+
+    for (
+      const userId of
+        Object.keys(
+          normalized
+        )
+    ) {
+      const bundle =
+        normalized[
+          userId
+        ];
+
+      if (
+        bundle &&
+        typeof bundle ===
+          "object" &&
+        bundle.notion_user
+      ) {
+        normalized[
+          userId
+        ] =
+          normalizeAccountBundle(
+            bundle
+          );
+      }
+    }
+
+    return normalized;
+  }
+
   function unwrapRecord(
     record
   ) {
@@ -755,8 +930,12 @@
         ) {
           return {
             host,
+
             payload:
-              result.payload,
+              normalizeGetSpacesPayload(
+                result.payload
+              ),
+
             attempts
           };
         }
