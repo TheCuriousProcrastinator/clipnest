@@ -351,6 +351,48 @@ export default {
 
     if (
       request.method ===
+        "GET" &&
+      url.pathname ===
+        "/config"
+    ) {
+      const clientId =
+        String(
+          env.NOTION_CLIENT_ID ||
+          ""
+        ).trim();
+
+      if (!clientId) {
+        return jsonResponse(
+          request,
+          {
+            error:
+              "not_configured",
+
+            message:
+              "Notion OAuth client ID is not configured."
+          },
+          500
+        );
+      }
+
+      return jsonResponse(
+        request,
+        {
+          clientId,
+
+          authorizationUrl:
+            "https://api.notion.com/v1/oauth/authorize",
+
+          redirectUris:
+            getAllowedRedirects(
+              env
+            )
+        }
+      );
+    }
+
+    if (
+      request.method ===
         "POST" &&
       url.pathname ===
         "/exchange"
