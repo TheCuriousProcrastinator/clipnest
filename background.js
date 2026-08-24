@@ -1,3 +1,5 @@
+import "./article-engine.js";
+
 const NOTION_VERSION = "2026-03-11";
 
 // Keep extension-local settings, including the personal Notion token, out of
@@ -652,6 +654,384 @@ async function showQuickClipToast(
      * The save itself succeeded/failed independently
      * of whether the webpage permits a toast.
      */
+  }
+}
+
+
+/* ==================================================
+   ClipNest Quick Article - V0.6.4
+   ================================================== */
+
+const QUICK_CLIP_ARTICLE_MENU_ID =
+  "clipnest.quickClip.article";
+
+function ensureQuickArticleContextMenu() {
+  chrome.contextMenus.create(
+    {
+      id: QUICK_CLIP_ARTICLE_MENU_ID,
+      title: "Clip article to ClipNest",
+      contexts: [
+        "page"
+      ],
+      documentUrlPatterns: [
+        "http://*/*",
+        "https://*/*"
+      ]
+    },
+    () => {
+      void chrome.runtime.lastError;
+    }
+  );
+}
+
+ensureQuickArticleContextMenu();
+
+chrome.runtime.onInstalled.addListener(
+  () => {
+    ensureQuickArticleContextMenu();
+  }
+);
+
+chrome.contextMenus.onClicked.addListener(
+  (info, tab) => {
+    if (
+      info.menuItemId !==
+      QUICK_CLIP_ARTICLE_MENU_ID
+    ) {
+      return;
+    }
+
+    void quickClipArticle(
+      info,
+      tab
+    );
+  }
+);
+
+async function captureQuickArticlePage(
+  tabId
+) {
+  await chrome.scripting.executeScript({
+    target: {
+      tabId
+    },
+    files: [
+      "article-capture.js"
+    ]
+  });
+
+  const results =
+    await chrome.scripting.executeScript({
+      target: {
+        tabId
+      },
+
+      func: () => {
+        const capture =
+          window.__clipnestPageCapture ||
+          null;
+
+        const error =
+          window.__clipnestPageCaptureError ||
+          "";
+
+        delete window.__clipnestPageCapture;
+        delete window.__clipnestPageCaptureError;
+
+        return {
+          capture,
+          error
+        };
+      }
+    });
+
+  const pageResult =
+    results?.[0]?.result;
+
+  if (pageResult?.error) {
+    throw new Error(
+      pageResult.error
+    );
+  }
+
+  if (!pageResult?.capture) {
+    throw new Error(
+      "Could not read this page."
+    );
+  }
+
+  return pageResult.capture;
+}
+
+async function enhanceQuickArticleCapture(
+  tabId,
+  capture
+) {
+  try {
+    await chrome.scripting.executeScript({
+      target: {
+        tabId
+      },
+
+      func: () => {
+        window.__clipperWholePageMode =
+          true;
+
+        delete window.__clipperWholePageResult;
+      }
+    });
+
+    await chrome.scripting.executeScript({
+      target: {
+        tabId
+      },
+      files: [
+        "selector.js"
+      ]
+    });
+
+    const results =
+      await chrome.scripting.executeScript({
+        target: {
+          tabId
+        },
+
+        func: () => {
+          const result =
+            window.__clipperWholePageResult ||
+            null;
+
+          delete window.__clipperWholePageResult;
+          delete window.__clipperWholePageMode;
+
+          return result;
+        }
+      });
+
+    const result =
+      results?.[0]?.result;
+
+    delete capture.structuredMarkdown;
+
+    if (
+      ClipNestArticleEngine
+        .shouldPreferStructuredArticle(
+          capture,
+          result
+        )
+    ) {
+      capture.structuredMarkdown =
+        result.markdown;
+    }
+  } catch {
+    /*
+     * Smart repeated-record detection is optional.
+     * The normal Article capture remains the fallback.
+     */
+  }
+}
+
+async function quickClipArticle(
+  info,
+  tab
+) {
+  const tabId =
+    tab?.id;
+
+  const url =
+    String(
+      tab?.url ||
+      info.pageUrl ||
+      ""
+    );
+
+  if (
+    !Number.isInteger(tabId) ||
+    !/^https?:/i.test(url)
+  ) {
+    await showQuickClipToast(
+      tabId,
+      "ClipNest only clips normal webpages.",
+      "error"
+    );
+
+    return;
+  }
+
+  try {
+    await showQuickClipToast(
+      tabId,
+      "Clipping article…",
+      "success"
+    );
+
+    const capture =
+      await captureQuickArticlePage(
+        tabId
+      );
+
+    await enhanceQuickArticleCapture(
+      tabId,
+      capture
+    );
+
+    const title =
+      String(
+        capture.title ||
+        tab?.title ||
+        "Untitled"
+      ).trim() ||
+      "Untitled";
+
+    const articleMarkdown =
+      ClipNestArticleEngine
+        .cleanArticleMarkdown(
+          capture.structuredMarkdown ||
+            capture.markdown ||
+            "",
+          title
+        );
+
+    if (!articleMarkdown) {
+      throw new Error(
+        "ClipNest could not find useful article content on this page."
+      );
+    }
+
+    const settings =
+      await chrome.storage.local.get([
+        "defaultDestination",
+        "obsidianDefaultTags",
+        "obsidianDefaultTemplatePath",
+        "obsidianSubfolder"
+      ]);
+
+    const destination =
+      settings.defaultDestination ===
+      "notion"
+        ? "notion"
+        : "obsidian";
+
+    const tags =
+      parseQuickTags(
+        settings.obsidianDefaultTags ||
+        ""
+      );
+
+    let template = null;
+
+    const templatePath =
+      String(
+        settings.obsidianDefaultTemplatePath ||
+        ""
+      ).trim();
+
+    if (
+      destination === "obsidian" &&
+      templatePath
+    ) {
+      template =
+        await getCachedObsidianTemplate(
+          templatePath
+        );
+
+      if (!template) {
+        try {
+          await refreshObsidianTemplateCache();
+
+          template =
+            await getCachedObsidianTemplate(
+              templatePath
+            );
+        } catch {
+        }
+      }
+
+      if (!template) {
+        throw new Error(
+          "Your default Obsidian template could not " +
+          "be loaded. Open ClipNest once and try again."
+        );
+      }
+    }
+
+    const body =
+      `## Article\n\n${articleMarkdown}`;
+
+    const markdown =
+      destination === "notion"
+        ? `[Source](${capture.url})\n\n${body}`
+        : body;
+
+    const payload = {
+      title,
+      url: capture.url,
+      hostname:
+        capture.hostname || "",
+      siteName:
+        capture.siteName || "",
+      author:
+        capture.author || "",
+      description:
+        capture.description || "",
+      image:
+        capture.image || "",
+      tags,
+      notes: "",
+      contentMode: "article",
+      markdown,
+      template
+    };
+
+    let successMessage = "";
+
+    if (destination === "notion") {
+      await saveToNotion(
+        payload
+      );
+
+      successMessage =
+        "Saved article to Notion";
+    } else {
+      const filename =
+        await quickSaveToObsidian(
+          payload,
+          settings.obsidianSubfolder ||
+            ""
+        );
+
+      if (tags.length) {
+        try {
+          await rememberObsidianTags(
+            tags
+          );
+        } catch {
+        }
+      }
+
+      successMessage =
+        filename
+          ? `Saved to Obsidian · ${filename}`
+          : "Saved article to Obsidian";
+    }
+
+    await showQuickClipToast(
+      tabId,
+      successMessage,
+      "success"
+    );
+  } catch (error) {
+    console.error(
+      "ClipNest Quick Article failed:",
+      error
+    );
+
+    await showQuickClipToast(
+      tabId,
+      normalizeError(error).message ||
+        "Article clip failed.",
+      "error"
+    );
   }
 }
 
