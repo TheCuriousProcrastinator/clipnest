@@ -72,8 +72,15 @@
       <h2>Obsidian</h2>
       <p class="help">Choose the root of your Obsidian vault. Chrome stores the folder handle locally and writes Markdown directly into the vault.</p>
 
+      <label class="field">
+        <span>Connected vault</span>
+        <select id="vaultSelect">
+          <option value="">No vault connected</option>
+        </select>
+      </label>
+
       <div class="vault-row">
-        <button id="chooseVault" class="secondary" type="button">Choose vault folder</button>
+        <button id="chooseVault" class="secondary" type="button">Connect another vault</button>
         <span id="vaultName" class="vault-name">No vault connected</span>
       </div>
 
@@ -89,7 +96,7 @@
         <small>Comma-separated. You can edit them before every save.</small>
       </label>
 
-      <button id="disconnectVault" class="text-button" type="button">Disconnect vault</button>
+      <button id="disconnectVault" class="text-button" type="button">Disconnect selected vault</button>
       <div id="obsidianStatus" class="status"></div>
     </section>
 
@@ -99,6 +106,7 @@
     </div>
   </main>
 
+  <script src="vault-store.js"></script>
   <script src="fs-store.js"></script>
   <script src="options.js"></script>
 </body>

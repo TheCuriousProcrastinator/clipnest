@@ -16,10 +16,13 @@ async function init() {
   els.templateField = document.getElementById("templateField");
   els.templateSelect = document.getElementById("templateSelect");
   els.templateMeta = document.getElementById("templateMeta");
+  els.vaultField = document.getElementById("vaultField");
+  els.vaultSelect = document.getElementById("vaultSelect");
+  els.notesField = document.getElementById("notesField");
+  els.toggleNotes = document.getElementById("toggleNotes");
   els.notesInput = document.getElementById("notesInput");
 
   setupObsidianTagAutocomplete();
-  void loadObsidianTags();
   els.selectAreaButton = document.getElementById("selectAreaButton");
   els.selectedTextModeRow = document.getElementById("selectedTextModeRow");
   els.contentModeInputs = [...document.querySelectorAll('input[name="contentMode"]')];
@@ -37,6 +40,25 @@ async function init() {
     button.addEventListener("click", () => setDestination(button.dataset.destination));
   });
 
+  els.vaultSelect?.addEventListener(
+    "change",
+    handleVaultPickerChange
+  );
+
+  els.toggleNotes?.addEventListener(
+    "click",
+    () => {
+      setNotesExpanded(
+        els.notesField?.classList.contains(
+          "hidden"
+        )
+      );
+    }
+  );
+
+  await ClipNestVaultStore.migrateLegacy();
+  await loadVaultPicker();
+
   const settings = await chrome.storage.local.get([
     "defaultDestination",
     "obsidianDefaultTags",
@@ -46,11 +68,20 @@ async function init() {
   setDestination(settings.defaultDestination === "notion" ? "notion" : "obsidian");
   els.tagsInput.value = settings.obsidianDefaultTags || "";
   setContentMode("article");
+  void loadObsidianTags();
 
   els.templateSelect?.addEventListener("change", async () => {
+    const value =
+      els.templateSelect.value || "";
+
     await chrome.storage.local.set({
       obsidianDefaultTemplatePath:
-        els.templateSelect.value || ""
+        value
+    });
+
+    await ClipNestVaultStore.updateActiveConfig({
+      defaultTemplatePath:
+        value
     });
   });
 
@@ -70,9 +101,212 @@ async function init() {
 
 function setDestination(destination) {
   state.destination = destination;
-  els.destinationButtons?.forEach((button) => {
-    button.classList.toggle("active", button.dataset.destination === destination);
-  });
+
+  els.destinationButtons?.forEach(
+    (button) => {
+      button.classList.toggle(
+        "active",
+        button.dataset.destination ===
+          destination
+      );
+    }
+  );
+
+  els.vaultField?.classList.toggle(
+    "hidden",
+    destination !== "obsidian"
+  );
+}
+
+function setNotesExpanded(expanded) {
+  els.notesField?.classList.toggle(
+    "hidden",
+    !expanded
+  );
+
+  if (els.toggleNotes) {
+    els.toggleNotes.textContent =
+      expanded
+        ? "− Hide note"
+        : "+ Add note";
+  }
+
+  if (expanded) {
+    setTimeout(
+      () =>
+        els.notesInput?.focus(),
+      0
+    );
+  }
+}
+
+async function loadVaultPicker() {
+  if (!els.vaultSelect) {
+    return;
+  }
+
+  const info =
+    await ClipNestVaultStore.listVaults();
+
+  els.vaultSelect.replaceChildren();
+
+  if (!info.vaults.length) {
+    const empty =
+      document.createElement(
+        "option"
+      );
+
+    empty.value = "";
+    empty.textContent =
+      "No vault connected";
+
+    els.vaultSelect.append(empty);
+  } else {
+    for (
+      const vault of
+        info.vaults
+    ) {
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        vault.id;
+
+      option.textContent =
+        vault.name;
+
+      els.vaultSelect.append(
+        option
+      );
+    }
+  }
+
+  const connect =
+    document.createElement(
+      "option"
+    );
+
+  connect.value =
+    "__connect__";
+
+  connect.textContent =
+    "Connect another vault…";
+
+  els.vaultSelect.append(
+    connect
+  );
+
+  els.vaultSelect.value =
+    info.activeVaultId ||
+    "";
+}
+
+async function handleVaultPickerChange() {
+  const value =
+    els.vaultSelect?.value ||
+    "";
+
+  if (
+    value === "__connect__"
+  ) {
+    await connectVaultFromPopup();
+    return;
+  }
+
+  if (!value) {
+    return;
+  }
+
+  try {
+    await ClipNestVaultStore
+      .activateVault(value);
+
+    await refreshPopupVaultContext();
+  } catch (error) {
+    setStatus(
+      error.message ||
+        String(error),
+      "error"
+    );
+
+    await loadVaultPicker();
+  }
+}
+
+async function connectVaultFromPopup() {
+  if (
+    !(
+      "showDirectoryPicker" in
+      window
+    )
+  ) {
+    chrome.runtime.openOptionsPage();
+    return;
+  }
+
+  try {
+    const handle =
+      await window.showDirectoryPicker({
+        mode: "readwrite"
+      });
+
+    await ClipNestVaultStore
+      .addVault(handle);
+
+    await refreshPopupVaultContext();
+  } catch (error) {
+    if (
+      error?.name ===
+      "AbortError"
+    ) {
+      await loadVaultPicker();
+      return;
+    }
+
+    setStatus(
+      error.message ||
+        String(error),
+      "error"
+    );
+
+    await loadVaultPicker();
+  }
+}
+
+async function refreshPopupVaultContext() {
+  await loadVaultPicker();
+
+  const settings =
+    await chrome.storage.local.get([
+      "obsidianDefaultTags",
+      "obsidianDefaultTemplatePath"
+    ]);
+
+  els.tagsInput.value =
+    settings.obsidianDefaultTags ||
+    "";
+
+  state.obsidianTags = [];
+  state.obsidianTemplates = [];
+
+  els.templateField?.classList.add(
+    "hidden"
+  );
+
+  if (els.tagSyncMeta) {
+    els.tagSyncMeta.textContent =
+      "Loading Obsidian tags…";
+  }
+
+  await Promise.all([
+    loadObsidianTags(),
+    loadObsidianTemplates(
+      settings.obsidianDefaultTemplatePath ||
+      ""
+    )
+  ]);
 }
 
 async function captureCurrentPage() {
@@ -895,7 +1129,14 @@ async function restoreQuickClipDraft(tab, capture) {
   }
 
   if (typeof pendingQuickClipDraft.notes === "string") {
-    els.notesInput.value = pendingQuickClipDraft.notes;
+    els.notesInput.value =
+      pendingQuickClipDraft.notes;
+
+    if (
+      pendingQuickClipDraft.notes.trim()
+    ) {
+      setNotesExpanded(true);
+    }
   }
 
   if (

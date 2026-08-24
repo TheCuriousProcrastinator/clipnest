@@ -789,3 +789,54 @@ a {
 .clipper-ux-area-main-save-hidden {
   display: none !important;
 }
+
+
+/* =================================
+   MULTI-VAULT + COMPACT NOTES V0.7
+   ================================= */
+
+#vaultSelect {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 40px;
+  height: 40px;
+  border: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+}
+
+#vaultField {
+  margin-bottom: 7px !important;
+}
+
+.notes-compact {
+  margin: -1px 0 7px;
+}
+
+.notes-toggle {
+  appearance: none;
+  border: 0;
+  padding: 3px 1px 5px;
+  background: transparent;
+  color: #db5b27;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.notes-toggle:hover {
+  text-decoration: underline;
+}
+
+#notesField {
+  margin-top: 3px;
+  margin-bottom: 7px !important;
+}
+
+#notesField.hidden {
+  display: none !important;
+}

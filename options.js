@@ -12,6 +12,7 @@ async function init() {
     "testNotion",
     "notionStatus",
     "chooseVault",
+    "vaultSelect",
     "vaultName",
     "obsidianSubfolder",
     "obsidianDefaultTags",
@@ -20,16 +21,59 @@ async function init() {
     "saveSettings",
     "saveStatus"
   ]) {
-    els[id] = document.getElementById(id);
+    els[id] =
+      document.getElementById(id);
   }
 
-  els.saveSettings.addEventListener("click", saveSettings);
-  els.testNotion.addEventListener("click", testNotion);
-  els.chooseVault.addEventListener("click", chooseVault);
-  els.disconnectVault.addEventListener("click", disconnectVault);
+  els.saveSettings.addEventListener(
+    "click",
+    saveSettings
+  );
 
+  els.testNotion.addEventListener(
+    "click",
+    testNotion
+  );
+
+  els.chooseVault.addEventListener(
+    "click",
+    chooseVault
+  );
+
+  els.disconnectVault.addEventListener(
+    "click",
+    disconnectVault
+  );
+
+  els.vaultSelect.addEventListener(
+    "change",
+    async () => {
+      const id =
+        els.vaultSelect.value;
+
+      if (!id) {
+        return;
+      }
+
+      await ClipNestVaultStore
+        .activateVault(id);
+
+      await loadSettings();
+      await refreshVaultList();
+
+      showStatus(
+        els.obsidianStatus,
+        "Active vault changed.",
+        "success"
+      );
+    }
+  );
+
+  await ClipNestVaultStore
+    .migrateLegacy();
+
+  await refreshVaultList();
   await loadSettings();
-  await refreshVaultName();
 }
 
 async function loadSettings() {
@@ -53,17 +97,48 @@ async function loadSettings() {
 }
 
 async function saveSettings() {
+  const obsidianConfig = {
+    subfolder:
+      els.obsidianSubfolder.value.trim(),
+
+    defaultTags:
+      els.obsidianDefaultTags.value.trim()
+  };
+
   await chrome.storage.local.set({
-    defaultDestination: els.defaultDestination.value,
-    notionToken: els.notionToken.value.trim(),
-    notionDataSourceId: els.notionDataSourceId.value.trim(),
-    notionTitleProperty: els.notionTitleProperty.value.trim() || "Name",
-    notionUrlProperty: els.notionUrlProperty.value.trim(),
-    obsidianSubfolder: els.obsidianSubfolder.value.trim(),
-    obsidianDefaultTags: els.obsidianDefaultTags.value.trim()
+    defaultDestination:
+      els.defaultDestination.value,
+
+    notionToken:
+      els.notionToken.value.trim(),
+
+    notionDataSourceId:
+      els.notionDataSourceId.value.trim(),
+
+    notionTitleProperty:
+      els.notionTitleProperty.value.trim() ||
+      "Name",
+
+    notionUrlProperty:
+      els.notionUrlProperty.value.trim(),
+
+    obsidianSubfolder:
+      obsidianConfig.subfolder,
+
+    obsidianDefaultTags:
+      obsidianConfig.defaultTags
   });
 
-  showStatus(els.saveStatus, "Saved.", "success");
+  await ClipNestVaultStore
+    .updateActiveConfig(
+      obsidianConfig
+    );
+
+  showStatus(
+    els.saveStatus,
+    "Saved.",
+    "success"
+  );
 }
 
 async function testNotion() {
@@ -105,37 +180,147 @@ async function testNotion() {
 }
 
 async function chooseVault() {
-  showStatus(els.obsidianStatus, "");
+  showStatus(
+    els.obsidianStatus,
+    ""
+  );
 
-  if (!("showDirectoryPicker" in window)) {
-    showStatus(els.obsidianStatus, "This Chrome build does not expose the folder picker here.", "error");
+  if (
+    !(
+      "showDirectoryPicker" in
+      window
+    )
+  ) {
+    showStatus(
+      els.obsidianStatus,
+      "This Chrome build does not expose the folder picker here.",
+      "error"
+    );
+
     return;
   }
 
   try {
-    const handle = await window.showDirectoryPicker({ mode: "readwrite" });
-    await setVaultHandle(handle);
-    els.vaultName.textContent = handle.name;
-    showStatus(els.obsidianStatus, "Vault connected.", "success");
+    const handle =
+      await window.showDirectoryPicker({
+        mode: "readwrite"
+      });
+
+    const vault =
+      await ClipNestVaultStore
+        .addVault(handle);
+
+    await refreshVaultList();
+    await loadSettings();
+
+    showStatus(
+      els.obsidianStatus,
+      `${vault.name} connected.`,
+      "success"
+    );
   } catch (error) {
-    if (error?.name === "AbortError") return;
-    showStatus(els.obsidianStatus, error.message || String(error), "error");
+    if (
+      error?.name ===
+      "AbortError"
+    ) {
+      return;
+    }
+
+    showStatus(
+      els.obsidianStatus,
+      error.message ||
+        String(error),
+      "error"
+    );
   }
 }
 
 async function disconnectVault() {
-  await clearVaultHandle();
-  els.vaultName.textContent = "No vault connected";
-  showStatus(els.obsidianStatus, "Vault disconnected.", "success");
+  const id =
+    await ClipNestVaultStore
+      .getActiveVaultId();
+
+  if (!id) {
+    return;
+  }
+
+  await ClipNestVaultStore
+    .removeVault(id);
+
+  await refreshVaultList();
+  await loadSettings();
+
+  showStatus(
+    els.obsidianStatus,
+    "Vault disconnected.",
+    "success"
+  );
 }
 
 async function refreshVaultName() {
-  try {
-    const handle = await getVaultHandle();
-    els.vaultName.textContent = handle?.name || "No vault connected";
-  } catch {
-    els.vaultName.textContent = "No vault connected";
+  const info =
+    await ClipNestVaultStore
+      .listVaults();
+
+  const active =
+    info.vaults.find(
+      (vault) =>
+        vault.id ===
+        info.activeVaultId
+    );
+
+  els.vaultName.textContent =
+    active
+      ? `Active: ${active.name}`
+      : "No vault connected";
+}
+
+async function refreshVaultList() {
+  const info =
+    await ClipNestVaultStore
+      .listVaults();
+
+  els.vaultSelect.replaceChildren();
+
+  if (!info.vaults.length) {
+    const option =
+      document.createElement(
+        "option"
+      );
+
+    option.value = "";
+    option.textContent =
+      "No vault connected";
+
+    els.vaultSelect.append(
+      option
+    );
+  } else {
+    for (
+      const vault of
+        info.vaults
+    ) {
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        vault.id;
+
+      option.textContent =
+        vault.name;
+
+      els.vaultSelect.append(
+        option
+      );
+    }
+
+    els.vaultSelect.value =
+      info.activeVaultId;
   }
+
+  await refreshVaultName();
 }
 
 function showStatus(element, message, kind = "") {

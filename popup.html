@@ -21,6 +21,13 @@
       <button class="destination-button" data-destination="notion" type="button">Notion</button>
     </div>
 
+    <label id="vaultField" class="field hidden">
+      <span>Vault</span>
+      <select id="vaultSelect">
+        <option value="">No vault connected</option>
+      </select>
+    </label>
+
     <label class="field">
       <span>Title</span>
       <input id="titleInput" type="text" autocomplete="off" />
@@ -39,10 +46,14 @@
       <small id="templateMeta">Detected from Obsidian</small>
     </label>
 
-    <label class="field">
-      <span>Notes</span>
-      <textarea id="notesInput" rows="3" placeholder="Optional note…"></textarea>
-    </label>
+    <div id="notesCompact" class="notes-compact">
+      <button id="toggleNotes" class="notes-toggle" type="button">+ Add note</button>
+
+      <label id="notesField" class="field hidden">
+        <span>Notes</span>
+        <textarea id="notesInput" rows="3" placeholder="Optional note…"></textarea>
+      </label>
+    </div>
 
     <fieldset class="content-mode">
       <legend>Content</legend>
@@ -76,6 +87,7 @@
     <div id="status" class="status" aria-live="polite"></div>
   </main>
 
+  <script src="vault-store.js"></script>
   <script src="fs-store.js"></script>
   <script src="article-engine.js"></script>
   <script src="popup.js"></script>

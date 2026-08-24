@@ -1,3 +1,4 @@
+import "./vault-store.js";
 import "./article-engine.js";
 
 const NOTION_VERSION = "2026-03-11";
@@ -1512,38 +1513,8 @@ function openQuickHandleDb() {
 }
 
 async function getQuickVaultHandle() {
-  const db =
-    await openQuickHandleDb();
-
-  const handle =
-    await new Promise(
-      (resolve, reject) => {
-        const tx =
-          db.transaction(
-            QUICK_STORE_NAME,
-            "readonly"
-          );
-
-        const request =
-          tx.objectStore(
-            QUICK_STORE_NAME
-          ).get(
-            QUICK_VAULT_KEY
-          );
-
-        request.onsuccess = () =>
-          resolve(
-            request.result || null
-          );
-
-        request.onerror = () =>
-          reject(request.error);
-      }
-    );
-
-  db.close();
-
-  return handle;
+  return ClipNestVaultStore
+    .getVaultHandle();
 }
 
 function parseQuickTags(value) {
