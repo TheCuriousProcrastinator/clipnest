@@ -1682,6 +1682,23 @@ async function handleNotionWorkspaceChange() {
     patch.destinationParents =
       [];
 
+    patch.destinationParentId =
+      "";
+
+    patch.destinationParentTable =
+      "";
+
+    patch.propertyIds = {
+      title:
+        "",
+
+      url:
+        "",
+
+      tags:
+        ""
+    };
+
     patch.titleProperty =
       "Name";
 
@@ -2309,6 +2326,14 @@ async function handleNotionDataSourceChange() {
         destinationParents:
           destination.parents ||
           [],
+
+        destinationParentId:
+          destination.parentId ||
+          "",
+
+        destinationParentTable:
+          destination.parentTable ||
+          "",
 
         dataSourceId:
           ""

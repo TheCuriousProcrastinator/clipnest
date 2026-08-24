@@ -160,6 +160,36 @@
           ? raw.destinationParents
           : [],
 
+      destinationParentId:
+        cleanText(
+          raw.destinationParentId
+        ),
+
+      destinationParentTable:
+        cleanText(
+          raw.destinationParentTable
+        ),
+
+      propertyIds: {
+        title:
+          cleanText(
+            raw.propertyIds
+              ?.title
+          ),
+
+        url:
+          cleanText(
+            raw.propertyIds
+              ?.url
+          ),
+
+        tags:
+          cleanText(
+            raw.propertyIds
+              ?.tags
+          )
+      },
+
       titleProperty,
 
       urlProperty,
@@ -545,6 +575,23 @@
         destinationParents:
           [],
 
+        destinationParentId:
+          "",
+
+        destinationParentTable:
+          "",
+
+        propertyIds: {
+          title:
+            "",
+
+          url:
+            "",
+
+          tags:
+            ""
+        },
+
         titleProperty:
           "Name",
 
@@ -616,6 +663,18 @@
             typeof patch.propertyMappings ===
               "object"
               ? patch.propertyMappings
+              : {}
+          )
+        },
+
+        propertyIds: {
+          ...current.propertyIds,
+
+          ...(
+            patch.propertyIds &&
+            typeof patch.propertyIds ===
+              "object"
+              ? patch.propertyIds
               : {}
           )
         },
