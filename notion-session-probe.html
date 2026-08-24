@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  />
+  <title>ClipNest Notion Session Probe</title>
+  <link
+    rel="stylesheet"
+    href="notion-session-probe.css"
+  />
+</head>
+
+<body>
+  <main>
+    <div class="brand">
+      ClipNest
+    </div>
+
+    <h1>
+      Notion Session Probe
+    </h1>
+
+    <p class="intro">
+      Read-only test. ClipNest will ask Chrome
+      for access to Notion websites, then call
+      Notion's workspace-list endpoint using
+      your existing browser session.
+    </p>
+
+    <div class="notice">
+      This test does not create, edit, or delete
+      anything in Notion. It does not read or
+      store your Notion session token directly.
+    </div>
+
+    <button
+      id="detectButton"
+      type="button"
+    >
+      Detect Notion workspaces
+    </button>
+
+    <div
+      id="status"
+      class="status"
+    ></div>
+
+    <section
+      id="results"
+      class="results hidden"
+    >
+      <h2>
+        Workspaces detected
+      </h2>
+
+      <div
+        id="workspaceList"
+        class="workspace-list"
+      ></div>
+    </section>
+
+    <details
+      id="diagnostics"
+      class="diagnostics hidden"
+    >
+      <summary>
+        Diagnostics
+      </summary>
+
+      <pre id="diagnosticText"></pre>
+    </details>
+  </main>
+
+  <script src="notion-session-probe.js"></script>
+</body>
+</html>
