@@ -883,3 +883,37 @@ body::-webkit-scrollbar {
   height: 0 !important;
   display: none !important;
 }
+
+/* TRIM POPUP BOTTOM SPACE - V0.7.5 */
+
+html,
+body {
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+body {
+  padding-bottom: 10px !important;
+}
+
+.popup,
+main {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-bottom: 0 !important;
+}
+
+.actions {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#saveButton {
+  margin-bottom: 0 !important;
+}
+
+body > :last-child,
+.popup > :last-child,
+main > :last-child {
+  margin-bottom: 0 !important;
+}
