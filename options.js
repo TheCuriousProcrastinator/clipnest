@@ -19,6 +19,7 @@ async function init() {
     "notionWorkspacePickerMenu",
     "notionWorkspaceHelp",
     "notionDestinationSearch",
+    "notionDestinationResults",
     "notionDataSourceId",
     "notionDataSourceHelp",
     "notionTitleProperty",
@@ -758,6 +759,479 @@ function getNotionWorkspaceUser(
   );
 }
 
+function notionDestinationIconDescriptor(
+  destination,
+  preset
+) {
+  let raw =
+    destination?.icon;
+
+  if (
+    raw &&
+    typeof raw ===
+      "object"
+  ) {
+    raw =
+      raw.url ||
+      raw.external?.url ||
+      raw.file?.url ||
+      raw.emoji ||
+      raw.value ||
+      "";
+  }
+
+  const fallback = {
+    type:
+      "fallback",
+
+    value:
+      destination?.type ===
+        "collection"
+        ? "▤"
+        : "□"
+  };
+
+  if (
+    typeof raw !==
+      "string"
+  ) {
+    return fallback;
+  }
+
+  const icon =
+    raw.trim();
+
+  if (!icon) {
+    return fallback;
+  }
+
+  if (
+    /\p{Extended_Pictographic}/u.test(
+      icon
+    )
+  ) {
+    return {
+      type:
+        "emoji",
+
+      value:
+        icon
+    };
+  }
+
+  if (
+    /^https?:\/\//i.test(
+      icon
+    ) ||
+    /^data:/i.test(
+      icon
+    )
+  ) {
+    return {
+      type:
+        "image",
+
+      value:
+        icon
+    };
+  }
+
+  if (
+    icon.startsWith(
+      "/icons/"
+    ) ||
+    icon.startsWith(
+      "/images/"
+    )
+  ) {
+    return {
+      type:
+        "image",
+
+      value:
+        `https://app.notion.com${icon}`
+    };
+  }
+
+  if (
+    icon.startsWith(
+      "/"
+    )
+  ) {
+    return {
+      type:
+        "image",
+
+      value:
+        `https://app.notion.com${icon}`
+    };
+  }
+
+  if (
+    icon.startsWith(
+      "notion://"
+    ) ||
+    icon.startsWith(
+      "attachment:"
+    ) ||
+    icon.includes(
+      "amazonaws.com"
+    )
+  ) {
+    const params =
+      new URLSearchParams({
+        table:
+          destination?.type ===
+            "collection"
+            ? "collection"
+            : "block",
+
+        id:
+          destination?.id ||
+          "",
+
+        spaceId:
+          preset?.workspaceId ||
+          "",
+
+        userId:
+          preset?.workspaceUserId ||
+          "",
+
+        cache:
+          "v2"
+      });
+
+    return {
+      type:
+        "image",
+
+      value:
+        `https://app.notion.com/image/${
+          encodeURIComponent(
+            icon
+          )
+        }?${params.toString()}`
+    };
+  }
+
+  return {
+    type:
+      "image",
+
+    value:
+      `https://app.notion.com/icons/${
+        encodeURIComponent(
+          icon
+        )
+      }`
+  };
+}
+
+function fillNotionDestinationIcon(
+  container,
+  destination,
+  preset
+) {
+  container.replaceChildren();
+
+  container.classList.remove(
+    "fallback"
+  );
+
+  const descriptor =
+    notionDestinationIconDescriptor(
+      destination,
+      preset
+    );
+
+  if (
+    descriptor.type ===
+      "image"
+  ) {
+    const image =
+      document.createElement(
+        "img"
+      );
+
+    image.alt =
+      "";
+
+    image.src =
+      descriptor.value;
+
+    image.addEventListener(
+      "error",
+      () => {
+        container.replaceChildren();
+
+        container.classList.add(
+          "fallback"
+        );
+
+        container.textContent =
+          destination?.type ===
+            "collection"
+            ? "▤"
+            : "□";
+      },
+      {
+        once:
+          true
+      }
+    );
+
+    container.append(
+      image
+    );
+
+    return;
+  }
+
+  container.textContent =
+    descriptor.value;
+
+  if (
+    descriptor.type ===
+      "fallback"
+  ) {
+    container.classList.add(
+      "fallback"
+    );
+  }
+}
+
+function renderNotionDestinationResults(
+  preset
+) {
+  const root =
+    els.notionDestinationResults;
+
+  root.replaceChildren();
+
+  if (
+    !preset?.workspaceId
+  ) {
+    return;
+  }
+
+  if (
+    !notionDestinationCache.length
+  ) {
+    const empty =
+      document.createElement(
+        "div"
+      );
+
+    empty.className =
+      "notion-destination-placeholder";
+
+    empty.textContent =
+      els.notionDestinationSearch
+        .value
+        .trim()
+        ? "No matching pages or databases."
+        : "No pages or databases found.";
+
+    root.append(
+      empty
+    );
+
+    return;
+  }
+
+  const selectedValue =
+    notionDestinationValue({
+      type:
+        preset.destinationType,
+
+      id:
+        preset.destinationId
+    });
+
+  for (
+    const group of [
+      {
+        type:
+          "collection",
+
+        title:
+          "Databases"
+      },
+      {
+        type:
+          "page",
+
+        title:
+          "Pages"
+      }
+    ]
+  ) {
+    const destinations =
+      notionDestinationCache.filter(
+        (destination) =>
+          destination.type ===
+          group.type
+      );
+
+    if (!destinations.length) {
+      continue;
+    }
+
+    const section =
+      document.createElement(
+        "div"
+      );
+
+    section.className =
+      "notion-destination-group";
+
+    const heading =
+      document.createElement(
+        "div"
+      );
+
+    heading.className =
+      "notion-destination-group-title";
+
+    heading.textContent =
+      group.title;
+
+    section.append(
+      heading
+    );
+
+    for (
+      const destination of
+        destinations
+    ) {
+      const value =
+        notionDestinationValue(
+          destination
+        );
+
+      const item =
+        document.createElement(
+          "button"
+        );
+
+      item.type =
+        "button";
+
+      item.className =
+        "notion-destination-item";
+
+      if (
+        value ===
+          selectedValue
+      ) {
+        item.classList.add(
+          "selected"
+        );
+      }
+
+      const icon =
+        document.createElement(
+          "span"
+        );
+
+      icon.className =
+        "notion-destination-icon";
+
+      fillNotionDestinationIcon(
+        icon,
+        destination,
+        preset
+      );
+
+      const copy =
+        document.createElement(
+          "span"
+        );
+
+      copy.className =
+        "notion-destination-copy";
+
+      const name =
+        document.createElement(
+          "div"
+        );
+
+      name.className =
+        "notion-destination-name";
+
+      name.textContent =
+        destination.name ||
+        (
+          destination.type ===
+            "collection"
+            ? "Untitled database"
+            : "Untitled"
+        );
+
+      const breadcrumb =
+        document.createElement(
+          "div"
+        );
+
+      breadcrumb.className =
+        "notion-destination-breadcrumb";
+
+      breadcrumb.textContent =
+        destination.breadcrumb ||
+        (
+          destination.type ===
+            "collection"
+            ? "Database"
+            : "Page"
+        );
+
+      copy.append(
+        name,
+        breadcrumb
+      );
+
+      const check =
+        document.createElement(
+          "span"
+        );
+
+      check.className =
+        "notion-destination-check";
+
+      check.textContent =
+        value ===
+          selectedValue
+          ? "✓"
+          : "";
+
+      item.append(
+        icon,
+        copy,
+        check
+      );
+
+      item.addEventListener(
+        "click",
+        async () => {
+          els.notionDataSourceId.value =
+            value;
+
+          await handleNotionDataSourceChange();
+        }
+      );
+
+      section.append(
+        item
+      );
+    }
+
+    root.append(
+      section
+    );
+  }
+}
+
 function notionDestinationValue(
   destination
 ) {
@@ -812,6 +1286,9 @@ function prepareNotionDestinationField(
 ) {
   notionDestinationCache =
     [];
+
+  els.notionDestinationResults
+    .replaceChildren();
 
   els.notionDataSourceId
     .replaceChildren();
@@ -1564,28 +2041,43 @@ async function refreshNotionDataSources(
   els.notionDataSourceId.disabled =
     true;
 
-  els.notionDataSourceId
+  els.notionDestinationResults
     .replaceChildren();
 
   const loading =
     document.createElement(
-      "option"
+      "div"
     );
 
-  loading.value =
-    "";
+  loading.className =
+    "notion-destination-placeholder";
 
   loading.textContent =
-    "Searching Notion…";
+    searchText
+      ? `Searching for "${searchText}"…`
+      : "Loading pages and databases…";
 
-  els.notionDataSourceId.append(
+  els.notionDestinationResults.append(
     loading
   );
 
-  els.notionDataSourceHelp.textContent =
-    searchText
-      ? `Searching for "${searchText}"…`
-      : "Loading destinations…";
+  els.notionDataSourceId
+    .replaceChildren();
+
+  const loadingOption =
+    document.createElement(
+      "option"
+    );
+
+  loadingOption.value =
+    "";
+
+  loadingOption.textContent =
+    "Searching Notion…";
+
+  els.notionDataSourceId.append(
+    loadingOption
+  );
 
   try {
     const result =
@@ -1617,9 +2109,7 @@ async function refreshNotionDataSources(
       "";
 
     placeholder.textContent =
-      notionDestinationCache.length
-        ? "Choose a destination…"
-        : "No matching pages or databases";
+      "Choose a destination…";
 
     els.notionDataSourceId.append(
       placeholder
@@ -1659,7 +2149,7 @@ async function refreshNotionDataSources(
       });
 
     if (savedValue) {
-      const existing =
+      const exists =
         notionDestinationCache.some(
           (destination) =>
             notionDestinationValue(
@@ -1668,7 +2158,7 @@ async function refreshNotionDataSources(
             savedValue
         );
 
-      if (!existing) {
+      if (!exists) {
         const saved =
           document.createElement(
             "option"
@@ -1678,21 +2168,8 @@ async function refreshNotionDataSources(
           savedValue;
 
         saved.textContent =
-          notionDestinationLabel({
-            type:
-              preset.destinationType,
-
-            id:
-              preset.destinationId,
-
-            name:
-              preset.destinationName ||
-              "Previously selected destination",
-
-            parents:
-              preset.destinationParents ||
-              []
-          });
+          preset.destinationName ||
+          "Previously selected destination";
 
         els.notionDataSourceId.append(
           saved
@@ -1706,35 +2183,54 @@ async function refreshNotionDataSources(
     els.notionDataSourceId.disabled =
       false;
 
+    renderNotionDestinationResults(
+      preset
+    );
+
+    const databaseCount =
+      notionDestinationCache.filter(
+        (destination) =>
+          destination.type ===
+          "collection"
+      ).length;
+
+    const pageCount =
+      notionDestinationCache.filter(
+        (destination) =>
+          destination.type ===
+          "page"
+      ).length;
+
     els.notionDataSourceHelp.textContent =
-      `${notionDestinationCache.length} ${
-        searchText
-          ? "matching "
-          : ""
-      }destination${
-        notionDestinationCache.length === 1
+      `${databaseCount} database${
+        databaseCount === 1
           ? ""
           : "s"
-      } found.`;
+      }, ${pageCount} page${
+        pageCount === 1
+          ? ""
+          : "s"
+      } shown.`;
   } catch (error) {
     notionDestinationCache =
       [];
 
-    els.notionDataSourceId
+    els.notionDestinationResults
       .replaceChildren();
 
     const failed =
       document.createElement(
-        "option"
+        "div"
       );
 
-    failed.value =
-      "";
+    failed.className =
+      "notion-destination-placeholder";
 
     failed.textContent =
-      "Could not search this workspace";
+      error.message ||
+      String(error);
 
-    els.notionDataSourceId.append(
+    els.notionDestinationResults.append(
       failed
     );
 
@@ -1780,7 +2276,7 @@ async function handleNotionDataSourceChange() {
 
     if (
       savedValue ===
-      value
+        value
     ) {
       return;
     }
@@ -1817,6 +2313,10 @@ async function handleNotionDataSourceChange() {
         dataSourceId:
           ""
       });
+
+  renderNotionDestinationResults(
+    updated
+  );
 
   els.notionDataSourceHelp.textContent =
     destination.type ===
