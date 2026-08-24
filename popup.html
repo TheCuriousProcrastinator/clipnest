@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clip page</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main class="app">
+    <div class="topbar">
+      <div>
+        <h1>Clip page</h1>
+        <div id="siteLabel" class="muted ellipsis">Reading page…</div>
+      </div>
+      <button id="settingsButton" class="icon-button" type="button" title="Settings">⚙</button>
+    </div>
+
+    <div class="destination" role="group" aria-label="Destination">
+      <button class="destination-button" data-destination="obsidian" type="button">Obsidian</button>
+      <button class="destination-button" data-destination="notion" type="button">Notion</button>
+    </div>
+
+    <label class="field">
+      <span>Title</span>
+      <input id="titleInput" type="text" autocomplete="off" />
+    </label>
+
+    <label class="field">
+      <span>Tags</span>
+      <input id="tagsInput" type="text" autocomplete="off" placeholder="reading, ai, research" />
+    </label>
+
+    <label id="templateField" class="field hidden">
+      <span>Template</span>
+      <select id="templateSelect">
+        <option value="">None</option>
+      </select>
+      <small id="templateMeta">Detected from Obsidian</small>
+    </label>
+
+    <label class="field">
+      <span>Notes</span>
+      <textarea id="notesInput" rows="3" placeholder="Optional note…"></textarea>
+    </label>
+
+    <fieldset class="content-mode">
+      <legend>Content</legend>
+
+      <label class="mode-row">
+        <input type="radio" name="contentMode" value="article" checked />
+        <span>Article</span>
+      </label>
+
+      <label id="selectedTextModeRow" class="mode-row hidden">
+        <input type="radio" name="contentMode" value="text" />
+        <span>Selected text</span>
+      </label>
+
+      <label class="mode-row">
+        <input type="radio" name="contentMode" value="selection" />
+        <span>Select from page</span>
+      </label>
+
+      <button id="selectAreaButton" class="secondary hidden" type="button">
+        Pick area on page
+      </button>
+    </fieldset>
+
+
+
+    <div class="actions">
+      <button id="saveButton" class="primary" type="button" disabled>Save</button>
+    </div>
+
+    <div id="status" class="status" aria-live="polite"></div>
+  </main>
+
+  <script src="fs-store.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

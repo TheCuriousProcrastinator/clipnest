@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clip Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>Clip Settings</h1>
+      <p>Configure Notion and Obsidian. Everything in this V1 stays local except content you explicitly send to Notion.</p>
+    </header>
+
+    <section class="card">
+      <h2>General</h2>
+      <label class="field">
+        <span>Default destination</span>
+        <select id="defaultDestination">
+          <option value="obsidian">Obsidian</option>
+          <option value="notion">Notion</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>Notion</h2>
+      <p class="help">V1 uses a personal/internal Notion integration. The token is stored only in Chrome local extension storage.</p>
+
+      <label class="field">
+        <span>Integration token</span>
+        <input id="notionToken" type="password" autocomplete="off" placeholder="ntn_… or secret_…" />
+      </label>
+
+      <label class="field">
+        <span>Data source ID</span>
+        <input id="notionDataSourceId" type="text" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+        <small>In Notion: database menu → Manage data sources → data source menu → Copy data source ID.</small>
+      </label>
+
+      <div class="grid2">
+        <label class="field">
+          <span>Title property</span>
+          <input id="notionTitleProperty" type="text" value="Name" />
+        </label>
+
+        <label class="field">
+          <span>URL property <em>optional</em></span>
+          <input id="notionUrlProperty" type="text" placeholder="URL" />
+        </label>
+      </div>
+
+      <button id="testNotion" class="secondary" type="button">Test Notion connection</button>
+      <div id="notionStatus" class="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>Obsidian</h2>
+      <p class="help">Choose the root of your Obsidian vault. Chrome stores the folder handle locally and writes Markdown directly into the vault.</p>
+
+      <div class="vault-row">
+        <button id="chooseVault" class="secondary" type="button">Choose vault folder</button>
+        <span id="vaultName" class="vault-name">No vault connected</span>
+      </div>
+
+      <label class="field">
+        <span>Subfolder <em>optional</em></span>
+        <input id="obsidianSubfolder" type="text" placeholder="Inbox/Clippings" />
+        <small>Created automatically if it does not exist.</small>
+      </label>
+
+      <label class="field">
+        <span>Default tags <em>optional</em></span>
+        <input id="obsidianDefaultTags" type="text" placeholder="web-clip, reading" />
+        <small>Comma-separated. You can edit them before every save.</small>
+      </label>
+
+      <button id="disconnectVault" class="text-button" type="button">Disconnect vault</button>
+      <div id="obsidianStatus" class="status"></div>
+    </section>
+
+    <div class="savebar">
+      <button id="saveSettings" class="primary" type="button">Save settings</button>
+      <div id="saveStatus" class="status"></div>
+    </div>
+  </main>
+
+  <script src="fs-store.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
