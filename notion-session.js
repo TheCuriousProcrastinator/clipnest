@@ -1120,21 +1120,10 @@
         typeof item ===
           "string"
       ) {
-        if (item) {
-          parts.push(
-            item
-          );
-        }
+        parts.push(
+          item
+        );
 
-        return;
-      }
-
-      if (
-        typeof item ===
-          "number" ||
-        typeof item ===
-          "boolean"
-      ) {
         return;
       }
 
@@ -1163,67 +1152,36 @@
         return;
       }
 
-      if (
-        Object.prototype.hasOwnProperty.call(
-          item,
+      for (
+        const key of [
+          "plain_text",
+          "content",
+          "text",
+          "title",
+          "name",
           "value"
-        )
+        ]
       ) {
-        visit(
-          item.value
-        );
+        if (
+          Object.prototype.hasOwnProperty.call(
+            item,
+            key
+          )
+        ) {
+          const before =
+            parts.length;
 
-        return;
-      }
+          visit(
+            item[key]
+          );
 
-      if (
-        Object.prototype.hasOwnProperty.call(
-          item,
-          "content"
-        )
-      ) {
-        visit(
-          item.content
-        );
-
-        return;
-      }
-
-      if (
-        Object.prototype.hasOwnProperty.call(
-          item,
-          "text"
-        )
-      ) {
-        visit(
-          item.text
-        );
-
-        return;
-      }
-
-      if (
-        Object.prototype.hasOwnProperty.call(
-          item,
-          "plain_text"
-        )
-      ) {
-        visit(
-          item.plain_text
-        );
-
-        return;
-      }
-
-      if (
-        Object.prototype.hasOwnProperty.call(
-          item,
-          "title"
-        )
-      ) {
-        visit(
-          item.title
-        );
+          if (
+            parts.length >
+            before
+          ) {
+            return;
+          }
+        }
       }
     }
 
@@ -1231,13 +1189,10 @@
       value
     );
 
-    const result =
+    return (
       parts
         .join("")
-        .trim();
-
-    return (
-      result ||
+        .trim() ||
       fallback
     );
   }
@@ -1448,212 +1403,286 @@
       payload?.recordMap ||
       {};
 
+    const results =
+      Array.isArray(
+        payload?.results
+      )
+        ? payload.results
+        : [];
+
     const destinations =
       [];
 
     const seen =
       new Set();
 
-    for (
-      const [
-        recordId,
-        record
-      ] of Object.entries(
-        recordMap.collection ||
-        {}
-      )
+    function getRecord(
+      table,
+      id
     ) {
-      const collection =
-        unwrapRecord(
-          record
-        );
+      if (!id) {
+        return {
+          wrapper:
+            null,
 
-      if (
-        !collection ||
-        collection.alive ===
-          false
-      ) {
-        continue;
+          value:
+            null
+        };
       }
 
-      const id =
+      const wrapper =
+        recordMap
+          ?.[table]
+          ?.[id] ||
+        null;
+
+      return {
+        wrapper,
+
+        value:
+          unwrapRecord(
+            wrapper
+          )
+      };
+    }
+
+    function collectionIdFromBlock(
+      block
+    ) {
+      return (
+        block?.collection_id ||
+        block?.format
+          ?.collection_pointer
+          ?.id ||
+        block?.format
+          ?.collection_pointers
+          ?.[0]
+          ?.id ||
+        ""
+      );
+    }
+
+    for (
+      const result of
+        results
+    ) {
+      const resultId =
         String(
-          collection.id ||
-          recordId
+          result?.id ||
+          ""
         );
 
-      const key =
-        `collection:${id}`;
-
-      if (seen.has(key)) {
+      if (!resultId) {
         continue;
       }
 
-      seen.add(key);
-
-      const parents =
-        notionParentPath(
-          recordMap,
-          collection.parent_id,
-          "block"
+      const blockRecord =
+        getRecord(
+          "block",
+          resultId
         );
 
-      destinations.push({
-        key,
-
-        id,
-
-        type:
+      const directCollection =
+        getRecord(
           "collection",
-
-        name:
-          notionCollectionName(
-            collection
-          ),
-
-        icon:
-          collection.icon ||
-          "",
-
-        parents,
-
-        breadcrumb:
-          parents
-            .map(
-              (parent) =>
-                parent.name
-            )
-            .filter(Boolean)
-            .join(" / "),
-
-        workspaceId,
-
-        parentId:
-          collection.parent_id ||
-          "",
-
-        parentTable:
-          "block",
-
-        role:
-          record?.role ||
-          ""
-      });
-    }
-
-    for (
-      const [
-        recordId,
-        record
-      ] of Object.entries(
-        recordMap.block ||
-        {}
-      )
-    ) {
-      const page =
-        unwrapRecord(
-          record
+          resultId
         );
+
+      const sourceBlock =
+        blockRecord.value;
+
+      let type =
+        "";
+
+      let item =
+        null;
+
+      let wrapper =
+        null;
 
       if (
-        !page ||
-        page.type !==
-          "page" ||
-        page.alive ===
-          false ||
-        page.is_template
+        sourceBlock?.type ===
+          "collection_view" ||
+        sourceBlock?.type ===
+          "collection_view_page"
       ) {
-        continue;
-      }
-
-      const id =
-        String(
-          page.id ||
-          recordId
-        );
-
-      const key =
-        `page:${id}`;
-
-      if (seen.has(key)) {
-        continue;
-      }
-
-      seen.add(key);
-
-      const parents =
-        notionParentPath(
-          recordMap,
-          page.parent_id,
-          page.parent_table ||
-          "block"
-        );
-
-      destinations.push({
-        key,
-
-        id,
-
-        type:
-          "page",
-
-        name:
-          notionPageName(
-            page
-          ),
-
-        icon:
-          page.format
-            ?.page_icon ||
-          "",
-
-        parents,
-
-        breadcrumb:
-          parents
-            .map(
-              (parent) =>
-                parent.name
-            )
-            .filter(Boolean)
-            .join(" / "),
-
-        workspaceId,
-
-        parentId:
-          page.parent_id ||
-          "",
-
-        parentTable:
-          page.parent_table ||
-          "block",
-
-        role:
-          record?.role ||
-          ""
-      });
-    }
-
-    return destinations.sort(
-      (a, b) => {
-        if (
-          a.type !==
-          b.type
-        ) {
-          return (
-            a.type ===
-              "collection"
-              ? -1
-              : 1
+        const collectionId =
+          collectionIdFromBlock(
+            sourceBlock
           );
+
+        if (!collectionId) {
+          continue;
         }
 
-        return a.name
-          .localeCompare(
-            b.name
+        const collectionRecord =
+          getRecord(
+            "collection",
+            collectionId
           );
+
+        if (!collectionRecord.value) {
+          continue;
+        }
+
+        type =
+          "collection";
+
+        item =
+          collectionRecord.value;
+
+        wrapper =
+          collectionRecord.wrapper;
+      } else if (
+        sourceBlock?.type ===
+          "page"
+      ) {
+        type =
+          "page";
+
+        item =
+          sourceBlock;
+
+        wrapper =
+          blockRecord.wrapper;
+      } else if (
+        directCollection.value
+      ) {
+        type =
+          "collection";
+
+        item =
+          directCollection.value;
+
+        wrapper =
+          directCollection.wrapper;
+      } else {
+        continue;
       }
-    );
+
+      if (
+        item.alive ===
+          false ||
+        item.is_template
+      ) {
+        continue;
+      }
+
+      const id =
+        String(
+          item.id ||
+          (
+            type ===
+              "collection"
+              ? collectionIdFromBlock(
+                  sourceBlock
+                )
+              : resultId
+          ) ||
+          resultId
+        );
+
+      const key =
+        `${type}:${id}`;
+
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+
+      const parents =
+        notionParentPath(
+          recordMap,
+          item.parent_id,
+          type ===
+            "collection"
+            ? "block"
+            : (
+                item.parent_table ||
+                "block"
+              )
+        );
+
+      const name =
+        type ===
+          "collection"
+          ? notionPlainText(
+              item.name,
+              notionPlainText(
+                item.title,
+                "Untitled database"
+              )
+            )
+          : notionPlainText(
+              item.properties
+                ?.title,
+              "Untitled"
+            );
+
+      const icon =
+        type ===
+          "collection"
+          ? (
+              item.icon ||
+              item.format
+                ?.page_icon ||
+              sourceBlock
+                ?.format
+                ?.page_icon ||
+              ""
+            )
+          : (
+              item.format
+                ?.page_icon ||
+              ""
+            );
+
+      destinations.push({
+        key,
+
+        id,
+
+        type,
+
+        name,
+
+        icon,
+
+        parents,
+
+        breadcrumb:
+          parents
+            .map(
+              (parent) =>
+                parent.name
+            )
+            .filter(Boolean)
+            .join(" / "),
+
+        workspaceId,
+
+        parentId:
+          item.parent_id ||
+          "",
+
+        parentTable:
+          type ===
+            "collection"
+            ? "block"
+            : (
+                item.parent_table ||
+                "block"
+              ),
+
+        role:
+          wrapper?.role ||
+          result?.role ||
+          ""
+      });
+    }
+
+    return destinations;
   }
 
   async function searchDestinations({
