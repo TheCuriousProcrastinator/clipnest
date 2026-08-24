@@ -139,14 +139,22 @@
       </label>
 
       <label class="field">
-        <span>Database</span>
+        <span>Destination</span>
+
+        <input
+          id="notionDestinationSearch"
+          type="search"
+          autocomplete="off"
+          placeholder="Search pages and databases…"
+          disabled
+        />
 
         <select id="notionDataSourceId" disabled>
           <option value="">Choose a workspace first</option>
         </select>
 
         <small id="notionDataSourceHelp">
-          Database discovery will use the selected workspace.
+          Choose a workspace, then search for a page or database.
         </small>
       </label>
 

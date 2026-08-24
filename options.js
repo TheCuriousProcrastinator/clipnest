@@ -18,6 +18,7 @@ async function init() {
     "notionWorkspacePickerLabel",
     "notionWorkspacePickerMenu",
     "notionWorkspaceHelp",
+    "notionDestinationSearch",
     "notionDataSourceId",
     "notionDataSourceHelp",
     "notionTitleProperty",
@@ -79,6 +80,30 @@ async function init() {
   els.notionWorkspaceSelect.addEventListener(
     "change",
     handleNotionWorkspaceChange
+  );
+
+  els.notionDataSourceId.addEventListener(
+    "change",
+    handleNotionDataSourceChange
+  );
+
+  els.notionDestinationSearch.addEventListener(
+    "input",
+    () => {
+      clearTimeout(
+        notionDestinationSearchTimer
+      );
+
+      notionDestinationSearchTimer =
+        setTimeout(
+          () => {
+            void refreshNotionDataSources(
+              els.notionDestinationSearch.value
+            );
+          },
+          300
+        );
+    }
   );
 
   els.notionWorkspacePickerButton.addEventListener(
@@ -207,6 +232,14 @@ async function loadSettings() {
   prepareNotionDestinationField(
     preset
   );
+
+  if (
+    preset?.workspaceId
+  ) {
+    await refreshNotionDataSources(
+      ""
+    );
+  }
 }
 
 async function saveSettings() {
@@ -257,6 +290,12 @@ async function saveSettings() {
 
 let notionWorkspaceCache =
   [];
+
+let notionDestinationCache =
+  [];
+
+let notionDestinationSearchTimer =
+  null;
 
 function notionWorkspaceIconValue(
   workspace
@@ -719,50 +758,161 @@ function getNotionWorkspaceUser(
   );
 }
 
+function notionDestinationValue(
+  destination
+) {
+  if (
+    !destination?.type ||
+    !destination?.id
+  ) {
+    return "";
+  }
+
+  return (
+    `${destination.type}:` +
+    destination.id
+  );
+}
+
+function notionDestinationLabel(
+  destination
+) {
+  const kind =
+    destination.type ===
+      "collection"
+      ? "Database"
+      : "Page";
+
+  const breadcrumb =
+    (
+      destination.parents ||
+      []
+    )
+      .map(
+        (parent) =>
+          parent.name
+      )
+      .filter(Boolean)
+      .join(" / ");
+
+  return (
+    `${kind} · ${
+      destination.name ||
+      "Untitled"
+    }${
+      breadcrumb
+        ? ` — ${breadcrumb}`
+        : ""
+    }`
+  );
+}
+
 function prepareNotionDestinationField(
   preset
 ) {
+  notionDestinationCache =
+    [];
+
   els.notionDataSourceId
     .replaceChildren();
 
-  const option =
+  const placeholder =
     document.createElement(
       "option"
     );
 
-  option.value = "";
+  placeholder.value =
+    "";
 
   if (!preset) {
-    option.textContent =
+    placeholder.textContent =
       "Create a preset first";
+
+    els.notionDestinationSearch.disabled =
+      true;
+
+    els.notionDataSourceId.disabled =
+      true;
 
     els.notionDataSourceHelp.textContent =
       "Create a preset, then choose its workspace.";
   } else if (
     !preset.workspaceId
   ) {
-    option.textContent =
+    placeholder.textContent =
       "Choose a workspace first";
+
+    els.notionDestinationSearch.disabled =
+      true;
+
+    els.notionDataSourceId.disabled =
+      true;
 
     els.notionDataSourceHelp.textContent =
       "Choose the workspace this preset belongs to.";
   } else {
-    option.textContent =
-      "Destination discovery is next";
+    placeholder.textContent =
+      "Search or choose a destination…";
+
+    els.notionDestinationSearch.disabled =
+      false;
+
+    els.notionDataSourceId.disabled =
+      false;
 
     els.notionDataSourceHelp.textContent =
-      `Workspace saved: ${
-        preset.workspaceName ||
-        "Notion workspace"
-      }. Database discovery comes next.`;
+      "Search this workspace for a page or database.";
   }
 
   els.notionDataSourceId.append(
-    option
+    placeholder
   );
 
-  els.notionDataSourceId.disabled =
-    true;
+  if (
+    preset?.destinationType &&
+    preset?.destinationId
+  ) {
+    const option =
+      document.createElement(
+        "option"
+      );
+
+    option.value =
+      notionDestinationValue({
+        type:
+          preset.destinationType,
+
+        id:
+          preset.destinationId
+      });
+
+    option.textContent =
+      notionDestinationLabel({
+        type:
+          preset.destinationType,
+
+        id:
+          preset.destinationId,
+
+        name:
+          preset.destinationName ||
+          "Untitled",
+
+        parents:
+          preset.destinationParents ||
+          []
+      });
+
+    els.notionDataSourceId.append(
+      option
+    );
+
+    els.notionDataSourceId.value =
+      option.value;
+  }
+
+  els.notionDestinationSearch.value =
+    "";
 
   els.notionTitleProperty.value =
     preset?.titleProperty ||
@@ -1040,6 +1190,21 @@ async function handleNotionWorkspaceChange() {
     patch.dataSourceId =
       "";
 
+    patch.destinationType =
+      "";
+
+    patch.destinationId =
+      "";
+
+    patch.destinationName =
+      "";
+
+    patch.destinationIcon =
+      "";
+
+    patch.destinationParents =
+      [];
+
     patch.titleProperty =
       "Name";
 
@@ -1055,6 +1220,10 @@ async function handleNotionWorkspaceChange() {
 
   prepareNotionDestinationField(
     updated
+  );
+
+  await refreshNotionDataSources(
+    ""
   );
 
   showStatus(
@@ -1366,19 +1535,302 @@ function detectNotionProperties(
 }
 
 async function refreshNotionDataSources(
-  preferredId = ""
+  query = ""
 ) {
   const preset =
     await ClipNestNotionStore
       .getActivePreset();
 
-  prepareNotionDestinationField(
-    preset
+  if (
+    !preset ||
+    !preset.workspaceId
+  ) {
+    prepareNotionDestinationField(
+      preset
+    );
+
+    return;
+  }
+
+  const searchText =
+    String(
+      query ||
+      ""
+    ).trim();
+
+  els.notionDestinationSearch.disabled =
+    false;
+
+  els.notionDataSourceId.disabled =
+    true;
+
+  els.notionDataSourceId
+    .replaceChildren();
+
+  const loading =
+    document.createElement(
+      "option"
+    );
+
+  loading.value =
+    "";
+
+  loading.textContent =
+    "Searching Notion…";
+
+  els.notionDataSourceId.append(
+    loading
   );
+
+  els.notionDataSourceHelp.textContent =
+    searchText
+      ? `Searching for "${searchText}"…`
+      : "Loading destinations…";
+
+  try {
+    const result =
+      await ClipNestNotionSession
+        .searchDestinations({
+          workspaceId:
+            preset.workspaceId,
+
+          userId:
+            preset.workspaceUserId,
+
+          query:
+            searchText
+        });
+
+    notionDestinationCache =
+      result.destinations ||
+      [];
+
+    els.notionDataSourceId
+      .replaceChildren();
+
+    const placeholder =
+      document.createElement(
+        "option"
+      );
+
+    placeholder.value =
+      "";
+
+    placeholder.textContent =
+      notionDestinationCache.length
+        ? "Choose a destination…"
+        : "No matching pages or databases";
+
+    els.notionDataSourceId.append(
+      placeholder
+    );
+
+    for (
+      const destination of
+        notionDestinationCache
+    ) {
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        notionDestinationValue(
+          destination
+        );
+
+      option.textContent =
+        notionDestinationLabel(
+          destination
+        );
+
+      els.notionDataSourceId.append(
+        option
+      );
+    }
+
+    const savedValue =
+      notionDestinationValue({
+        type:
+          preset.destinationType,
+
+        id:
+          preset.destinationId
+      });
+
+    if (savedValue) {
+      const existing =
+        notionDestinationCache.some(
+          (destination) =>
+            notionDestinationValue(
+              destination
+            ) ===
+            savedValue
+        );
+
+      if (!existing) {
+        const saved =
+          document.createElement(
+            "option"
+          );
+
+        saved.value =
+          savedValue;
+
+        saved.textContent =
+          notionDestinationLabel({
+            type:
+              preset.destinationType,
+
+            id:
+              preset.destinationId,
+
+            name:
+              preset.destinationName ||
+              "Previously selected destination",
+
+            parents:
+              preset.destinationParents ||
+              []
+          });
+
+        els.notionDataSourceId.append(
+          saved
+        );
+      }
+
+      els.notionDataSourceId.value =
+        savedValue;
+    }
+
+    els.notionDataSourceId.disabled =
+      false;
+
+    els.notionDataSourceHelp.textContent =
+      `${notionDestinationCache.length} ${
+        searchText
+          ? "matching "
+          : ""
+      }destination${
+        notionDestinationCache.length === 1
+          ? ""
+          : "s"
+      } found.`;
+  } catch (error) {
+    notionDestinationCache =
+      [];
+
+    els.notionDataSourceId
+      .replaceChildren();
+
+    const failed =
+      document.createElement(
+        "option"
+      );
+
+    failed.value =
+      "";
+
+    failed.textContent =
+      "Could not search this workspace";
+
+    els.notionDataSourceId.append(
+      failed
+    );
+
+    els.notionDataSourceId.disabled =
+      true;
+
+    els.notionDataSourceHelp.textContent =
+      error.message ||
+      String(error);
+  }
 }
 
 async function handleNotionDataSourceChange() {
-  return;
+  const value =
+    els.notionDataSourceId.value ||
+    "";
+
+  if (!value) {
+    return;
+  }
+
+  const destination =
+    notionDestinationCache.find(
+      (candidate) =>
+        notionDestinationValue(
+          candidate
+        ) === value
+    );
+
+  if (!destination) {
+    const preset =
+      await ClipNestNotionStore
+        .getActivePreset();
+
+    const savedValue =
+      notionDestinationValue({
+        type:
+          preset?.destinationType,
+
+        id:
+          preset?.destinationId
+      });
+
+    if (
+      savedValue ===
+      value
+    ) {
+      return;
+    }
+
+    showStatus(
+      els.notionStatus,
+      "That Notion destination is no longer available.",
+      "error"
+    );
+
+    return;
+  }
+
+  const updated =
+    await ClipNestNotionStore
+      .updateActivePreset({
+        destinationType:
+          destination.type,
+
+        destinationId:
+          destination.id,
+
+        destinationName:
+          destination.name,
+
+        destinationIcon:
+          destination.icon ||
+          "",
+
+        destinationParents:
+          destination.parents ||
+          [],
+
+        dataSourceId:
+          ""
+      });
+
+  els.notionDataSourceHelp.textContent =
+    destination.type ===
+      "collection"
+      ? "Database selected. Property mapping comes next."
+      : "Page selected. ClipNest will save beneath this page.";
+
+  showStatus(
+    els.notionStatus,
+    `Destination selected: ${
+      updated.destinationName
+    }.`,
+    "success"
+  );
 }
 
 async function refreshNotionPresetList() {
