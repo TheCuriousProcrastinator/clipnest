@@ -79,10 +79,12 @@
         </select>
       </label>
 
-      <div class="vault-row">
+      <div class="vault-actions">
         <button id="chooseVault" class="secondary" type="button">Connect another vault</button>
-        <span id="vaultName" class="vault-name">No vault connected</span>
+        <button id="disconnectVault" class="vault-remove" type="button">Remove selected vault</button>
       </div>
+
+      <span id="vaultName" class="vault-name">No vault connected</span>
 
       <label class="field">
         <span>Subfolder <em>optional</em></span>
@@ -96,7 +98,6 @@
         <small>Comma-separated. You can edit them before every save.</small>
       </label>
 
-      <button id="disconnectVault" class="text-button" type="button">Disconnect selected vault</button>
       <div id="obsidianStatus" class="status"></div>
     </section>
 

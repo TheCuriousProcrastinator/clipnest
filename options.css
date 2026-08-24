@@ -444,3 +444,39 @@ button:active {
     flex: 1;
   }
 }
+
+
+/* VAULT MANAGEMENT - V0.7.1 */
+
+.vault-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 8px 0 6px;
+}
+
+.vault-remove {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #db5b27;
+  padding: 8px 4px;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.vault-remove:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.vault-remove:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
+.vault-name {
+  display: block;
+  margin-bottom: 14px;
+}

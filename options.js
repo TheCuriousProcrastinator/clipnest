@@ -236,11 +236,33 @@ async function chooseVault() {
 }
 
 async function disconnectVault() {
-  const id =
+  const info =
     await ClipNestVaultStore
-      .getActiveVaultId();
+      .listVaults();
 
-  if (!id) {
+  const id =
+    els.vaultSelect?.value ||
+    info.activeVaultId ||
+    "";
+
+  const vault =
+    info.vaults.find(
+      (item) =>
+        item.id === id
+    );
+
+  if (!vault) {
+    return;
+  }
+
+  const confirmed =
+    window.confirm(
+      `Remove "${vault.name}" from ClipNest?\n\n` +
+      "This only removes ClipNest's connection. " +
+      "No files in the Obsidian vault will be deleted."
+    );
+
+  if (!confirmed) {
     return;
   }
 
@@ -252,7 +274,7 @@ async function disconnectVault() {
 
   showStatus(
     els.obsidianStatus,
-    "Vault disconnected.",
+    `${vault.name} removed from ClipNest.`,
     "success"
   );
 }
@@ -318,6 +340,11 @@ async function refreshVaultList() {
 
     els.vaultSelect.value =
       info.activeVaultId;
+  }
+
+  if (els.disconnectVault) {
+    els.disconnectVault.disabled =
+      !info.activeVaultId;
   }
 
   await refreshVaultName();
