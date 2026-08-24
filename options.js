@@ -14,6 +14,7 @@ async function init() {
     "removeNotionPreset",
     "notionPresetName",
     "notionDataSourceId",
+    "notionDataSourceHelp",
     "notionTitleProperty",
     "notionUrlProperty",
     "testNotion",
@@ -65,6 +66,11 @@ async function init() {
   els.notionPresetSelect.addEventListener(
     "change",
     switchNotionPreset
+  );
+
+  els.notionDataSourceId.addEventListener(
+    "change",
+    handleNotionDataSourceChange
   );
 
   els.chooseVault.addEventListener(
@@ -173,6 +179,9 @@ async function loadSettings() {
     disabled;
 
   await refreshNotionConnectionStatus();
+  await refreshNotionDataSources(
+    preset?.dataSourceId || ""
+  );
 }
 
 async function saveSettings() {
@@ -282,6 +291,7 @@ async function connectNotion() {
         .connect();
 
     await refreshNotionConnectionStatus();
+    await refreshNotionDataSources();
 
     showStatus(
       els.notionStatus,
@@ -325,6 +335,452 @@ async function disconnectNotion() {
   showStatus(
     els.notionStatus,
     "Disconnected from Notion.",
+    "success"
+  );
+}
+
+let notionDataSourceCache =
+  [];
+
+async function notionApiRequest(
+  path,
+  options = {}
+) {
+  const stored =
+    await chrome.storage.local.get([
+      "notionToken"
+    ]);
+
+  const token =
+    String(
+      stored.notionToken ||
+      ""
+    ).trim();
+
+  if (!token) {
+    throw new Error(
+      "Connect ClipNest to Notion first."
+    );
+  }
+
+  const response =
+    await fetch(
+      `https://api.notion.com/v1${path}`,
+      {
+        ...options,
+
+        headers: {
+          Authorization:
+            `Bearer ${token}`,
+
+          "Notion-Version":
+            "2026-03-11",
+
+          "Content-Type":
+            "application/json",
+
+          ...(
+            options.headers ||
+            {}
+          )
+        }
+      }
+    );
+
+  let data;
+
+  try {
+    data =
+      await response.json();
+  } catch {
+    throw new Error(
+      `Notion returned HTTP ${response.status}.`
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+      data?.code ||
+      `Notion returned HTTP ${response.status}.`
+    );
+  }
+
+  return data;
+}
+
+function notionRichTextPlainText(
+  value
+) {
+  if (!Array.isArray(value)) {
+    return "";
+  }
+
+  return value
+    .map(
+      (item) =>
+        item?.plain_text ||
+        item?.text?.content ||
+        ""
+    )
+    .join("")
+    .trim();
+}
+
+function notionDataSourceName(
+  dataSource
+) {
+  const title =
+    notionRichTextPlainText(
+      dataSource?.title
+    );
+
+  if (title) {
+    return title;
+  }
+
+  const parentTitle =
+    notionRichTextPlainText(
+      dataSource?.parent?.title
+    );
+
+  if (parentTitle) {
+    return parentTitle;
+  }
+
+  return "Untitled database";
+}
+
+async function fetchNotionDataSources() {
+  const results =
+    [];
+
+  let cursor =
+    null;
+
+  for (
+    let page = 0;
+    page < 10;
+    page += 1
+  ) {
+    const body = {
+      page_size:
+        100,
+
+      filter: {
+        property:
+          "object",
+
+        value:
+          "data_source"
+      }
+    };
+
+    if (cursor) {
+      body.start_cursor =
+        cursor;
+    }
+
+    const data =
+      await notionApiRequest(
+        "/search",
+        {
+          method:
+            "POST",
+
+          body:
+            JSON.stringify(
+              body
+            )
+        }
+      );
+
+    for (
+      const item of
+        data.results || []
+    ) {
+      if (
+        item?.object ===
+        "data_source"
+      ) {
+        results.push(
+          item
+        );
+      }
+    }
+
+    if (
+      !data.has_more ||
+      !data.next_cursor
+    ) {
+      break;
+    }
+
+    cursor =
+      data.next_cursor;
+  }
+
+  return results;
+}
+
+function detectNotionProperties(
+  dataSource
+) {
+  const entries =
+    Object.entries(
+      dataSource?.properties ||
+      {}
+    );
+
+  const titleProperties =
+    entries.filter(
+      ([, property]) =>
+        property?.type ===
+        "title"
+    );
+
+  const urlProperties =
+    entries.filter(
+      ([, property]) =>
+        property?.type ===
+        "url"
+    );
+
+  return {
+    titleProperty:
+      titleProperties.length === 1
+        ? titleProperties[0][0]
+        : "",
+
+    urlProperty:
+      urlProperties.length === 1
+        ? urlProperties[0][0]
+        : ""
+  };
+}
+
+async function refreshNotionDataSources(
+  preferredId = ""
+) {
+  if (
+    !els.notionDataSourceId
+  ) {
+    return;
+  }
+
+  const connection =
+    await ClipNestNotionOAuth
+      .getStatus();
+
+  const currentValue =
+    preferredId ||
+    els.notionDataSourceId.value ||
+    "";
+
+  els.notionDataSourceId
+    .replaceChildren();
+
+  const placeholder =
+    document.createElement(
+      "option"
+    );
+
+  placeholder.value = "";
+  placeholder.textContent =
+    connection.connected
+      ? "Loading databases…"
+      : "Connect to Notion first";
+
+  els.notionDataSourceId.append(
+    placeholder
+  );
+
+  if (!connection.connected) {
+    notionDataSourceCache =
+      [];
+
+    els.notionDataSourceHelp.textContent =
+      "Connect ClipNest to Notion first.";
+
+    return;
+  }
+
+  try {
+    notionDataSourceCache =
+      await fetchNotionDataSources();
+
+    els.notionDataSourceId
+      .replaceChildren();
+
+    const empty =
+      document.createElement(
+        "option"
+      );
+
+    empty.value = "";
+
+    empty.textContent =
+      notionDataSourceCache.length
+        ? "Select a Notion database…"
+        : "No shared databases found";
+
+    els.notionDataSourceId.append(
+      empty
+    );
+
+    const sorted = [
+      ...notionDataSourceCache
+    ].sort(
+      (a, b) =>
+        notionDataSourceName(a)
+          .localeCompare(
+            notionDataSourceName(b)
+          )
+    );
+
+    for (
+      const dataSource of sorted
+    ) {
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        dataSource.id;
+
+      option.textContent =
+        notionDataSourceName(
+          dataSource
+        );
+
+      els.notionDataSourceId.append(
+        option
+      );
+    }
+
+    if (
+      currentValue &&
+      !notionDataSourceCache.some(
+        (item) =>
+          item.id ===
+          currentValue
+      )
+    ) {
+      const unavailable =
+        document.createElement(
+          "option"
+        );
+
+      unavailable.value =
+        currentValue;
+
+      unavailable.textContent =
+        "Previously selected database";
+
+      els.notionDataSourceId.append(
+        unavailable
+      );
+    }
+
+    els.notionDataSourceId.value =
+      currentValue;
+
+    els.notionDataSourceHelp.textContent =
+      notionDataSourceCache.length
+        ? `${notionDataSourceCache.length} shared database${
+            notionDataSourceCache.length === 1
+              ? ""
+              : "s"
+          } available.`
+        : "No databases are currently shared with ClipNest. Reconnect and grant access to a database.";
+  } catch (error) {
+    notionDataSourceCache =
+      [];
+
+    els.notionDataSourceId
+      .replaceChildren();
+
+    const failed =
+      document.createElement(
+        "option"
+      );
+
+    failed.value =
+      currentValue;
+
+    failed.textContent =
+      currentValue
+        ? "Previously selected database"
+        : "Could not load databases";
+
+    els.notionDataSourceId.append(
+      failed
+    );
+
+    els.notionDataSourceId.value =
+      currentValue;
+
+    els.notionDataSourceHelp.textContent =
+      error.message ||
+      String(error);
+  }
+}
+
+async function handleNotionDataSourceChange() {
+  const id =
+    els.notionDataSourceId.value;
+
+  if (!id) {
+    return;
+  }
+
+  const dataSource =
+    notionDataSourceCache.find(
+      (item) =>
+        item.id === id
+    );
+
+  if (!dataSource) {
+    return;
+  }
+
+  const detected =
+    detectNotionProperties(
+      dataSource
+    );
+
+  if (detected.titleProperty) {
+    els.notionTitleProperty.value =
+      detected.titleProperty;
+  }
+
+  if (detected.urlProperty) {
+    els.notionUrlProperty.value =
+      detected.urlProperty;
+  }
+
+  const preset =
+    await ClipNestNotionStore
+      .getActivePreset();
+
+  if (preset) {
+    await ClipNestNotionStore
+      .updateActivePreset({
+        dataSourceId:
+          id,
+
+        titleProperty:
+          els.notionTitleProperty.value,
+
+        urlProperty:
+          els.notionUrlProperty.value
+      });
+  }
+
+  showStatus(
+    els.notionStatus,
+    `Database selected: ${notionDataSourceName(dataSource)}.`,
     "success"
   );
 }
@@ -412,6 +868,8 @@ async function createNotionPreset() {
 
   await refreshNotionPresetList();
   await loadSettings();
+
+  await refreshNotionDataSources();
 
   els.notionDataSourceId.focus();
 

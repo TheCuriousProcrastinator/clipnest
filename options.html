@@ -39,7 +39,7 @@
 
     <section class="card">
       <h2>Notion</h2>
-      <p class="help">ClipNest uses a personal/internal Notion integration. The token is stored only in Chrome local extension storage.</p>
+      <p class="help">Connect ClipNest to Notion, then create presets for the databases you want to clip into. OAuth credentials are stored only in Chrome local extension storage.</p>
 
       <div class="notion-connection">
         <div>
@@ -71,9 +71,11 @@
       </label>
 
       <label class="field">
-        <span>Data source ID</span>
-        <input id="notionDataSourceId" type="text" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
-        <small>In Notion: database menu → Manage data sources → data source menu → Copy data source ID.</small>
+        <span>Database</span>
+        <select id="notionDataSourceId">
+          <option value="">Select a Notion database…</option>
+        </select>
+        <small id="notionDataSourceHelp">Only databases shared with ClipNest appear here.</small>
       </label>
 
       <div class="grid2">
