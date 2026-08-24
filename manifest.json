@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Clip to Notion & Obsidian",
-  "version": "0.5.18",
-  "description": "Capture webpages, selections, notes, and tags to Obsidian or Notion.",
+  "name": "ClipNest",
+  "version": "0.5.19",
+  "description": "Web Clipper for Obsidian & Notion",
   "minimum_chrome_version": "122",
   "permissions": [
     "activeTab",

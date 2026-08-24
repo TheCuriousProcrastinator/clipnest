@@ -1,8 +1,10 @@
 <p align="center">
-  <img src="icons/icon128.png" width="96" alt="Web Clipper icon">
+  <img src="icons/icon128.png" width="96" alt="ClipNest icon">
 </p>
 
-# Web Clipper for Obsidian & Notion
+# ClipNest
+
+**Web Clipper for Obsidian & Notion**
 
 A Chrome extension for saving useful things from the web directly into Obsidian or Notion.
 
