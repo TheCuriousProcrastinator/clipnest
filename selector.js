@@ -1170,8 +1170,8 @@
     "position:fixed",
     "z-index:2147483646",
     "pointer-events:none",
-    "border:2px solid #9027db",
-    "background:rgba(144,39,219,.10)",
+    "border:2px solid #db5b27",
+    "background:rgba(219,91,39,.10)",
     "border-radius:4px",
     "box-sizing:border-box",
     "display:none"
