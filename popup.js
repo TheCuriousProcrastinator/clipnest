@@ -317,7 +317,7 @@ async function enhanceStructuredArticleCapture(
     delete capture.structuredMarkdown;
 
     if (
-      shouldPreferStructuredArticle(
+      ClipNestArticleEngine.shouldPreferStructuredArticle(
         capture,
         result
       )
@@ -433,7 +433,7 @@ function buildPayload() {
 
   if (contentMode === "article") {
     const articleMarkdown =
-      cleanArticleMarkdown(
+      ClipNestArticleEngine.cleanArticleMarkdown(
         state.capture.structuredMarkdown ||
           state.capture.markdown ||
           "",
