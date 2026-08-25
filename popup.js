@@ -177,6 +177,13 @@ async function init() {
   // Never block it on vault/template scanning.
   await captureCurrentPage();
 
+  if (
+    state.destination ===
+      "notion"
+  ) {
+    await restoreNotionPresetBuilderState();
+  }
+
   // Templates may appear a moment later without
   // preventing the user from using the clipper.
   void loadObsidianTemplates(
@@ -412,7 +419,7 @@ function createNotionPresetChooser() {
   newPreset.addEventListener(
     "click",
     () => {
-      showNotionDestinationPicker();
+      void startNotionPresetBuilder();
     }
   );
 
@@ -789,7 +796,7 @@ function createNotionDestinationPicker() {
   back.addEventListener(
     "click",
     () => {
-      void showNotionPresetChooser();
+      void cancelNotionPresetBuilder();
     }
   );
 
@@ -1154,6 +1161,9 @@ let notionPresetBuilderSearchTimer =
 
 let notionPresetBuilderDraft =
   null;
+
+const NOTION_PRESET_BUILDER_STATE_KEY =
+  "clipnestNotionPresetBuilderStateV1";
 
 function notionBuilderWorkspaceUser(
   workspace
@@ -1903,8 +1913,22 @@ function renderNotionBuilderResults() {
                 workspace
               ),
 
-            destination
+            destination,
+
+            properties:
+              [],
+
+            configuredFields:
+              [],
+
+            presetName:
+              destination.name ||
+              "New preset"
           };
+
+          void persistNotionPresetBuilderState(
+            "config"
+          );
 
           renderNotionPresetConfigScreen();
         }
@@ -2015,7 +2039,10 @@ async function searchNotionBuilderDestinations() {
   }
 }
 
-async function loadNotionDestinationPicker() {
+async function loadNotionDestinationPicker(
+  savedState =
+    null
+) {
   const results =
     document.getElementById(
       "notionBuilderResults"
@@ -2077,31 +2104,68 @@ async function loadNotionDestinationPicker() {
       await ClipNestNotionStore
         .getActivePreset();
 
+    const requestedWorkspaceId =
+      String(
+        savedState?.workspaceId ||
+        ""
+      );
+
     const preferredWorkspaceId =
       notionPresetBuilderWorkspaces
         .some(
           (workspace) =>
             workspace.id ===
-            active?.workspaceId
+            requestedWorkspaceId
         )
-        ? active.workspaceId
-        : notionPresetBuilderWorkspaces[
-            0
-          ].id;
+        ? requestedWorkspaceId
+        : notionPresetBuilderWorkspaces
+            .some(
+              (workspace) =>
+                workspace.id ===
+                active?.workspaceId
+            )
+          ? active.workspaceId
+          : notionPresetBuilderWorkspaces[
+              0
+            ].id;
 
     renderNotionBuilderWorkspaceOptions(
       preferredWorkspaceId
     );
+
+    const filter =
+      document.getElementById(
+        "notionBuilderFilter"
+      );
 
     if (search) {
       search.disabled =
         false;
 
       search.value =
+        savedState?.search ||
         "";
     }
 
+    if (
+      filter &&
+      [
+        "all",
+        "collection",
+        "page"
+      ].includes(
+        savedState?.filter
+      )
+    ) {
+      filter.value =
+        savedState.filter;
+    }
+
     await searchNotionBuilderDestinations();
+
+    void persistNotionPresetBuilderState(
+      "destination"
+    );
   } catch (error) {
     notionPresetBuilderWorkspaces =
       [];
@@ -2127,6 +2191,594 @@ async function loadNotionDestinationPicker() {
       failed
     );
   }
+}
+
+async function persistNotionPresetBuilderState(
+  screen =
+    "config"
+) {
+  const nameInput =
+    document.getElementById(
+      "notionBuilderPresetName"
+    );
+
+  const workspaceSelect =
+    document.getElementById(
+      "notionBuilderWorkspace"
+    );
+
+  const search =
+    document.getElementById(
+      "notionBuilderSearch"
+    );
+
+  const filter =
+    document.getElementById(
+      "notionBuilderFilter"
+    );
+
+  if (
+    notionPresetBuilderDraft &&
+    nameInput
+  ) {
+    notionPresetBuilderDraft
+      .presetName =
+      nameInput.value;
+  }
+
+  await chrome.storage.local.set({
+    [NOTION_PRESET_BUILDER_STATE_KEY]: {
+      screen,
+
+      workspaceId:
+        workspaceSelect?.value ||
+        notionPresetBuilderDraft
+          ?.workspace
+          ?.id ||
+        "",
+
+      search:
+        search?.value ||
+        "",
+
+      filter:
+        filter?.value ||
+        "all",
+
+      draft:
+        notionPresetBuilderDraft
+          ? {
+              workspace:
+                notionPresetBuilderDraft
+                  .workspace ||
+                null,
+
+              userId:
+                notionPresetBuilderDraft
+                  .userId ||
+                "",
+
+              destination:
+                notionPresetBuilderDraft
+                  .destination ||
+                null,
+
+              properties:
+                Array.isArray(
+                  notionPresetBuilderDraft
+                    .properties
+                )
+                  ? notionPresetBuilderDraft
+                      .properties
+                  : [],
+
+              configuredFields:
+                Array.isArray(
+                  notionPresetBuilderDraft
+                    .configuredFields
+                )
+                  ? notionPresetBuilderDraft
+                      .configuredFields
+                  : [],
+
+              presetName:
+                notionPresetBuilderDraft
+                  .presetName ||
+                nameInput?.value ||
+                ""
+            }
+          : null
+    }
+  });
+}
+
+async function clearNotionPresetBuilderState() {
+  await chrome.storage.local.remove(
+    NOTION_PRESET_BUILDER_STATE_KEY
+  );
+}
+
+async function startNotionPresetBuilder() {
+  notionPresetBuilderDraft =
+    null;
+
+  await clearNotionPresetBuilderState();
+
+  showNotionDestinationPicker();
+}
+
+async function cancelNotionPresetBuilder() {
+  notionPresetBuilderDraft =
+    null;
+
+  await clearNotionPresetBuilderState();
+
+  await showNotionPresetChooser();
+}
+
+function returnNotionBuilderToDestinationPicker() {
+  document
+    .getElementById(
+      "notionPresetConfigScreen"
+    )
+    ?.classList.add(
+      "hidden"
+    );
+
+  document
+    .getElementById(
+      "notionDestinationPicker"
+    )
+    ?.classList.remove(
+      "hidden"
+    );
+
+  void persistNotionPresetBuilderState(
+    "destination"
+  );
+}
+
+function notionBuilderPresetFieldsForStore() {
+  const configured =
+    Array.isArray(
+      notionPresetBuilderDraft
+        ?.configuredFields
+    )
+      ? notionPresetBuilderDraft
+          .configuredFields
+      : [];
+
+  return configured.map(
+    (
+      field,
+      index
+    ) => {
+      const type =
+        String(
+          field.propertyType ||
+          ""
+        );
+
+      const mapping =
+        String(
+          field.mapping ||
+          ""
+        );
+
+      let role =
+        "custom";
+
+      let source =
+        "manual";
+
+      let visible =
+        true;
+
+      let required =
+        false;
+
+      let defaultValue =
+        "";
+
+      if (
+        type === "title"
+      ) {
+        role =
+          "title";
+
+        source =
+          "page_title";
+
+        required =
+          true;
+      } else if (
+        type === "url" &&
+        mapping ===
+          "Page URL"
+      ) {
+        role =
+          "url";
+
+        source =
+          "page_url";
+
+        visible =
+          false;
+      } else if (
+        type ===
+          "multi_select" &&
+        mapping ===
+          "Tags"
+      ) {
+        role =
+          "tags";
+
+        source =
+          "manual";
+
+        defaultValue =
+          [];
+      }
+
+      return {
+        role,
+
+        propertyId:
+          field.propertyId,
+
+        propertyName:
+          field.propertyName,
+
+        propertyType:
+          field.propertyType,
+
+        label:
+          field.propertyName,
+
+        order:
+          index,
+
+        visible,
+
+        source,
+
+        required,
+
+        defaultValue,
+
+        options:
+          Array.isArray(
+            field.options
+          )
+            ? field.options
+            : []
+      };
+    }
+  );
+}
+
+async function createNotionPresetFromBuilder() {
+  const draft =
+    notionPresetBuilderDraft;
+
+  const button =
+    document.getElementById(
+      "notionBuilderCreatePreset"
+    );
+
+  const nameInput =
+    document.getElementById(
+      "notionBuilderPresetName"
+    );
+
+  if (
+    !draft?.workspace ||
+    !draft?.destination ||
+    !draft?.userId
+  ) {
+    setStatus(
+      "Preset destination is incomplete.",
+      "error"
+    );
+
+    return;
+  }
+
+  const name =
+    String(
+      nameInput?.value ||
+      draft.destination.name ||
+      "New preset"
+    ).trim();
+
+  if (!name) {
+    setStatus(
+      "Enter a preset name.",
+      "error"
+    );
+
+    nameInput?.focus();
+
+    return;
+  }
+
+  const fields =
+    notionBuilderPresetFieldsForStore();
+
+  const title =
+    fields.find(
+      (field) =>
+        field.role ===
+          "title"
+    );
+
+  if (!title) {
+    setStatus(
+      "A Title field is required.",
+      "error"
+    );
+
+    return;
+  }
+
+  const url =
+    fields.find(
+      (field) =>
+        field.role ===
+          "url"
+    );
+
+  const tags =
+    fields.find(
+      (field) =>
+        field.role ===
+          "tags"
+    );
+
+  if (button) {
+    button.disabled =
+      true;
+
+    button.textContent =
+      "Creating…";
+  }
+
+  try {
+    const destination =
+      draft.destination;
+
+    const isPage =
+      destination.type ===
+        "page";
+
+    const preset =
+      await ClipNestNotionStore
+        .createPreset({
+          name,
+
+          workspaceId:
+            draft.workspace.id,
+
+          workspaceName:
+            draft.workspace.name ||
+            "Notion",
+
+          workspaceUserId:
+            draft.userId,
+
+          workspaceSpaceViewIds:
+            Array.isArray(
+              draft.workspace
+                .spaceViewIds
+            )
+              ? draft.workspace
+                  .spaceViewIds
+              : [],
+
+          dataSourceId:
+            destination.dataSourceId ||
+            "",
+
+          destinationType:
+            destination.type,
+
+          destinationId:
+            destination.id,
+
+          destinationName:
+            destination.name ||
+            "Untitled",
+
+          destinationIcon:
+            destination.icon ||
+            "",
+
+          destinationParents:
+            Array.isArray(
+              destination.parents
+            )
+              ? destination.parents
+              : [],
+
+          destinationParentId:
+            destination.parentId ||
+            destination.parentPageId ||
+            "",
+
+          destinationParentTable:
+            destination.parentTable ||
+            "",
+
+          fieldsConfigured:
+            true,
+
+          fields,
+
+          popupProperties:
+            fields
+              .filter(
+                (field) =>
+                  field.visible !==
+                    false
+              )
+              .map(
+                (field) =>
+                  field.propertyId
+              ),
+
+          propertyIds: {
+            title:
+              isPage
+                ? ""
+                : title.propertyId,
+
+            url:
+              url?.propertyId ||
+              "",
+
+            tags:
+              tags?.propertyId ||
+              ""
+          },
+
+          titleProperty:
+            isPage
+              ? "Name"
+              : title.propertyName,
+
+          urlProperty:
+            url?.propertyName ||
+            "",
+
+          tagsProperty:
+            tags?.propertyName ||
+            "",
+
+          propertyMappings: {
+            title:
+              isPage
+                ? "Name"
+                : title.propertyName,
+
+            url:
+              url?.propertyName ||
+              "",
+
+            tags:
+              tags?.propertyName ||
+              ""
+          },
+
+          propertyDefaults:
+            {}
+        });
+
+    await ClipNestNotionStore
+      .setActivePreset(
+        preset.id
+      );
+
+    await clearNotionPresetBuilderState();
+
+    notionPresetBuilderDraft =
+      null;
+
+    await loadNotionPresetPicker();
+
+    notionSelectedTags =
+      [];
+
+    if (els.tagsInput) {
+      els.tagsInput.value =
+        "";
+    }
+
+    renderNotionSelectedTags();
+
+    await loadNotionTagOptions();
+
+    document
+      .getElementById(
+        "notionPresetConfigScreen"
+      )
+      ?.classList.add(
+        "hidden"
+      );
+
+    showNotionPresetClip(
+      preset
+    );
+  } catch (error) {
+    setStatus(
+      error?.message ||
+      String(error),
+      "error"
+    );
+  } finally {
+    if (button) {
+      button.textContent =
+        "Create preset";
+
+      button.disabled =
+        false;
+    }
+  }
+}
+
+async function restoreNotionPresetBuilderState() {
+  if (
+    state.destination !==
+      "notion"
+  ) {
+    return false;
+  }
+
+  const stored =
+    await chrome.storage.local.get(
+      NOTION_PRESET_BUILDER_STATE_KEY
+    );
+
+  const saved =
+    stored[
+      NOTION_PRESET_BUILDER_STATE_KEY
+    ];
+
+  if (!saved) {
+    return false;
+  }
+
+  if (
+    saved.screen ===
+      "config" &&
+    saved.draft?.workspace &&
+    saved.draft?.destination
+  ) {
+    notionPresetBuilderDraft = {
+      ...saved.draft
+    };
+
+    renderNotionPresetConfigScreen(
+      {
+        restore:
+          true
+      }
+    );
+
+    return true;
+  }
+
+  if (
+    saved.screen ===
+      "destination"
+  ) {
+    showNotionDestinationPicker(
+      saved
+    );
+
+    return true;
+  }
+
+  return false;
 }
 
 function createNotionPresetConfigScreen() {
@@ -2187,17 +2839,7 @@ function createNotionPresetConfigScreen() {
   back.addEventListener(
     "click",
     () => {
-      section.classList.add(
-        "hidden"
-      );
-
-      document
-        .getElementById(
-          "notionDestinationPicker"
-        )
-        ?.classList.remove(
-          "hidden"
-        );
+      returnNotionBuilderToDestinationPicker();
     }
   );
 
@@ -2270,17 +2912,7 @@ function createNotionPresetConfigScreen() {
   location.addEventListener(
     "click",
     () => {
-      section.classList.add(
-        "hidden"
-      );
-
-      document
-        .getElementById(
-          "notionDestinationPicker"
-        )
-        ?.classList.remove(
-          "hidden"
-        );
+      returnNotionBuilderToDestinationPicker();
     }
   );
 
@@ -2325,6 +2957,30 @@ function createNotionPresetConfigScreen() {
 
   create.disabled =
     true;
+
+  nameInput.addEventListener(
+    "input",
+    () => {
+      if (
+        notionPresetBuilderDraft
+      ) {
+        notionPresetBuilderDraft
+          .presetName =
+          nameInput.value;
+
+        void persistNotionPresetBuilderState(
+          "config"
+        );
+      }
+    }
+  );
+
+  create.addEventListener(
+    "click",
+    () => {
+      void createNotionPresetFromBuilder();
+    }
+  );
 
   section.append(
     header,
@@ -2730,6 +3386,10 @@ function renderNotionBuilderConfiguredFields() {
 
   create.disabled =
     !hasTitle;
+
+  void persistNotionPresetBuilderState(
+    "config"
+  );
 }
 
 function renderNotionBuilderAddFieldPicker(
@@ -3239,7 +3899,12 @@ async function loadNotionPresetConfigFields() {
   }
 }
 
-function renderNotionPresetConfigScreen() {
+function renderNotionPresetConfigScreen(
+  {
+    restore =
+      false
+  } = {}
+) {
   const draft =
     notionPresetBuilderDraft;
 
@@ -3283,8 +3948,12 @@ function renderNotionPresetConfigScreen() {
   }
 
   nameInput.value =
+    draft.presetName ||
     draft.destination.name ||
     "New preset";
+
+  draft.presetName =
+    nameInput.value;
 
   location.replaceChildren();
 
@@ -3355,41 +4024,6 @@ function renderNotionPresetConfigScreen() {
 
   fields.replaceChildren();
 
-  if (
-    draft.destination.type ===
-      "page"
-  ) {
-    const row =
-      document.createElement(
-        "div"
-      );
-
-    row.className =
-      "notion-builder-field-row";
-
-    row.innerHTML =
-      '<div><strong>Title</strong><small>Child page</small></div><span>→ Page Title</span>';
-
-    fields.append(
-      row
-    );
-  } else {
-    const loading =
-      document.createElement(
-        "div"
-      );
-
-    loading.className =
-      "notion-builder-placeholder";
-
-    loading.textContent =
-      "Loading database fields…";
-
-    fields.append(
-      loading
-    );
-  }
-
   create.disabled =
     true;
 
@@ -3401,13 +4035,50 @@ function renderNotionPresetConfigScreen() {
       "hidden"
     );
 
+  notionPresetChooserEl
+    ?.classList.add(
+      "hidden"
+    );
+
+  notionClipHeaderEl
+    ?.classList.add(
+      "hidden"
+    );
+
+  setNotionClipRangeHidden(
+    true
+  );
+
+  notionDynamicFieldsHost
+    ?.classList.add(
+      "hidden"
+    );
+
   screen.classList.remove(
     "hidden"
   );
 
-  nameInput.focus();
+  if (
+    restore &&
+    Array.isArray(
+      draft.configuredFields
+    ) &&
+    draft.configuredFields.length &&
+    Array.isArray(
+      draft.properties
+    ) &&
+    draft.properties.length
+  ) {
+    renderNotionBuilderConfiguredFields();
 
-  void loadNotionPresetConfigFields();
+    void persistNotionPresetBuilderState(
+      "config"
+    );
+  } else {
+    void loadNotionPresetConfigFields();
+  }
+
+  nameInput.focus();
 }
 
 function ensureNotionDestinationPicker() {
@@ -3432,7 +4103,10 @@ function ensureNotionDestinationPicker() {
   return picker;
 }
 
-function showNotionDestinationPicker() {
+function showNotionDestinationPicker(
+  savedState =
+    null
+) {
   if (
     state.destination !==
       "notion"
@@ -3451,6 +4125,14 @@ function showNotionDestinationPicker() {
     "hidden"
   );
 
+  document
+    .getElementById(
+      "notionPresetConfigScreen"
+    )
+    ?.classList.add(
+      "hidden"
+    );
+
   setNotionClipRangeHidden(
     true
   );
@@ -3463,7 +4145,9 @@ function showNotionDestinationPicker() {
     "hidden"
   );
 
-  void loadNotionDestinationPicker();
+  void loadNotionDestinationPicker(
+    savedState
+  );
 }
 
 async function showNotionPresetChooser() {
