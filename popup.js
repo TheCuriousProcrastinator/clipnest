@@ -127,11 +127,31 @@ async function init() {
     "defaultDestination",
     "obsidianDefaultTags",
     "obsidianDefaultTemplatePath",
-    "obsidianSubfolder"
+    "obsidianSubfolder",
+    NOTION_PRESET_BUILDER_STATE_KEY
   ]);
 
+  const savedNotionBuilderState =
+    settings[
+      NOTION_PRESET_BUILDER_STATE_KEY
+    ] ||
+    null;
+
+  notionPresetBuilderResumePending =
+    Boolean(
+      savedNotionBuilderState
+    );
+
+  const initialDestination =
+    savedNotionBuilderState
+      ? "notion"
+      : settings.defaultDestination ===
+          "notion"
+        ? "notion"
+        : "obsidian";
+
   els.tagsInput.value =
-    settings.defaultDestination ===
+    initialDestination ===
       "notion"
       ? ""
       : (
@@ -140,10 +160,7 @@ async function init() {
         );
 
   setDestination(
-    settings.defaultDestination ===
-      "notion"
-      ? "notion"
-      : "obsidian"
+    initialDestination
   );
 
   setContentMode("article");
@@ -181,7 +198,18 @@ async function init() {
     state.destination ===
       "notion"
   ) {
-    await restoreNotionPresetBuilderState();
+    const restored =
+      await restoreNotionPresetBuilderState();
+
+    notionPresetBuilderResumePending =
+      false;
+
+    if (!restored) {
+      await showNotionPresetChooser();
+    }
+  } else {
+    notionPresetBuilderResumePending =
+      false;
   }
 
   // Templates may appear a moment later without
@@ -1164,6 +1192,9 @@ let notionPresetBuilderDraft =
 
 const NOTION_PRESET_BUILDER_STATE_KEY =
   "clipnestNotionPresetBuilderStateV1";
+
+let notionPresetBuilderResumePending =
+  false;
 
 function notionBuilderWorkspaceUser(
   workspace
@@ -4079,6 +4110,10 @@ function renderNotionPresetConfigScreen(
   }
 
   nameInput.focus();
+
+  if (!restore) {
+    nameInput.select();
+  }
 }
 
 function ensureNotionDestinationPicker() {
@@ -4874,7 +4909,11 @@ function setDestination(destination) {
     destination ===
       "notion"
   ) {
-    void showNotionPresetChooser();
+    if (
+      !notionPresetBuilderResumePending
+    ) {
+      void showNotionPresetChooser();
+    }
 
     return;
   }
