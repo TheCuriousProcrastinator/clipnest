@@ -1697,13 +1697,60 @@ function notionSchemaFieldIsSupported(
   return [
     "title",
     "url",
-    "multi_select"
+    "multi_select",
+    "select",
+    "status",
+    "text",
+    "rich_text"
   ].includes(
     String(
       property?.type ||
       ""
     )
   );
+}
+
+function notionSchemaOptionLabel(
+  option
+) {
+  return String(
+    option?.value ||
+    option?.name ||
+    option?.label ||
+    option?.id ||
+    ""
+  ).trim();
+}
+
+function findConfiguredNotionFieldByPropertyId(
+  preset,
+  propertyId
+) {
+  const id =
+    String(
+      propertyId ||
+      ""
+    ).trim();
+
+  if (!id) {
+    return null;
+  }
+
+  return (
+    Array.isArray(
+      preset?.fields
+    )
+      ? preset.fields
+      : []
+  ).find(
+    (field) =>
+      String(
+        field?.propertyId ||
+        ""
+      ).trim() ===
+        id
+  ) ||
+  null;
 }
 
 function makeNotionSchemaFieldRow(
@@ -1748,20 +1795,37 @@ function makeNotionSchemaFieldRow(
       "small"
     );
 
-  description.textContent =
-    notionSchemaFieldIsSupported(
-      property
-    )
-      ? (
-          property.type ===
-            "title"
-            ? "Filled from the current webpage title."
-            : property.type ===
-                "url"
-              ? "Can receive the current webpage URL."
-              : "Can be used as the preset's tag field."
-        )
-      : "This property type is not supported by ClipNest yet.";
+  const type =
+    String(
+      property.type ||
+      ""
+    );
+
+  if (type === "title") {
+    description.textContent =
+      "Filled from the current webpage title.";
+  } else if (type === "url") {
+    description.textContent =
+      "Can receive the current webpage URL.";
+  } else if (type === "multi_select") {
+    description.textContent =
+      "Can be used as the preset's tag field.";
+  } else if (
+    type === "select" ||
+    type === "status"
+  ) {
+    description.textContent =
+      "Choose a Notion value while clipping.";
+  } else if (
+    type === "text" ||
+    type === "rich_text"
+  ) {
+    description.textContent =
+      "Enter text while clipping.";
+  } else {
+    description.textContent =
+      "This property type is not supported by ClipNest yet.";
+  }
 
   copy.append(
     name,
@@ -1816,10 +1880,7 @@ function makeNotionSchemaFieldRow(
       ""
     );
 
-  if (
-    property.type ===
-      "title"
-  ) {
+  if (type === "title") {
     const label =
       document.createElement(
         "label"
@@ -1854,26 +1915,23 @@ function makeNotionSchemaFieldRow(
             false
         : true;
 
-    const text =
+    const labelText =
       document.createElement(
         "span"
       );
 
-    text.textContent =
+    labelText.textContent =
       "Show in clipper";
 
     label.append(
       input,
-      text
+      labelText
     );
 
     action.append(
       label
     );
-  } else if (
-    property.type ===
-      "url"
-  ) {
+  } else if (type === "url") {
     const label =
       document.createElement(
         "label"
@@ -1900,25 +1958,24 @@ function makeNotionSchemaFieldRow(
       mappedUrl ===
         propertyId;
 
-    const text =
+    const labelText =
       document.createElement(
         "span"
       );
 
-    text.textContent =
+    labelText.textContent =
       "Save page URL";
 
     label.append(
       input,
-      text
+      labelText
     );
 
     action.append(
       label
     );
   } else if (
-    property.type ===
-      "multi_select"
+    type === "multi_select"
   ) {
     const label =
       document.createElement(
@@ -1951,17 +2008,78 @@ function makeNotionSchemaFieldRow(
         "notionTagsVisible";
     }
 
-    const text =
+    const labelText =
       document.createElement(
         "span"
       );
 
-    text.textContent =
+    labelText.textContent =
       "Use as Tags";
 
     label.append(
       input,
-      text
+      labelText
+    );
+
+    action.append(
+      label
+    );
+  } else if (
+    [
+      "select",
+      "status",
+      "text",
+      "rich_text"
+    ].includes(
+      type
+    )
+  ) {
+    const label =
+      document.createElement(
+        "label"
+      );
+
+    label.className =
+      "notion-field-visibility";
+
+    const input =
+      document.createElement(
+        "input"
+      );
+
+    input.type =
+      "checkbox";
+
+    input.dataset.notionFieldAction =
+      "custom-visible";
+
+    input.dataset.propertyId =
+      propertyId;
+
+    const configured =
+      findConfiguredNotionFieldByPropertyId(
+        preset,
+        propertyId
+      );
+
+    input.checked =
+      Boolean(
+        configured &&
+        configured.visible !==
+          false
+      );
+
+    const labelText =
+      document.createElement(
+        "span"
+      );
+
+    labelText.textContent =
+      "Show in clipper";
+
+    label.append(
+      input,
+      labelText
     );
 
     action.append(
@@ -1985,8 +2103,7 @@ function makeNotionSchemaFieldRow(
   }
 
   if (
-    property.type ===
-      "title" &&
+    type === "title" &&
     mappedTitle &&
     mappedTitle !==
       propertyId
@@ -2649,6 +2766,120 @@ function buildConfiguredNotionFields(
           "tags",
           []
         )
+    });
+  }
+
+  const customInputs =
+    [
+      ...document.querySelectorAll(
+        '[data-notion-field-action="custom-visible"]'
+      )
+    ];
+
+  for (
+    const property of
+      notionRenderedSchemaProperties
+  ) {
+    const type =
+      String(
+        property?.type ||
+        ""
+      );
+
+    if (
+      ![
+        "select",
+        "status",
+        "text",
+        "rich_text"
+      ].includes(
+        type
+      )
+    ) {
+      continue;
+    }
+
+    const input =
+      customInputs.find(
+        (candidate) =>
+          candidate.dataset
+            .propertyId ===
+          String(
+            property.id ||
+            ""
+          )
+      );
+
+    if (
+      !input ||
+      !input.checked
+    ) {
+      continue;
+    }
+
+    const existing =
+      findConfiguredNotionFieldByPropertyId(
+        preset,
+        property.id
+      );
+
+    fields.push({
+      role:
+        "custom",
+
+      propertyId:
+        property.id,
+
+      propertyName:
+        property.name,
+
+      propertyType:
+        type,
+
+      label:
+        property.name,
+
+      order:
+        fields.length,
+
+      visible:
+        true,
+
+      source:
+        "manual",
+
+      required:
+        false,
+
+      defaultValue:
+        existing?.defaultValue ??
+        "",
+
+      options:
+        Array.isArray(
+          property.options
+        )
+          ? property.options.map(
+              (option) => ({
+                id:
+                  String(
+                    option?.id ||
+                    ""
+                  ),
+
+                value:
+                  notionSchemaOptionLabel(
+                    option
+                  ),
+
+                color:
+                  String(
+                    option?.color ||
+                    ""
+                  )
+              })
+            )
+          : []
     });
   }
 

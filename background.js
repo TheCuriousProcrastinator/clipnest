@@ -2168,6 +2168,62 @@ async function saveToNotion(
       ""
     ).trim();
 
+  const dynamicValues =
+    payload?.notionFields &&
+    typeof payload.notionFields ===
+      "object"
+      ? payload.notionFields
+      : {};
+
+  const customFields =
+    (
+      Array.isArray(
+        preset.fields
+      )
+        ? preset.fields
+        : []
+    )
+      .filter(
+        (field) =>
+          [
+            "select",
+            "status",
+            "text",
+            "rich_text"
+          ].includes(
+            String(
+              field?.propertyType ||
+              ""
+            )
+          )
+      )
+      .map(
+        (field) => ({
+          propertyId:
+            String(
+              field.propertyId ||
+              ""
+            ).trim(),
+
+          propertyType:
+            String(
+              field.propertyType ||
+              ""
+            ).trim(),
+
+          value:
+            Object.prototype
+              .hasOwnProperty.call(
+                dynamicValues,
+                field.propertyId
+              )
+              ? dynamicValues[
+                  field.propertyId
+                ]
+              : field.defaultValue
+        })
+      );
+
   let page =
     null;
 
@@ -2215,7 +2271,9 @@ async function saveToNotion(
               preset.propertyIds
                 ?.tags ||
               ""
-          }
+          },
+
+          customFields
         });
 
     page =

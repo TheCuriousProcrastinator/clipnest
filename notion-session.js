@@ -2119,7 +2119,8 @@
     title = "",
     url = "",
     tags = [],
-    propertyIds = {}
+    propertyIds = {},
+    customFields = []
   } = {}) {
     const properties =
       {};
@@ -2200,6 +2201,69 @@
           cleanTags.join(
             ","
           )
+        ]
+      ];
+    }
+
+    for (
+      const field of
+        (
+          Array.isArray(
+            customFields
+          )
+            ? customFields
+            : []
+        )
+    ) {
+      const propertyId =
+        String(
+          field?.propertyId ||
+          ""
+        ).trim();
+
+      const propertyType =
+        String(
+          field?.propertyType ||
+          ""
+        ).trim();
+
+      const value =
+        String(
+          field?.value ??
+          ""
+        ).trim();
+
+      if (
+        !propertyId ||
+        !value ||
+        ![
+          "select",
+          "status",
+          "text",
+          "rich_text"
+        ].includes(
+          propertyType
+        )
+      ) {
+        continue;
+      }
+
+      if (
+        propertyId ===
+          titleId ||
+        propertyId ===
+          urlId ||
+        propertyId ===
+          tagsId
+      ) {
+        continue;
+      }
+
+      properties[
+        propertyId
+      ] = [
+        [
+          value
         ]
       ];
     }

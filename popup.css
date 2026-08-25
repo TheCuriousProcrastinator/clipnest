@@ -1524,3 +1524,16 @@ body[data-destination="notion"]
 .notion-dynamic-field-hidden {
   display: none !important;
 }
+
+/* =================================
+   NOTION DYNAMIC PROPERTY INPUTS
+   ================================= */
+
+.notion-custom-field select,
+.notion-custom-field input {
+  width: 100%;
+}
+
+.notion-custom-field select {
+  cursor: pointer;
+}
