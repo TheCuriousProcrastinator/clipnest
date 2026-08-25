@@ -167,78 +167,68 @@
       <div class="notion-fields-editor">
         <div class="notion-fields-editor-heading">
           <strong>Fields</strong>
-          <small>
-            Choose which Notion properties this preset uses and which ones appear while clipping.
+          <small id="notionFieldsEditorHelp">
+            Choose a destination to configure its fields.
           </small>
         </div>
 
         <div
-          class="notion-field-config-row"
-          data-notion-field-role="title"
+          id="notionPageFieldsPanel"
+          class="notion-destination-fields-panel hidden"
         >
-          <div class="notion-field-config-copy">
-            <strong>Title</strong>
-            <small>Filled from the current page title.</small>
+          <div class="notion-page-field-row">
+            <div class="notion-field-config-copy">
+              <strong>Title</strong>
+              <small>
+                Filled from the current webpage title.
+              </small>
+            </div>
+
+            <span class="notion-field-type-badge">
+              title
+            </span>
+
+            <span class="notion-field-automatic">
+              Child page
+            </span>
           </div>
 
-          <select id="notionTitleProperty" disabled>
-            <option value="">Choose a database first</option>
-          </select>
-
-          <label class="notion-field-visibility">
-            <input
-              id="notionTitleVisible"
-              type="checkbox"
-              checked
-            />
-            <span>Show in clipper</span>
-          </label>
+          <small class="notion-fields-editor-note">
+            This destination is a page. ClipNest creates a child page beneath it, so database properties do not apply.
+          </small>
         </div>
 
         <div
-          class="notion-field-config-row"
-          data-notion-field-role="url"
+          id="notionDatabaseFieldsPanel"
+          class="notion-destination-fields-panel hidden"
         >
-          <div class="notion-field-config-copy">
-            <strong>URL</strong>
-            <small>Filled automatically from the current page URL.</small>
-          </div>
+          <div
+            id="notionSchemaFields"
+            class="notion-schema-fields"
+          ></div>
+
+          <small class="notion-fields-editor-note">
+            Fields come directly from this Notion database.
+          </small>
+        </div>
+
+        <div
+          class="notion-property-bridge"
+          hidden
+          aria-hidden="true"
+        >
+          <select id="notionTitleProperty" disabled>
+            <option value="">Choose a database first</option>
+          </select>
 
           <select id="notionUrlProperty" disabled>
             <option value="">None</option>
           </select>
 
-          <span class="notion-field-automatic">
-            Automatic
-          </span>
-        </div>
-
-        <div
-          class="notion-field-config-row"
-          data-notion-field-role="tags"
-        >
-          <div class="notion-field-config-copy">
-            <strong>Tags</strong>
-            <small>Uses a Notion multi-select property.</small>
-          </div>
-
           <select id="notionTagsProperty" disabled>
             <option value="">None</option>
           </select>
-
-          <label class="notion-field-visibility">
-            <input
-              id="notionTagsVisible"
-              type="checkbox"
-              checked
-            />
-            <span>Show in clipper</span>
-          </label>
         </div>
-
-        <small class="notion-fields-editor-note">
-          Title, URL, and multi-select are supported in this first Fields editor.
-        </small>
       </div>
 
       <div id="notionStatus" class="status"></div>

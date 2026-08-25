@@ -1622,6 +1622,739 @@ function resolveNotionPropertyIds(
   };
 }
 
+let notionRenderedSchemaProperties =
+  [];
+
+function notionPropertyTypeLabel(
+  type
+) {
+  const labels = {
+    title:
+      "Title",
+
+    url:
+      "URL",
+
+    multi_select:
+      "Multi-select",
+
+    select:
+      "Select",
+
+    status:
+      "Status",
+
+    text:
+      "Text",
+
+    rich_text:
+      "Rich text",
+
+    checkbox:
+      "Checkbox",
+
+    date:
+      "Date",
+
+    number:
+      "Number",
+
+    person:
+      "Person",
+
+    people:
+      "People",
+
+    relation:
+      "Relation",
+
+    file:
+      "Files",
+
+    files:
+      "Files"
+  };
+
+  return labels[
+    String(
+      type ||
+      ""
+    )
+  ] ||
+  String(
+    type ||
+    "unknown"
+  )
+    .replaceAll(
+      "_",
+      " "
+    );
+}
+
+function notionSchemaFieldIsSupported(
+  property
+) {
+  return [
+    "title",
+    "url",
+    "multi_select"
+  ].includes(
+    String(
+      property?.type ||
+      ""
+    )
+  );
+}
+
+function makeNotionSchemaFieldRow(
+  preset,
+  property
+) {
+  const row =
+    document.createElement(
+      "div"
+    );
+
+  row.className =
+    "notion-schema-field-row";
+
+  row.dataset.propertyId =
+    property.id ||
+    "";
+
+  row.dataset.propertyType =
+    property.type ||
+    "";
+
+  const copy =
+    document.createElement(
+      "div"
+    );
+
+  copy.className =
+    "notion-field-config-copy";
+
+  const name =
+    document.createElement(
+      "strong"
+    );
+
+  name.textContent =
+    property.name ||
+    "Untitled property";
+
+  const description =
+    document.createElement(
+      "small"
+    );
+
+  description.textContent =
+    notionSchemaFieldIsSupported(
+      property
+    )
+      ? (
+          property.type ===
+            "title"
+            ? "Filled from the current webpage title."
+            : property.type ===
+                "url"
+              ? "Can receive the current webpage URL."
+              : "Can be used as the preset's tag field."
+        )
+      : "This property type is not supported by ClipNest yet.";
+
+  copy.append(
+    name,
+    description
+  );
+
+  const badge =
+    document.createElement(
+      "span"
+    );
+
+  badge.className =
+    "notion-field-type-badge";
+
+  badge.textContent =
+    notionPropertyTypeLabel(
+      property.type
+    );
+
+  const action =
+    document.createElement(
+      "div"
+    );
+
+  action.className =
+    "notion-schema-field-action";
+
+  const propertyId =
+    String(
+      property.id ||
+      ""
+    );
+
+  const mappedTitle =
+    String(
+      els.notionTitleProperty
+        ?.value ||
+      ""
+    );
+
+  const mappedUrl =
+    String(
+      els.notionUrlProperty
+        ?.value ||
+      ""
+    );
+
+  const mappedTags =
+    String(
+      els.notionTagsProperty
+        ?.value ||
+      ""
+    );
+
+  if (
+    property.type ===
+      "title"
+  ) {
+    const label =
+      document.createElement(
+        "label"
+      );
+
+    label.className =
+      "notion-field-visibility";
+
+    const input =
+      document.createElement(
+        "input"
+      );
+
+    input.type =
+      "checkbox";
+
+    input.id =
+      "notionTitleVisible";
+
+    input.dataset.notionFieldAction =
+      "title-visible";
+
+    const configured =
+      findConfiguredNotionField(
+        preset,
+        "title"
+      );
+
+    input.checked =
+      configured
+        ? configured.visible !==
+            false
+        : true;
+
+    const text =
+      document.createElement(
+        "span"
+      );
+
+    text.textContent =
+      "Show in clipper";
+
+    label.append(
+      input,
+      text
+    );
+
+    action.append(
+      label
+    );
+  } else if (
+    property.type ===
+      "url"
+  ) {
+    const label =
+      document.createElement(
+        "label"
+      );
+
+    label.className =
+      "notion-field-visibility";
+
+    const input =
+      document.createElement(
+        "input"
+      );
+
+    input.type =
+      "checkbox";
+
+    input.dataset.notionFieldAction =
+      "url";
+
+    input.dataset.propertyId =
+      propertyId;
+
+    input.checked =
+      mappedUrl ===
+        propertyId;
+
+    const text =
+      document.createElement(
+        "span"
+      );
+
+    text.textContent =
+      "Save page URL";
+
+    label.append(
+      input,
+      text
+    );
+
+    action.append(
+      label
+    );
+  } else if (
+    property.type ===
+      "multi_select"
+  ) {
+    const label =
+      document.createElement(
+        "label"
+      );
+
+    label.className =
+      "notion-field-visibility";
+
+    const input =
+      document.createElement(
+        "input"
+      );
+
+    input.type =
+      "checkbox";
+
+    input.dataset.notionFieldAction =
+      "tags";
+
+    input.dataset.propertyId =
+      propertyId;
+
+    input.checked =
+      mappedTags ===
+        propertyId;
+
+    if (input.checked) {
+      input.id =
+        "notionTagsVisible";
+    }
+
+    const text =
+      document.createElement(
+        "span"
+      );
+
+    text.textContent =
+      "Use as Tags";
+
+    label.append(
+      input,
+      text
+    );
+
+    action.append(
+      label
+    );
+  } else {
+    const unsupported =
+      document.createElement(
+        "span"
+      );
+
+    unsupported.className =
+      "notion-field-not-supported";
+
+    unsupported.textContent =
+      "Not supported yet";
+
+    action.append(
+      unsupported
+    );
+  }
+
+  if (
+    property.type ===
+      "title" &&
+    mappedTitle &&
+    mappedTitle !==
+      propertyId
+  ) {
+    row.classList.add(
+      "notion-schema-field-warning"
+    );
+  }
+
+  row.append(
+    copy,
+    badge,
+    action
+  );
+
+  return row;
+}
+
+function renderNotionDestinationFields(
+  preset,
+  properties = []
+) {
+  const help =
+    document.getElementById(
+      "notionFieldsEditorHelp"
+    );
+
+  const pagePanel =
+    document.getElementById(
+      "notionPageFieldsPanel"
+    );
+
+  const databasePanel =
+    document.getElementById(
+      "notionDatabaseFieldsPanel"
+    );
+
+  const schemaFields =
+    document.getElementById(
+      "notionSchemaFields"
+    );
+
+  if (
+    !pagePanel ||
+    !databasePanel ||
+    !schemaFields
+  ) {
+    return;
+  }
+
+  pagePanel.classList.add(
+    "hidden"
+  );
+
+  databasePanel.classList.add(
+    "hidden"
+  );
+
+  schemaFields.replaceChildren();
+
+  notionRenderedSchemaProperties =
+    Array.isArray(
+      properties
+    )
+      ? [
+          ...properties
+        ]
+      : [];
+
+  if (
+    !preset?.destinationId
+  ) {
+    if (help) {
+      help.textContent =
+        "Choose a destination to configure its fields.";
+    }
+
+    return;
+  }
+
+  if (
+    preset.destinationType ===
+      "page"
+  ) {
+    if (help) {
+      help.textContent =
+        "This preset saves child pages beneath a Notion page.";
+    }
+
+    pagePanel.classList.remove(
+      "hidden"
+    );
+
+    return;
+  }
+
+  if (
+    preset.destinationType !==
+      "collection"
+  ) {
+    return;
+  }
+
+  if (help) {
+    help.textContent =
+      "Fields are read directly from this Notion database.";
+  }
+
+  databasePanel.classList.remove(
+    "hidden"
+  );
+
+  if (
+    !notionRenderedSchemaProperties
+      .length
+  ) {
+    const loading =
+      document.createElement(
+        "div"
+      );
+
+    loading.className =
+      "notion-schema-fields-empty";
+
+    loading.textContent =
+      "Reading database properties…";
+
+    schemaFields.append(
+      loading
+    );
+
+    return;
+  }
+
+  for (
+    const property of
+      notionRenderedSchemaProperties
+  ) {
+    schemaFields.append(
+      makeNotionSchemaFieldRow(
+        preset,
+        property
+      )
+    );
+  }
+}
+
+async function configureNotionPageDestinationPreset(
+  preset
+) {
+  if (
+    !preset ||
+    preset.destinationType !==
+      "page"
+  ) {
+    return preset;
+  }
+
+  const currentFields =
+    Array.isArray(
+      preset.fields
+    )
+      ? preset.fields
+      : [];
+
+  const alreadyConfigured =
+    preset.fieldsConfigured ===
+      true &&
+    currentFields.length ===
+      1 &&
+    currentFields[0]
+      ?.propertyId ===
+      "__clipnest_page_title__" &&
+    currentFields[0]
+      ?.propertyType ===
+      "title";
+
+  if (alreadyConfigured) {
+    return preset;
+  }
+
+  return ClipNestNotionStore
+    .updateActivePreset({
+      fieldsConfigured:
+        true,
+
+      fields: [
+        {
+          role:
+            "title",
+
+          propertyId:
+            "__clipnest_page_title__",
+
+          propertyName:
+            "Title",
+
+          propertyType:
+            "title",
+
+          label:
+            "Title",
+
+          order:
+            0,
+
+          visible:
+            true,
+
+          source:
+            "page_title",
+
+          required:
+            true,
+
+          defaultValue:
+            ""
+        }
+      ],
+
+      popupProperties: [
+        "__clipnest_page_title__"
+      ],
+
+      propertyIds: {
+        title:
+          "",
+
+        url:
+          "",
+
+        tags:
+          ""
+      },
+
+      titleProperty:
+        "Name",
+
+      urlProperty:
+        "",
+
+      tagsProperty:
+        "",
+
+      propertyMappings: {
+        title:
+          "Name",
+
+        url:
+          "",
+
+        tags:
+          ""
+      }
+    });
+}
+
+async function handleNotionSchemaFieldChange(
+  event
+) {
+  const input =
+    event.target;
+
+  if (
+    !(input instanceof HTMLInputElement)
+  ) {
+    return;
+  }
+
+  const action =
+    input.dataset
+      .notionFieldAction ||
+    "";
+
+  if (!action) {
+    return;
+  }
+
+  if (
+    action ===
+      "url"
+  ) {
+    const urlInputs =
+      document.querySelectorAll(
+        '[data-notion-field-action="url"]'
+      );
+
+    if (input.checked) {
+      for (
+        const candidate of
+          urlInputs
+      ) {
+        if (
+          candidate !==
+            input
+        ) {
+          candidate.checked =
+            false;
+        }
+      }
+
+      els.notionUrlProperty.value =
+        input.dataset
+          .propertyId ||
+        "";
+    } else {
+      els.notionUrlProperty.value =
+        "";
+    }
+  }
+
+  if (
+    action ===
+      "tags"
+  ) {
+    const tagInputs =
+      document.querySelectorAll(
+        '[data-notion-field-action="tags"]'
+      );
+
+    if (input.checked) {
+      for (
+        const candidate of
+          tagInputs
+      ) {
+        if (
+          candidate !==
+            input
+        ) {
+          candidate.checked =
+            false;
+        }
+      }
+
+      els.notionTagsProperty.value =
+        input.dataset
+          .propertyId ||
+        "";
+    } else {
+      els.notionTagsProperty.value =
+        "";
+    }
+  }
+
+  try {
+    const updated =
+      await saveNotionPropertyMappings();
+
+    renderNotionDestinationFields(
+      updated,
+      notionRenderedSchemaProperties
+    );
+
+    showStatus(
+      els.notionStatus,
+      "Preset fields updated.",
+      "success"
+    );
+  } catch (error) {
+    showStatus(
+      els.notionStatus,
+      error?.message ||
+      String(error),
+      "error"
+    );
+  }
+}
+
 function notionFieldEditorControls() {
   return {
     title:
@@ -1923,46 +2656,23 @@ function buildConfiguredNotionFields(
 }
 
 function setupNotionFieldEditor() {
-  const controls =
-    notionFieldEditorControls();
-
-  for (
-    const control of
-      Object.values(
-        controls
-      )
-  ) {
-    if (!control) {
-      continue;
-    }
-
-    control.addEventListener(
-      "change",
-      async () => {
-        try {
-          const updated =
-            await saveNotionPropertyMappings();
-
-          syncNotionFieldEditor(
-            updated
-          );
-
-          showStatus(
-            els.notionStatus,
-            "Preset fields updated.",
-            "success"
-          );
-        } catch (error) {
-          showStatus(
-            els.notionStatus,
-            error?.message ||
-            String(error),
-            "error"
-          );
-        }
-      }
+  const schemaFields =
+    document.getElementById(
+      "notionSchemaFields"
     );
+
+  if (!schemaFields) {
+    return;
   }
+
+  schemaFields.addEventListener(
+    "change",
+    (event) => {
+      void handleNotionSchemaFieldChange(
+        event
+      );
+    }
+  );
 }
 
 function renderNotionPropertySelectors(
@@ -2149,20 +2859,75 @@ async function applyNotionDatabaseSchema(
   preset,
   database
 ) {
+  const properties =
+    Array.isArray(
+      database?.properties
+    )
+      ? database.properties
+      : [];
+
   renderNotionPropertySelectors(
     preset,
-    database?.properties ||
-    []
+    properties
   );
 
-  return saveNotionPropertyMappings();
+  renderNotionDestinationFields(
+    preset,
+    properties
+  );
+
+  const updated =
+    await saveNotionPropertyMappings();
+
+  renderNotionDestinationFields(
+    updated,
+    properties
+  );
+
+  return updated;
 }
 
 async function loadNotionDatabaseSchemaForPreset(
   preset
 ) {
+  if (!preset) {
+    renderNotionPropertySelectors(
+      preset,
+      []
+    );
+
+    renderNotionDestinationFields(
+      preset,
+      []
+    );
+
+    return preset;
+  }
+
   if (
-    !preset ||
+    preset.destinationType ===
+      "page" &&
+    preset.destinationId
+  ) {
+    renderNotionPropertySelectors(
+      preset,
+      []
+    );
+
+    const updated =
+      await configureNotionPageDestinationPreset(
+        preset
+      );
+
+    renderNotionDestinationFields(
+      updated,
+      []
+    );
+
+    return updated;
+  }
+
+  if (
     preset.destinationType !==
       "collection" ||
     !preset.destinationId
@@ -2172,10 +2937,20 @@ async function loadNotionDatabaseSchemaForPreset(
       []
     );
 
+    renderNotionDestinationFields(
+      preset,
+      []
+    );
+
     return preset;
   }
 
   renderNotionPropertySelectors(
+    preset,
+    []
+  );
+
+  renderNotionDestinationFields(
     preset,
     []
   );
@@ -2705,6 +3480,18 @@ async function handleNotionWorkspaceChange() {
       tags:
         ""
     };
+
+    patch.fieldsConfigured =
+      false;
+
+    patch.fields =
+      [];
+
+    patch.popupProperties =
+      [];
+
+    patch.tagsProperty =
+      "";
 
     patch.titleProperty =
       "Name";
@@ -3412,8 +4199,18 @@ async function handleNotionDataSourceChange() {
       []
     );
 
+    const pagePreset =
+      await configureNotionPageDestinationPreset(
+        updated
+      );
+
+    renderNotionDestinationFields(
+      pagePreset,
+      []
+    );
+
     els.notionDataSourceHelp.textContent =
-      "Page selected. ClipNest will save beneath this page.";
+      "Page selected. ClipNest will create a child page beneath it.";
   }
 
   showStatus(
