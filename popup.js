@@ -1968,6 +1968,52 @@ function setupObsidianTagAutocomplete() {
     }
   );
 
+  const notionTagOutsidePointerDown =
+    (event) => {
+      if (
+        state.destination !==
+          "notion"
+      ) {
+        return;
+      }
+
+      const target =
+        event.target;
+
+      if (
+        els.notionTagsEditor?.contains(
+          target
+        ) ||
+        els.tagSuggestions?.contains(
+          target
+        )
+      ) {
+        return;
+      }
+
+      els.tagSuggestions?.classList.add(
+        "hidden"
+      );
+    };
+
+  document.addEventListener(
+    "pointerdown",
+    notionTagOutsidePointerDown
+  );
+
+  window.addEventListener(
+    "resize",
+    () => {
+      if (
+        !els.tagSuggestions?.classList.contains(
+          "hidden"
+        )
+      ) {
+        positionNotionTagSuggestions();
+      }
+    }
+  );
+
   renderNotionSelectedTags();
 }
 
@@ -2449,6 +2495,72 @@ function normalizeNotionTagColor(
     : "default";
 }
 
+function positionNotionTagSuggestions() {
+  if (
+    state.destination !==
+      "notion" ||
+    !els.tagSuggestions
+  ) {
+    return;
+  }
+
+  const anchor =
+    els.notionTagsEditor ||
+    els.tagsInput;
+
+  if (!anchor) {
+    return;
+  }
+
+  const rect =
+    anchor.getBoundingClientRect();
+
+  const viewportWidth =
+    document.documentElement
+      .clientWidth;
+
+  const horizontalGap =
+    12;
+
+  const left =
+    Math.max(
+      horizontalGap,
+      rect.left
+    );
+
+  const width =
+    Math.min(
+      rect.width,
+      viewportWidth -
+        left -
+        horizontalGap
+    );
+
+  els.tagSuggestions.style.setProperty(
+    "left",
+    `${left}px`,
+    "important"
+  );
+
+  els.tagSuggestions.style.setProperty(
+    "top",
+    `${rect.bottom + 6}px`,
+    "important"
+  );
+
+  els.tagSuggestions.style.setProperty(
+    "width",
+    `${width}px`,
+    "important"
+  );
+
+  els.tagSuggestions.style.setProperty(
+    "right",
+    "auto",
+    "important"
+  );
+}
+
 function renderObsidianTagSuggestions() {
   const container =
     els.tagSuggestions;
@@ -2736,6 +2848,13 @@ function renderObsidianTagSuggestions() {
     );
 
     return;
+  }
+
+  if (
+    state.destination ===
+      "notion"
+  ) {
+    positionNotionTagSuggestions();
   }
 
   container.classList.remove(
