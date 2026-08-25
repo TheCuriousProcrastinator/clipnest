@@ -1213,3 +1213,10 @@ body[data-destination="notion"] #obsidianTagSuggestions.hidden {
 body[data-destination="notion"] #obsidianTagSyncMeta {
   display: none !important;
 }
+
+
+/* NOTION TAG DROPDOWN SAVE VISIBILITY */
+
+body[data-destination="notion"] #obsidianTagSuggestions {
+  box-sizing: border-box !important;
+}

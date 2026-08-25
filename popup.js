@@ -2519,8 +2519,19 @@ function positionNotionTagSuggestions() {
     document.documentElement
       .clientWidth;
 
+  const viewportHeight =
+    document.documentElement
+      .clientHeight;
+
   const horizontalGap =
     12;
+
+  const verticalGap =
+    6;
+
+  const saveRect =
+    els.saveButton
+      ?.getBoundingClientRect();
 
   const left =
     Math.max(
@@ -2529,22 +2540,64 @@ function positionNotionTagSuggestions() {
     );
 
   const width =
-    Math.min(
-      rect.width,
-      viewportWidth -
-        left -
-        horizontalGap
+    Math.max(
+      120,
+      Math.min(
+        rect.width,
+        viewportWidth -
+          left -
+          horizontalGap
+      )
     );
+
+  let lowerBoundary =
+    viewportHeight -
+    12;
+
+  if (
+    saveRect &&
+    saveRect.top >
+      rect.bottom
+  ) {
+    lowerBoundary =
+      Math.min(
+        lowerBoundary,
+        saveRect.top -
+          12
+      );
+  }
+
+  const spaceBelow =
+    Math.max(
+      0,
+      lowerBoundary -
+        rect.bottom -
+        verticalGap
+    );
+
+  const spaceAbove =
+    Math.max(
+      0,
+      rect.top -
+        12 -
+        verticalGap
+    );
+
+  const preferredHeight =
+    230;
+
+  const minimumUsefulHeight =
+    110;
+
+  const openBelow =
+    spaceBelow >=
+      minimumUsefulHeight ||
+    spaceBelow >=
+      spaceAbove;
 
   els.tagSuggestions.style.setProperty(
     "left",
     `${left}px`,
-    "important"
-  );
-
-  els.tagSuggestions.style.setProperty(
-    "top",
-    `${rect.bottom + 6}px`,
     "important"
   );
 
@@ -2559,6 +2612,66 @@ function positionNotionTagSuggestions() {
     "auto",
     "important"
   );
+
+  if (openBelow) {
+    const maxHeight =
+      Math.max(
+        72,
+        Math.min(
+          preferredHeight,
+          spaceBelow
+        )
+      );
+
+    els.tagSuggestions.style.setProperty(
+      "top",
+      `${rect.bottom + verticalGap}px`,
+      "important"
+    );
+
+    els.tagSuggestions.style.setProperty(
+      "bottom",
+      "auto",
+      "important"
+    );
+
+    els.tagSuggestions.style.setProperty(
+      "max-height",
+      `${maxHeight}px`,
+      "important"
+    );
+  } else {
+    const maxHeight =
+      Math.max(
+        72,
+        Math.min(
+          preferredHeight,
+          spaceAbove
+        )
+      );
+
+    els.tagSuggestions.style.setProperty(
+      "top",
+      "auto",
+      "important"
+    );
+
+    els.tagSuggestions.style.setProperty(
+      "bottom",
+      `${
+        viewportHeight -
+        rect.top +
+        verticalGap
+      }px`,
+      "important"
+    );
+
+    els.tagSuggestions.style.setProperty(
+      "max-height",
+      `${maxHeight}px`,
+      "important"
+    );
+  }
 }
 
 function renderObsidianTagSuggestions() {
