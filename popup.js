@@ -2362,6 +2362,366 @@ function ensureNotionPresetConfigScreen() {
   return screen;
 }
 
+function notionBuilderSupportedProperty(
+  property
+) {
+  return [
+    "title",
+    "url",
+    "multi_select",
+    "select",
+    "status",
+    "text",
+    "rich_text"
+  ].includes(
+    String(
+      property?.type ||
+      ""
+    )
+  );
+}
+
+function notionBuilderPropertyTypeLabel(
+  type
+) {
+  const labels = {
+    title:
+      "Title",
+
+    url:
+      "URL",
+
+    multi_select:
+      "Multi-select",
+
+    select:
+      "Select",
+
+    status:
+      "Status",
+
+    text:
+      "Text",
+
+    rich_text:
+      "Rich text"
+  };
+
+  return labels[
+    String(
+      type ||
+      ""
+    )
+  ] ||
+  String(
+    type ||
+    ""
+  );
+}
+
+function createNotionBuilderConfiguredFieldRow(
+  property,
+  mapping
+) {
+  const row =
+    document.createElement(
+      "div"
+    );
+
+  row.className =
+    "notion-builder-field-row";
+
+  row.dataset.propertyId =
+    property.id ||
+    "";
+
+  row.dataset.propertyType =
+    property.type ||
+    "";
+
+  const copy =
+    document.createElement(
+      "div"
+    );
+
+  const name =
+    document.createElement(
+      "strong"
+    );
+
+  name.textContent =
+    property.name ||
+    "Untitled property";
+
+  const type =
+    document.createElement(
+      "small"
+    );
+
+  type.textContent =
+    notionBuilderPropertyTypeLabel(
+      property.type
+    );
+
+  copy.append(
+    name,
+    type
+  );
+
+  const source =
+    document.createElement(
+      "span"
+    );
+
+  source.className =
+    "notion-builder-field-mapping";
+
+  source.textContent =
+    `→ ${mapping}`;
+
+  row.append(
+    copy,
+    source
+  );
+
+  return row;
+}
+
+async function loadNotionPresetConfigFields() {
+  const draft =
+    notionPresetBuilderDraft;
+
+  const fields =
+    document.getElementById(
+      "notionBuilderPresetFields"
+    );
+
+  const create =
+    document.getElementById(
+      "notionBuilderCreatePreset"
+    );
+
+  if (
+    !draft?.destination ||
+    !draft?.workspace ||
+    !fields ||
+    !create
+  ) {
+    return;
+  }
+
+  fields.replaceChildren();
+
+  if (
+    draft.destination.type ===
+      "page"
+  ) {
+    const property = {
+      id:
+        "__clipnest_page_title__",
+
+      name:
+        "Title",
+
+      type:
+        "title"
+    };
+
+    fields.append(
+      createNotionBuilderConfiguredFieldRow(
+        property,
+        "Page Title"
+      )
+    );
+
+    draft.schema =
+      null;
+
+    draft.properties = [
+      property
+    ];
+
+    create.disabled =
+      false;
+
+    return;
+  }
+
+  const parentPageId =
+    String(
+      draft.destination.parentId ||
+      draft.destination.parentPageId ||
+      ""
+    ).trim();
+
+  if (!parentPageId) {
+    fields.innerHTML =
+      '<div class="notion-builder-placeholder notion-builder-error">Database parent page is missing.</div>';
+
+    return;
+  }
+
+  fields.innerHTML =
+    '<div class="notion-builder-placeholder">Loading database fields…</div>';
+
+  try {
+    const schema =
+      await ClipNestNotionSession
+        .getDatabaseSchema({
+          workspaceId:
+            draft.workspace.id,
+
+          userId:
+            draft.userId,
+
+          collectionId:
+            draft.destination.id,
+
+          parentPageId
+        });
+
+    const properties =
+      Array.isArray(
+        schema?.properties
+      )
+        ? schema.properties
+        : [];
+
+    draft.schema =
+      schema;
+
+    draft.properties =
+      properties;
+
+    fields.replaceChildren();
+
+    const title =
+      properties.find(
+        (property) =>
+          property.type ===
+          "title"
+      );
+
+    if (!title) {
+      throw new Error(
+        "This database has no Title property."
+      );
+    }
+
+    fields.append(
+      createNotionBuilderConfiguredFieldRow(
+        title,
+        "Page Title"
+      )
+    );
+
+    const url =
+      properties.find(
+        (property) =>
+          property.type ===
+          "url"
+      );
+
+    if (url) {
+      fields.append(
+        createNotionBuilderConfiguredFieldRow(
+          url,
+          "Page URL"
+        )
+      );
+    }
+
+    const tags =
+      properties.find(
+        (property) =>
+          property.type ===
+          "multi_select" &&
+          String(
+            property.name ||
+            ""
+          )
+            .trim()
+            .toLowerCase() ===
+          "tags"
+      );
+
+    if (tags) {
+      fields.append(
+        createNotionBuilderConfiguredFieldRow(
+          tags,
+          "Tags"
+        )
+      );
+    }
+
+    const addable =
+      properties.filter(
+        (property) =>
+          notionBuilderSupportedProperty(
+            property
+          ) &&
+          property.id !==
+            title.id &&
+          property.id !==
+            url?.id &&
+          property.id !==
+            tags?.id
+      );
+
+    if (addable.length) {
+      const add =
+        document.createElement(
+          "button"
+        );
+
+      add.type =
+        "button";
+
+      add.id =
+        "notionBuilderAddField";
+
+      add.className =
+        "notion-builder-add-field";
+
+      add.textContent =
+        "+ Add field";
+
+      add.dataset.count =
+        String(
+          addable.length
+        );
+
+      fields.append(
+        add
+      );
+    }
+
+    create.disabled =
+      false;
+  } catch (error) {
+    fields.replaceChildren();
+
+    const failed =
+      document.createElement(
+        "div"
+      );
+
+    failed.className =
+      "notion-builder-placeholder notion-builder-error";
+
+    failed.textContent =
+      error?.message ||
+      String(error);
+
+    fields.append(
+      failed
+    );
+
+    create.disabled =
+      true;
+  }
+}
+
 function renderNotionPresetConfigScreen() {
   const draft =
     notionPresetBuilderDraft;
@@ -2529,6 +2889,8 @@ function renderNotionPresetConfigScreen() {
   );
 
   nameInput.focus();
+
+  void loadNotionPresetConfigFields();
 }
 
 function ensureNotionDestinationPicker() {

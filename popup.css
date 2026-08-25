@@ -1920,3 +1920,22 @@ body[data-destination="notion"]
   width: 100%;
   margin-top: 4px;
 }
+
+.notion-builder-field-mapping {
+  font-weight: 650;
+}
+
+.notion-builder-add-field {
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-top: 1px solid var(--border, #444);
+  background: transparent;
+  text-align: left;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.notion-builder-add-field:hover {
+  background: rgba(255, 255, 255, .04);
+}
