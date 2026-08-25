@@ -1172,3 +1172,19 @@ body[data-destination="notion"] .notion-create-tag-suggestion .notion-tag-pill {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+
+/* NOTION TAG PLACEHOLDER CLEANUP */
+
+body[data-destination="notion"]
+.notion-tags-editor:has(.notion-selected-tag-chip)
+#tagsInput::placeholder {
+  color: transparent !important;
+}
+
+body[data-destination="notion"]
+.notion-tags-editor:not(:has(.notion-selected-tag-chip))
+#tagsInput::placeholder {
+  color: inherit;
+  opacity: .42;
+}
