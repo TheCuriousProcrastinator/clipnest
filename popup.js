@@ -1906,20 +1906,7 @@ function renderNotionBuilderResults() {
             destination
           };
 
-          for (
-            const candidate of
-              container.querySelectorAll(
-                ".notion-builder-result"
-              )
-          ) {
-            candidate.classList.remove(
-              "selected"
-            );
-          }
-
-          button.classList.add(
-            "selected"
-          );
+          renderNotionPresetConfigScreen();
         }
       );
 
@@ -2140,6 +2127,408 @@ async function loadNotionDestinationPicker() {
       failed
     );
   }
+}
+
+function createNotionPresetConfigScreen() {
+  const section =
+    document.createElement(
+      "section"
+    );
+
+  section.id =
+    "notionPresetConfigScreen";
+
+  section.className =
+    "notion-preset-config-screen hidden";
+
+  const header =
+    document.createElement(
+      "div"
+    );
+
+  header.className =
+    "notion-builder-header";
+
+  const back =
+    document.createElement(
+      "button"
+    );
+
+  back.type =
+    "button";
+
+  back.className =
+    "notion-builder-back";
+
+  back.textContent =
+    "‹";
+
+  back.setAttribute(
+    "aria-label",
+    "Back to destinations"
+  );
+
+  const title =
+    document.createElement(
+      "strong"
+    );
+
+  title.textContent =
+    "Create preset";
+
+  const spacer =
+    document.createElement(
+      "span"
+    );
+
+  spacer.className =
+    "notion-builder-header-spacer";
+
+  back.addEventListener(
+    "click",
+    () => {
+      section.classList.add(
+        "hidden"
+      );
+
+      document
+        .getElementById(
+          "notionDestinationPicker"
+        )
+        ?.classList.remove(
+          "hidden"
+        );
+    }
+  );
+
+  header.append(
+    back,
+    title,
+    spacer
+  );
+
+  const nameField =
+    document.createElement(
+      "label"
+    );
+
+  nameField.className =
+    "notion-builder-field";
+
+  const nameLabel =
+    document.createElement(
+      "span"
+    );
+
+  nameLabel.textContent =
+    "Preset name";
+
+  const nameInput =
+    document.createElement(
+      "input"
+    );
+
+  nameInput.id =
+    "notionBuilderPresetName";
+
+  nameInput.type =
+    "text";
+
+  nameInput.autocomplete =
+    "off";
+
+  nameField.append(
+    nameLabel,
+    nameInput
+  );
+
+  const locationLabel =
+    document.createElement(
+      "div"
+    );
+
+  locationLabel.className =
+    "notion-builder-section-label";
+
+  locationLabel.textContent =
+    "Save location";
+
+  const location =
+    document.createElement(
+      "button"
+    );
+
+  location.id =
+    "notionBuilderSaveLocation";
+
+  location.type =
+    "button";
+
+  location.className =
+    "notion-builder-save-location";
+
+  location.addEventListener(
+    "click",
+    () => {
+      section.classList.add(
+        "hidden"
+      );
+
+      document
+        .getElementById(
+          "notionDestinationPicker"
+        )
+        ?.classList.remove(
+          "hidden"
+        );
+    }
+  );
+
+  const fieldsLabel =
+    document.createElement(
+      "div"
+    );
+
+  fieldsLabel.className =
+    "notion-builder-section-label";
+
+  fieldsLabel.textContent =
+    "Fields";
+
+  const fields =
+    document.createElement(
+      "div"
+    );
+
+  fields.id =
+    "notionBuilderPresetFields";
+
+  fields.className =
+    "notion-builder-preset-fields";
+
+  const create =
+    document.createElement(
+      "button"
+    );
+
+  create.id =
+    "notionBuilderCreatePreset";
+
+  create.type =
+    "button";
+
+  create.className =
+    "primary notion-builder-create-button";
+
+  create.textContent =
+    "Create preset";
+
+  create.disabled =
+    true;
+
+  section.append(
+    header,
+    nameField,
+    locationLabel,
+    location,
+    fieldsLabel,
+    fields,
+    create
+  );
+
+  return section;
+}
+
+function ensureNotionPresetConfigScreen() {
+  let screen =
+    document.getElementById(
+      "notionPresetConfigScreen"
+    );
+
+  if (screen) {
+    return screen;
+  }
+
+  screen =
+    createNotionPresetConfigScreen();
+
+  const picker =
+    ensureNotionDestinationPicker();
+
+  picker.after(
+    screen
+  );
+
+  return screen;
+}
+
+function renderNotionPresetConfigScreen() {
+  const draft =
+    notionPresetBuilderDraft;
+
+  if (
+    !draft?.workspace ||
+    !draft?.destination
+  ) {
+    return;
+  }
+
+  const screen =
+    ensureNotionPresetConfigScreen();
+
+  const nameInput =
+    document.getElementById(
+      "notionBuilderPresetName"
+    );
+
+  const location =
+    document.getElementById(
+      "notionBuilderSaveLocation"
+    );
+
+  const fields =
+    document.getElementById(
+      "notionBuilderPresetFields"
+    );
+
+  const create =
+    document.getElementById(
+      "notionBuilderCreatePreset"
+    );
+
+  if (
+    !nameInput ||
+    !location ||
+    !fields ||
+    !create
+  ) {
+    return;
+  }
+
+  nameInput.value =
+    draft.destination.name ||
+    "New preset";
+
+  location.replaceChildren();
+
+  const icon =
+    document.createElement(
+      "span"
+    );
+
+  icon.className =
+    "notion-builder-result-icon";
+
+  fillNotionBuilderDestinationIcon(
+    icon,
+    draft.destination
+  );
+
+  const copy =
+    document.createElement(
+      "span"
+    );
+
+  copy.className =
+    "notion-builder-save-location-copy";
+
+  const destinationName =
+    document.createElement(
+      "strong"
+    );
+
+  destinationName.textContent =
+    draft.destination.name ||
+    "Untitled";
+
+  const meta =
+    document.createElement(
+      "small"
+    );
+
+  meta.textContent =
+    `${draft.workspace.name || "Notion"} · ${
+      draft.destination.type ===
+        "collection"
+        ? "Database"
+        : "Page"
+    }`;
+
+  copy.append(
+    destinationName,
+    meta
+  );
+
+  const arrow =
+    document.createElement(
+      "span"
+    );
+
+  arrow.className =
+    "notion-builder-save-location-arrow";
+
+  arrow.textContent =
+    "›";
+
+  location.append(
+    icon,
+    copy,
+    arrow
+  );
+
+  fields.replaceChildren();
+
+  if (
+    draft.destination.type ===
+      "page"
+  ) {
+    const row =
+      document.createElement(
+        "div"
+      );
+
+    row.className =
+      "notion-builder-field-row";
+
+    row.innerHTML =
+      '<div><strong>Title</strong><small>Child page</small></div><span>→ Page Title</span>';
+
+    fields.append(
+      row
+    );
+  } else {
+    const loading =
+      document.createElement(
+        "div"
+      );
+
+    loading.className =
+      "notion-builder-placeholder";
+
+    loading.textContent =
+      "Loading database fields…";
+
+    fields.append(
+      loading
+    );
+  }
+
+  create.disabled =
+    true;
+
+  document
+    .getElementById(
+      "notionDestinationPicker"
+    )
+    ?.classList.add(
+      "hidden"
+    );
+
+  screen.classList.remove(
+    "hidden"
+  );
+
+  nameInput.focus();
 }
 
 function ensureNotionDestinationPicker() {

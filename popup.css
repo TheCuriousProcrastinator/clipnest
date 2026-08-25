@@ -1822,3 +1822,101 @@ body[data-destination="notion"]
   height: 28px;
   object-fit: contain;
 }
+
+/* Notion preset configuration screen */
+
+.notion-preset-config-screen {
+  display: grid;
+  gap: 16px;
+}
+
+.notion-preset-config-screen.hidden {
+  display: none;
+}
+
+.notion-builder-section-label {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: .72;
+}
+
+.notion-builder-save-location {
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  gap: 11px;
+  align-items: center;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border, #555);
+  border-radius: 11px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notion-builder-save-location-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.notion-builder-save-location-copy strong,
+.notion-builder-save-location-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notion-builder-save-location-copy small {
+  opacity: .62;
+}
+
+.notion-builder-save-location-arrow {
+  font-size: 24px;
+  opacity: .6;
+}
+
+.notion-builder-preset-fields {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--border, #555);
+  border-radius: 11px;
+}
+
+.notion-builder-preset-fields
+.notion-builder-placeholder {
+  border: 0;
+  border-radius: 0;
+}
+
+.notion-builder-field-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 13px 14px;
+}
+
+.notion-builder-field-row + .notion-builder-field-row {
+  border-top: 1px solid var(--border, #444);
+}
+
+.notion-builder-field-row > div {
+  display: grid;
+  gap: 3px;
+}
+
+.notion-builder-field-row small {
+  opacity: .58;
+}
+
+.notion-builder-field-row > span {
+  opacity: .78;
+  white-space: nowrap;
+}
+
+.notion-builder-create-button {
+  width: 100%;
+  margin-top: 4px;
+}
