@@ -25,7 +25,6 @@ async function init() {
     "notionTitleProperty",
     "notionUrlProperty",
     "notionTagsProperty",
-    "testNotion",
     "notionStatus",
     "chooseVault",
     "vaultSelect",
@@ -152,11 +151,6 @@ async function init() {
         closeNotionWorkspacePicker();
       }
     }
-  );
-
-  els.testNotion.addEventListener(
-    "click",
-    testNotion
   );
 
   els.chooseVault.addEventListener(
@@ -1990,13 +1984,6 @@ function prepareNotionDestinationField(
     []
   );
 
-  els.testNotion.disabled =
-    !(
-      preset?.workspaceId &&
-      preset?.workspaceUserId &&
-      preset?.destinationId &&
-      preset?.destinationType
-    );
 }
 
 async function refreshNotionWorkspacePicker({
@@ -2939,8 +2926,6 @@ async function handleNotionDataSourceChange() {
     updated.destinationName ||
     "";
 
-  els.testNotion.disabled =
-    false;
 
   if (
     destination.type ===
@@ -3139,295 +3124,6 @@ async function removeNotionPreset() {
   );
 }
 
-async function testNotion() {
-  const preset =
-    await ClipNestNotionStore
-      .getActivePreset();
-
-  if (!preset) {
-    showStatus(
-      els.notionStatus,
-      "Create a Notion preset first.",
-      "error"
-    );
-
-    return;
-  }
-
-  if (
-    !preset.workspaceId ||
-    !preset.workspaceUserId
-  ) {
-    showStatus(
-      els.notionStatus,
-      "Choose a Notion workspace first.",
-      "error"
-    );
-
-    return;
-  }
-
-  if (
-    !preset.destinationId ||
-    !preset.destinationType
-  ) {
-    showStatus(
-      els.notionStatus,
-      "Choose a Notion destination first.",
-      "error"
-    );
-
-    return;
-  }
-
-  const timestamp =
-    new Date()
-      .toLocaleString();
-
-  const title =
-    `ClipNest content test - ${timestamp}`;
-
-  const markdown = `## ClipNest content test
-
-This paragraph was written by ClipNest through your existing Notion browser session.
-
-Here is a [test link](https://example.com).
-
-- Bullet item one
-- Bullet item two
-
-1. Numbered item one
-2. Numbered item two
-
-> This is a quote block created by ClipNest.
-
-\`\`\`
-hello from ClipNest
-content block test
-\`\`\`
-
----
-
-### End of test
-
-If you can read all of this in Notion, the content writer works.`;
-
-  const originalLabel =
-    els.testNotion.textContent;
-
-  let createdPage =
-    null;
-
-  els.testNotion.disabled =
-    true;
-
-  els.testNotion.textContent =
-    "Creating content test…";
-
-  showStatus(
-    els.notionStatus,
-    `Creating one content test in ${
-      preset.destinationName ||
-      "Notion"
-    }…`
-  );
-
-  try {
-    if (
-      preset.destinationType ===
-        "collection"
-    ) {
-      const titlePropertyId =
-        preset.propertyIds
-          ?.title ||
-        "";
-
-      if (!titlePropertyId) {
-        throw new Error(
-          "Choose a Title property before testing this database."
-        );
-      }
-
-      const properties =
-        ClipNestNotionSession
-          .encodeDatabaseProperties({
-            title,
-
-            propertyIds: {
-              title:
-                titlePropertyId,
-
-              url:
-                "",
-
-              tags:
-                ""
-            }
-          });
-
-      createdPage =
-        await ClipNestNotionSession
-          .createPage({
-            workspaceId:
-              preset.workspaceId,
-
-            userId:
-              preset.workspaceUserId,
-
-            parentId:
-              preset.destinationId,
-
-            parentTable:
-              "collection",
-
-            title:
-              "",
-
-            properties
-          });
-    } else if (
-      preset.destinationType ===
-        "page"
-    ) {
-      createdPage =
-        await ClipNestNotionSession
-          .createPage({
-            workspaceId:
-              preset.workspaceId,
-
-            userId:
-              preset.workspaceUserId,
-
-            parentId:
-              preset.destinationId,
-
-            parentTable:
-              "block",
-
-            title,
-
-            properties:
-              {}
-          });
-    } else {
-      throw new Error(
-        "This Notion destination type is not supported."
-      );
-    }
-
-    const content =
-      await ClipNestNotionSession
-        .appendMarkdownToPage({
-          workspaceId:
-            preset.workspaceId,
-
-          userId:
-            preset.workspaceUserId,
-
-          pageId:
-            createdPage.id,
-
-          markdown
-        });
-
-    console.log(
-      "ClipNest Notion content test succeeded:",
-      {
-        preset:
-          preset.name,
-
-        destination:
-          preset.destinationName,
-
-        destinationType:
-          preset.destinationType,
-
-        pageId:
-          createdPage.id,
-
-        pageUrl:
-          createdPage.url,
-
-        blockCount:
-          content.blockCount
-      }
-    );
-
-    showStatus(
-      els.notionStatus,
-      `Created "${title}" with ${content.blockCount} content blocks in ${
-        preset.destinationName ||
-        "Notion"
-      }.`,
-      "success"
-    );
-  } catch (error) {
-    console.error(
-      "ClipNest Notion content test failed:",
-      error,
-      error?.attempts ||
-      []
-    );
-
-    let message =
-      error?.message ||
-      String(error);
-
-    if (createdPage?.id) {
-      message =
-        `The test page was created, but writing its content failed. ${message}`;
-    }
-
-    if (
-      Array.isArray(
-        error?.attempts
-      ) &&
-      error.attempts.length
-    ) {
-      const details =
-        error.attempts
-          .map(
-            (attempt) => {
-              const status =
-                attempt.httpStatus
-                  ? ` HTTP ${attempt.httpStatus}`
-                  : "";
-
-              return (
-                `${attempt.host}${status}: ` +
-                `${attempt.error || attempt.status}`
-              );
-            }
-          )
-          .join(" | ");
-
-      message =
-        `${message} ${details}`;
-    }
-
-    showStatus(
-      els.notionStatus,
-      message,
-      "error"
-    );
-  } finally {
-    els.testNotion.textContent =
-      originalLabel ||
-      "Create content test";
-
-    const currentPreset =
-      await ClipNestNotionStore
-        .getActivePreset();
-
-    els.testNotion.disabled =
-      !(
-        currentPreset?.workspaceId &&
-        currentPreset?.workspaceUserId &&
-        currentPreset?.destinationId &&
-        currentPreset?.destinationType
-      );
-  }
-}
 
 async function chooseVault() {
   showStatus(
