@@ -20,6 +20,9 @@ let notionClipRangeNodes =
 let notionPresetFieldRoot =
   null;
 
+let notionOpenPresetId =
+  "";
+
 let notionDynamicFieldsHost =
   null;
 
@@ -316,6 +319,36 @@ function hideNotionNavigationViews() {
   );
 }
 
+async function openNotionPresetEditor(
+  mode,
+  presetId = ""
+) {
+  const normalizedMode =
+    mode ===
+      "new"
+      ? "new"
+      : "edit";
+
+  await chrome.storage.local.set({
+    clipnestNotionOptionsIntent: {
+      mode:
+        normalizedMode,
+
+      presetId:
+        String(
+          presetId ||
+          ""
+        ).trim(),
+
+      createdAt:
+        Date.now()
+    }
+  });
+
+  await chrome.runtime
+    .openOptionsPage();
+}
+
 function createNotionPresetChooser() {
   const section =
     document.createElement(
@@ -376,8 +409,9 @@ function createNotionPresetChooser() {
   newPreset.addEventListener(
     "click",
     () => {
-      chrome.runtime
-        .openOptionsPage();
+      void openNotionPresetEditor(
+        "new"
+      );
     }
   );
 
@@ -467,8 +501,10 @@ function createNotionClipHeader() {
   edit.addEventListener(
     "click",
     () => {
-      chrome.runtime
-        .openOptionsPage();
+      void openNotionPresetEditor(
+        "edit",
+        notionOpenPresetId
+      );
     }
   );
 
@@ -1116,6 +1152,12 @@ function renderNotionPresetFields(
 function showNotionPresetClip(
   preset
 ) {
+  notionOpenPresetId =
+    String(
+      preset?.id ||
+      ""
+    ).trim();
+
   notionPresetChooserEl?.classList.add(
     "hidden"
   );

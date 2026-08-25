@@ -1,6 +1,38 @@
 const els = {};
 
-document.addEventListener("DOMContentLoaded", init);
+const NOTION_OPTIONS_INTENT_KEY =
+  "clipnestNotionOptionsIntent";
+
+let notionOptionsReady =
+  false;
+
+let notionOptionsIntentHandling =
+  false;
+
+document.addEventListener(
+  "DOMContentLoaded",
+  init
+);
+
+chrome.storage.onChanged.addListener(
+  (
+    changes,
+    areaName
+  ) => {
+    if (
+      areaName !==
+        "local" ||
+      !notionOptionsReady ||
+      !changes[
+        NOTION_OPTIONS_INTENT_KEY
+      ]?.newValue
+    ) {
+      return;
+    }
+
+    void handleNotionOptionsIntent();
+  }
+);
 
 async function init() {
   for (const id of [
@@ -195,6 +227,11 @@ async function init() {
   await refreshVaultList();
   await refreshNotionPresetList();
   await loadSettings();
+
+  notionOptionsReady =
+    true;
+
+  await handleNotionOptionsIntent();
 }
 
 async function loadSettings() {
@@ -2993,6 +3030,205 @@ async function handleNotionDataSourceChange() {
     }.`,
     "success"
   );
+}
+
+function focusNotionPresetEditor(
+  {
+    selectName = false
+  } = {}
+) {
+  const card =
+    document.getElementById(
+      "notionSettingsCard"
+    );
+
+  card?.scrollIntoView({
+    behavior:
+      "smooth",
+
+    block:
+      "start"
+  });
+
+  window.setTimeout(
+    () => {
+      if (selectName) {
+        els.notionPresetName?.focus();
+        els.notionPresetName?.select();
+
+        return;
+      }
+
+      els.notionPresetName?.focus({
+        preventScroll:
+          true
+      });
+
+      els.notionPresetName?.blur();
+    },
+    80
+  );
+}
+
+async function handleNotionOptionsIntent() {
+  if (
+    notionOptionsIntentHandling
+  ) {
+    return;
+  }
+
+  notionOptionsIntentHandling =
+    true;
+
+  try {
+    const data =
+      await chrome.storage.local.get(
+        NOTION_OPTIONS_INTENT_KEY
+      );
+
+    const intent =
+      data[
+        NOTION_OPTIONS_INTENT_KEY
+      ];
+
+    if (
+      !intent ||
+      typeof intent !==
+        "object"
+    ) {
+      return;
+    }
+
+    /*
+     * Remove the intent before acting so the
+     * storage listener cannot execute it twice.
+     */
+    await chrome.storage.local.remove(
+      NOTION_OPTIONS_INTENT_KEY
+    );
+
+    const createdAt =
+      Number(
+        intent.createdAt ||
+        0
+      );
+
+    const age =
+      Date.now() -
+      createdAt;
+
+    if (
+      !createdAt ||
+      age < 0 ||
+      age >
+        5 * 60 * 1000
+    ) {
+      return;
+    }
+
+    if (
+      intent.mode ===
+        "new"
+    ) {
+      await ClipNestNotionStore
+        .createPreset(
+          "New preset"
+        );
+
+      await refreshNotionPresetList();
+      await loadSettings();
+
+      focusNotionPresetEditor({
+        selectName:
+          true
+      });
+
+      showStatus(
+        els.notionStatus,
+        "New preset created. Name it, then choose its workspace and destination.",
+        "success"
+      );
+
+      return;
+    }
+
+    if (
+      intent.mode ===
+        "edit"
+    ) {
+      const presetId =
+        String(
+          intent.presetId ||
+          ""
+        ).trim();
+
+      if (!presetId) {
+        showStatus(
+          els.notionStatus,
+          "ClipNest could not determine which preset to edit.",
+          "error"
+        );
+
+        focusNotionPresetEditor();
+
+        return;
+      }
+
+      const info =
+        await ClipNestNotionStore
+          .listPresets();
+
+      const preset =
+        info.presets.find(
+          (candidate) =>
+            candidate.id ===
+            presetId
+        );
+
+      if (!preset) {
+        showStatus(
+          els.notionStatus,
+          "That Notion preset no longer exists.",
+          "error"
+        );
+
+        focusNotionPresetEditor();
+
+        return;
+      }
+
+      await ClipNestNotionStore
+        .setActivePreset(
+          preset.id
+        );
+
+      await refreshNotionPresetList();
+      await loadSettings();
+
+      focusNotionPresetEditor();
+
+      showStatus(
+        els.notionStatus,
+        `Editing preset: ${preset.name}.`,
+        "success"
+      );
+    }
+  } catch (error) {
+    console.error(
+      "Could not open Notion preset editor:",
+      error
+    );
+
+    showStatus(
+      els.notionStatus,
+      error?.message ||
+      String(error),
+      "error"
+    );
+  } finally {
+    notionOptionsIntentHandling =
+      false;
+  }
 }
 
 async function refreshNotionPresetList() {
