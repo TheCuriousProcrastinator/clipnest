@@ -818,12 +818,12 @@ function createNotionDestinationPicker() {
   body.className =
     "notion-destination-picker-body";
 
-  const workspaceLabel =
+  const workspaceField =
     document.createElement(
-      "label"
+      "div"
     );
 
-  workspaceLabel.className =
+  workspaceField.className =
     "notion-builder-field";
 
   const workspaceText =
@@ -834,6 +834,96 @@ function createNotionDestinationPicker() {
   workspaceText.textContent =
     "Workspace";
 
+  const workspacePicker =
+    document.createElement(
+      "div"
+    );
+
+  workspacePicker.className =
+    "notion-builder-workspace-picker";
+
+  const workspaceButton =
+    document.createElement(
+      "button"
+    );
+
+  workspaceButton.id =
+    "notionBuilderWorkspaceButton";
+
+  workspaceButton.type =
+    "button";
+
+  workspaceButton.className =
+    "notion-builder-workspace-button";
+
+  workspaceButton.setAttribute(
+    "aria-haspopup",
+    "listbox"
+  );
+
+  workspaceButton.setAttribute(
+    "aria-expanded",
+    "false"
+  );
+
+  const workspaceAvatar =
+    document.createElement(
+      "span"
+    );
+
+  workspaceAvatar.id =
+    "notionBuilderWorkspaceAvatar";
+
+  workspaceAvatar.className =
+    "notion-builder-workspace-avatar";
+
+  const workspaceLabel =
+    document.createElement(
+      "span"
+    );
+
+  workspaceLabel.id =
+    "notionBuilderWorkspaceLabel";
+
+  workspaceLabel.className =
+    "notion-builder-workspace-label";
+
+  workspaceLabel.textContent =
+    "Loading…";
+
+  const workspaceChevron =
+    document.createElement(
+      "span"
+    );
+
+  workspaceChevron.className =
+    "notion-builder-workspace-chevron";
+
+  workspaceChevron.textContent =
+    "⌄";
+
+  workspaceButton.append(
+    workspaceAvatar,
+    workspaceLabel,
+    workspaceChevron
+  );
+
+  const workspaceMenu =
+    document.createElement(
+      "div"
+    );
+
+  workspaceMenu.id =
+    "notionBuilderWorkspaceMenu";
+
+  workspaceMenu.className =
+    "notion-builder-workspace-menu hidden";
+
+  workspaceMenu.setAttribute(
+    "role",
+    "listbox"
+  );
+
   const workspace =
     document.createElement(
       "select"
@@ -842,12 +932,52 @@ function createNotionDestinationPicker() {
   workspace.id =
     "notionBuilderWorkspace";
 
+  workspace.className =
+    "notion-builder-workspace-native";
+
+  workspace.tabIndex =
+    -1;
+
+  workspace.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+
   workspace.disabled =
     true;
 
-  workspaceLabel.append(
-    workspaceText,
+  workspaceButton.addEventListener(
+    "click",
+    () => {
+      const opening =
+        workspaceMenu.classList
+          .contains(
+            "hidden"
+          );
+
+      workspaceMenu.classList.toggle(
+        "hidden",
+        !opening
+      );
+
+      workspaceButton.setAttribute(
+        "aria-expanded",
+        String(
+          opening
+        )
+      );
+    }
+  );
+
+  workspacePicker.append(
+    workspaceButton,
+    workspaceMenu,
     workspace
+  );
+
+  workspaceField.append(
+    workspaceText,
+    workspacePicker
   );
 
   const search =
@@ -963,6 +1093,9 @@ function createNotionDestinationPicker() {
   workspace.addEventListener(
     "change",
     () => {
+      notionPresetBuilderDraft =
+        null;
+
       void searchNotionBuilderDestinations();
     }
   );
@@ -992,7 +1125,7 @@ function createNotionDestinationPicker() {
   );
 
   body.append(
-    workspaceLabel,
+    workspaceField,
     search,
     filterRow,
     results
@@ -1010,6 +1143,9 @@ function createNotionDestinationPicker() {
 let notionPresetBuilderWorkspaces =
   [];
 
+let notionPresetBuilderUsers =
+  [];
+
 let notionPresetBuilderDestinations =
   [];
 
@@ -1019,29 +1155,249 @@ let notionPresetBuilderSearchTimer =
 let notionPresetBuilderDraft =
   null;
 
-function notionBuilderWorkspaceUserId(
+function notionBuilderWorkspaceUser(
   workspace
 ) {
-  const direct =
-    String(
-      workspace?.userId ||
-      workspace?.user?.id ||
-      ""
-    ).trim();
-
-  if (direct) {
-    return direct;
+  if (
+    workspace?.user &&
+    typeof workspace.user ===
+      "object"
+  ) {
+    return workspace.user;
   }
 
-  const linked =
+  const linkedIds =
     Array.isArray(
       workspace?.linkedUserIds
     )
       ? workspace.linkedUserIds
       : [];
 
+  for (
+    const linkedId of
+      linkedIds
+  ) {
+    const user =
+      notionPresetBuilderUsers
+        .find(
+          (candidate) =>
+            String(
+              candidate?.id ||
+              ""
+            ) ===
+            String(
+              linkedId ||
+              ""
+            )
+        );
+
+    if (user) {
+      return user;
+    }
+  }
+
+  return (
+    notionPresetBuilderUsers
+      .find(
+        (user) =>
+          Array.isArray(
+            user?.spaceIds
+          ) &&
+          user.spaceIds.includes(
+            workspace?.id
+          )
+      ) ||
+    null
+  );
+}
+
+function notionBuilderWorkspaceIconValue(
+  workspace
+) {
+  const user =
+    notionBuilderWorkspaceUser(
+      workspace
+    );
+
+  const values = [
+    workspace?.icon,
+    workspace?.avatar,
+    workspace?.avatarUrl,
+    user?.profile_photo,
+    user?.profilePhoto,
+    user?.avatar_url,
+    user?.avatarUrl
+  ];
+
+  for (
+    const value of
+      values
+  ) {
+    const clean =
+      String(
+        value ||
+        ""
+      ).trim();
+
+    if (clean) {
+      return clean;
+    }
+  }
+
+  return "";
+}
+
+function fillNotionBuilderWorkspaceAvatar(
+  target,
+  workspace
+) {
+  if (!target) {
+    return;
+  }
+
+  target.replaceChildren();
+
+  const icon =
+    notionBuilderWorkspaceIconValue(
+      workspace
+    );
+
+  if (
+    icon &&
+    (
+      icon.startsWith(
+        "http://"
+      ) ||
+      icon.startsWith(
+        "https://"
+      ) ||
+      icon.startsWith(
+        "data:"
+      ) ||
+      icon.startsWith(
+        "blob:"
+      ) ||
+      icon.startsWith(
+        "/"
+      )
+    )
+  ) {
+    const img =
+      document.createElement(
+        "img"
+      );
+
+    img.alt =
+      "";
+
+    img.src =
+      icon.startsWith("/")
+        ? `https://www.notion.so${icon}`
+        : icon;
+
+    img.addEventListener(
+      "error",
+      () => {
+        target.replaceChildren();
+
+        target.textContent =
+          String(
+            workspace?.name ||
+            "N"
+          )
+            .trim()
+            .charAt(0)
+            .toUpperCase() ||
+          "N";
+      },
+      {
+        once:
+          true
+      }
+    );
+
+    target.append(
+      img
+    );
+
+    return;
+  }
+
+  target.textContent =
+    icon ||
+    String(
+      workspace?.name ||
+      "N"
+    )
+      .trim()
+      .charAt(0)
+      .toUpperCase() ||
+    "N";
+}
+
+function syncNotionBuilderWorkspacePicker() {
+  const select =
+    document.getElementById(
+      "notionBuilderWorkspace"
+    );
+
+  const label =
+    document.getElementById(
+      "notionBuilderWorkspaceLabel"
+    );
+
+  const avatar =
+    document.getElementById(
+      "notionBuilderWorkspaceAvatar"
+    );
+
+  const workspace =
+    notionPresetBuilderWorkspaces
+      .find(
+        (candidate) =>
+          candidate.id ===
+          select?.value
+      );
+
+  if (label) {
+    label.textContent =
+      workspace?.name ||
+      "Choose workspace";
+  }
+
+  fillNotionBuilderWorkspaceAvatar(
+    avatar,
+    workspace
+  );
+}
+
+function closeNotionBuilderWorkspaceMenu() {
+  document
+    .getElementById(
+      "notionBuilderWorkspaceMenu"
+    )
+    ?.classList.add(
+      "hidden"
+    );
+
+  document
+    .getElementById(
+      "notionBuilderWorkspaceButton"
+    )
+    ?.setAttribute(
+      "aria-expanded",
+      "false"
+    );
+}
+
+function notionBuilderWorkspaceUserId(
+  workspace
+) {
   return String(
-    linked[0] ||
+    notionBuilderWorkspaceUser(
+      workspace
+    )?.id ||
+    workspace?.userId ||
     ""
   ).trim();
 }
@@ -1088,11 +1444,20 @@ function renderNotionBuilderWorkspaceOptions(
       "notionBuilderWorkspace"
     );
 
-  if (!select) {
+  const menu =
+    document.getElementById(
+      "notionBuilderWorkspaceMenu"
+    );
+
+  if (
+    !select ||
+    !menu
+  ) {
     return;
   }
 
   select.replaceChildren();
+  menu.replaceChildren();
 
   for (
     const workspace of
@@ -1113,6 +1478,119 @@ function renderNotionBuilderWorkspaceOptions(
     select.append(
       option
     );
+
+    const button =
+      document.createElement(
+        "button"
+      );
+
+    button.type =
+      "button";
+
+    button.className =
+      "notion-builder-workspace-option";
+
+    button.dataset.workspaceId =
+      workspace.id;
+
+    const avatar =
+      document.createElement(
+        "span"
+      );
+
+    avatar.className =
+      "notion-builder-workspace-avatar";
+
+    fillNotionBuilderWorkspaceAvatar(
+      avatar,
+      workspace
+    );
+
+    const copy =
+      document.createElement(
+        "span"
+      );
+
+    copy.className =
+      "notion-builder-workspace-copy";
+
+    const name =
+      document.createElement(
+        "strong"
+      );
+
+    name.textContent =
+      workspace.name ||
+      "Untitled workspace";
+
+    const meta =
+      document.createElement(
+        "small"
+      );
+
+    meta.textContent =
+      workspace.planInfo ||
+      "";
+
+    copy.append(
+      name
+    );
+
+    if (meta.textContent) {
+      copy.append(
+        meta
+      );
+    }
+
+    const check =
+      document.createElement(
+        "span"
+      );
+
+    check.className =
+      "notion-builder-workspace-check";
+
+    button.append(
+      avatar,
+      copy,
+      check
+    );
+
+    button.addEventListener(
+      "click",
+      () => {
+        select.value =
+          workspace.id;
+
+        syncNotionBuilderWorkspacePicker();
+
+        for (
+          const candidate of
+            menu.querySelectorAll(
+              ".notion-builder-workspace-option"
+            )
+        ) {
+          candidate.classList.toggle(
+            "selected",
+            candidate.dataset
+              .workspaceId ===
+              workspace.id
+          );
+        }
+
+        closeNotionBuilderWorkspaceMenu();
+
+        select.dispatchEvent(
+          new Event(
+            "change"
+          )
+        );
+      }
+    );
+
+    menu.append(
+      button
+    );
   }
 
   if (
@@ -1126,11 +1604,33 @@ function renderNotionBuilderWorkspaceOptions(
   ) {
     select.value =
       preferredWorkspaceId;
+  } else {
+    select.value =
+      notionPresetBuilderWorkspaces[
+        0
+      ]?.id ||
+      "";
   }
 
   select.disabled =
     !notionPresetBuilderWorkspaces
       .length;
+
+  syncNotionBuilderWorkspacePicker();
+
+  for (
+    const button of
+      menu.querySelectorAll(
+        ".notion-builder-workspace-option"
+      )
+  ) {
+    button.classList.toggle(
+      "selected",
+      button.dataset
+        .workspaceId ===
+        select.value
+    );
+  }
 }
 
 function renderNotionBuilderResults() {
@@ -1497,6 +1997,13 @@ async function loadNotionDestinationPicker() {
         response?.workspaces
       )
         ? response.workspaces
+        : [];
+
+    notionPresetBuilderUsers =
+      Array.isArray(
+        response?.users
+      )
+        ? response.users
         : [];
 
     if (
