@@ -1633,6 +1633,81 @@ function renderNotionBuilderWorkspaceOptions(
   }
 }
 
+function fillNotionBuilderDestinationIcon(
+  target,
+  destination
+) {
+  if (!target) {
+    return;
+  }
+
+  target.replaceChildren();
+
+  const raw =
+    String(
+      destination?.icon ||
+      ""
+    ).trim();
+
+  const fallback =
+    destination?.type ===
+      "collection"
+      ? "▣"
+      : "↗";
+
+  if (!raw) {
+    target.textContent =
+      fallback;
+
+    return;
+  }
+
+  const isImage =
+    raw.startsWith("/") ||
+    raw.startsWith("http://") ||
+    raw.startsWith("https://") ||
+    raw.startsWith("data:") ||
+    raw.startsWith("blob:");
+
+  if (!isImage) {
+    target.textContent =
+      raw;
+
+    return;
+  }
+
+  const img =
+    document.createElement(
+      "img"
+    );
+
+  img.alt =
+    "";
+
+  img.src =
+    raw.startsWith("/")
+      ? `https://www.notion.so${raw}`
+      : raw;
+
+  img.addEventListener(
+    "error",
+    () => {
+      target.replaceChildren();
+
+      target.textContent =
+        fallback;
+    },
+    {
+      once:
+        true
+    }
+  );
+
+  target.append(
+    img
+  );
+}
+
 function renderNotionBuilderResults() {
   const container =
     document.getElementById(
@@ -1752,14 +1827,10 @@ function renderNotionBuilderResults() {
       icon.className =
         "notion-builder-result-icon";
 
-      icon.textContent =
-        destination.icon ||
-        (
-          destination.type ===
-            "collection"
-            ? "▣"
-            : "↗"
-        );
+      fillNotionBuilderDestinationIcon(
+        icon,
+        destination
+      );
 
       const copy =
         document.createElement(

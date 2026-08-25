@@ -1811,3 +1811,14 @@ body[data-destination="notion"]
 .notion-builder-workspace-check::after {
   content: "✓";
 }
+
+.notion-builder-result-icon {
+  overflow: hidden;
+}
+
+.notion-builder-result-icon img {
+  display: block;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
