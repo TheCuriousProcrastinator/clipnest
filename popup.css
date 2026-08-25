@@ -955,3 +955,22 @@ body[data-destination="notion"] #obsidianTagSyncMeta {
 body[data-destination="obsidian"] #notionPresetField {
   display: none !important;
 }
+
+/* NOTION TAG FIELD - FINAL OVERRIDE */
+
+body[data-destination="notion"] #tagsField {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+body[data-destination="notion"] #tagsInput {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+body[data-destination="notion"] #obsidianTagSuggestions,
+body[data-destination="notion"] #obsidianTagSyncMeta {
+  display: none !important;
+}
