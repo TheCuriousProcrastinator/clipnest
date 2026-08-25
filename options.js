@@ -228,6 +228,8 @@ async function init() {
   await refreshNotionPresetList();
   await loadSettings();
 
+  setupNotionFieldEditor();
+
   notionOptionsReady =
     true;
 
@@ -1620,6 +1622,349 @@ function resolveNotionPropertyIds(
   };
 }
 
+function notionFieldEditorControls() {
+  return {
+    title:
+      document.getElementById(
+        "notionTitleVisible"
+      ),
+
+    tags:
+      document.getElementById(
+        "notionTagsVisible"
+      )
+  };
+}
+
+function findConfiguredNotionField(
+  preset,
+  role
+) {
+  const fields =
+    Array.isArray(
+      preset?.fields
+    )
+      ? preset.fields
+      : [];
+
+  const direct =
+    fields.find(
+      (field) =>
+        field?.role ===
+          role
+    );
+
+  if (direct) {
+    return direct;
+  }
+
+  if (role === "title") {
+    return fields.find(
+      (field) =>
+        field?.propertyType ===
+          "title" ||
+        field?.source ===
+          "page_title"
+    ) ||
+    null;
+  }
+
+  if (role === "url") {
+    return fields.find(
+      (field) =>
+        field?.propertyType ===
+          "url" ||
+        field?.source ===
+          "page_url"
+    ) ||
+    null;
+  }
+
+  if (role === "tags") {
+    const tagsId =
+      String(
+        preset?.propertyIds
+          ?.tags ||
+        ""
+      ).trim();
+
+    return fields.find(
+      (field) =>
+        (
+          tagsId &&
+          field?.propertyId ===
+            tagsId
+        ) ||
+        (
+          field?.propertyType ===
+            "multi_select" &&
+          field?.source ===
+            "manual"
+        )
+    ) ||
+    null;
+  }
+
+  return null;
+}
+
+function syncNotionFieldEditor(
+  preset
+) {
+  const controls =
+    notionFieldEditorControls();
+
+  const titleField =
+    findConfiguredNotionField(
+      preset,
+      "title"
+    );
+
+  const tagsField =
+    findConfiguredNotionField(
+      preset,
+      "tags"
+    );
+
+  if (controls.title) {
+    controls.title.checked =
+      titleField
+        ? titleField.visible !==
+            false
+        : true;
+
+    controls.title.disabled =
+      !els.notionTitleProperty
+        ?.value;
+  }
+
+  if (controls.tags) {
+    controls.tags.checked =
+      tagsField
+        ? tagsField.visible !==
+            false
+        : true;
+
+    controls.tags.disabled =
+      !els.notionTagsProperty
+        ?.value;
+  }
+}
+
+function copyNotionFieldDefault(
+  preset,
+  role,
+  fallback
+) {
+  const field =
+    findConfiguredNotionField(
+      preset,
+      role
+    );
+
+  if (
+    field &&
+    Object.prototype
+      .hasOwnProperty.call(
+        field,
+        "defaultValue"
+      )
+  ) {
+    return Array.isArray(
+      field.defaultValue
+    )
+      ? [
+          ...field.defaultValue
+        ]
+      : field.defaultValue;
+  }
+
+  return fallback;
+}
+
+function buildConfiguredNotionFields(
+  preset,
+  {
+    title,
+    url,
+    tags
+  }
+) {
+  const controls =
+    notionFieldEditorControls();
+
+  const fields =
+    [];
+
+  if (title) {
+    fields.push({
+      role:
+        "title",
+
+      propertyId:
+        title.id,
+
+      propertyName:
+        title.name,
+
+      propertyType:
+        title.type ||
+        "title",
+
+      label:
+        "Title",
+
+      order:
+        fields.length,
+
+      visible:
+        controls.title
+          ?.checked !==
+            false,
+
+      source:
+        "page_title",
+
+      required:
+        true,
+
+      defaultValue:
+        copyNotionFieldDefault(
+          preset,
+          "title",
+          ""
+        )
+    });
+  }
+
+  if (url) {
+    fields.push({
+      role:
+        "url",
+
+      propertyId:
+        url.id,
+
+      propertyName:
+        url.name,
+
+      propertyType:
+        url.type ||
+        "url",
+
+      label:
+        url.name ||
+        "URL",
+
+      order:
+        fields.length,
+
+      visible:
+        false,
+
+      source:
+        "page_url",
+
+      required:
+        false,
+
+      defaultValue:
+        copyNotionFieldDefault(
+          preset,
+          "url",
+          ""
+        )
+    });
+  }
+
+  if (tags) {
+    fields.push({
+      role:
+        "tags",
+
+      propertyId:
+        tags.id,
+
+      propertyName:
+        tags.name,
+
+      propertyType:
+        tags.type ||
+        "multi_select",
+
+      label:
+        tags.name ||
+        "Tags",
+
+      order:
+        fields.length,
+
+      visible:
+        controls.tags
+          ?.checked !==
+            false,
+
+      source:
+        "manual",
+
+      required:
+        false,
+
+      defaultValue:
+        copyNotionFieldDefault(
+          preset,
+          "tags",
+          []
+        )
+    });
+  }
+
+  return fields;
+}
+
+function setupNotionFieldEditor() {
+  const controls =
+    notionFieldEditorControls();
+
+  for (
+    const control of
+      Object.values(
+        controls
+      )
+  ) {
+    if (!control) {
+      continue;
+    }
+
+    control.addEventListener(
+      "change",
+      async () => {
+        try {
+          const updated =
+            await saveNotionPropertyMappings();
+
+          syncNotionFieldEditor(
+            updated
+          );
+
+          showStatus(
+            els.notionStatus,
+            "Preset fields updated.",
+            "success"
+          );
+        } catch (error) {
+          showStatus(
+            els.notionStatus,
+            error?.message ||
+            String(error),
+            "error"
+          );
+        }
+      }
+    );
+  }
+}
+
 function renderNotionPropertySelectors(
   preset,
   properties
@@ -1690,9 +2035,23 @@ function renderNotionPropertySelectors(
         true
     }
   );
+
+  syncNotionFieldEditor(
+    preset
+  );
 }
 
 async function saveNotionPropertyMappings() {
+  const preset =
+    await ClipNestNotionStore
+      .getActivePreset();
+
+  if (!preset) {
+    throw new Error(
+      "No Notion preset is selected."
+    );
+  }
+
   const title =
     findNotionSchemaProperty(
       els.notionTitleProperty.value
@@ -1708,48 +2067,82 @@ async function saveNotionPropertyMappings() {
       els.notionTagsProperty.value
     );
 
-  return ClipNestNotionStore
-    .updateActivePreset({
-      propertyIds: {
-        title:
-          title?.id ||
-          "",
+  const fields =
+    buildConfiguredNotionFields(
+      preset,
+      {
+        title,
+        url,
+        tags
+      }
+    );
 
-        url:
-          url?.id ||
-          "",
+  const updated =
+    await ClipNestNotionStore
+      .updateActivePreset({
+        fieldsConfigured:
+          true,
 
-        tags:
-          tags?.id ||
-          ""
-      },
+        fields,
 
-      titleProperty:
-        title?.name ||
-        "Name",
+        popupProperties:
+          fields
+            .filter(
+              (field) =>
+                field.visible !==
+                  false
+            )
+            .map(
+              (field) =>
+                field.propertyId
+            ),
 
-      urlProperty:
-        url?.name ||
-        "",
+        propertyIds: {
+          title:
+            title?.id ||
+            "",
 
-      tagsProperty:
-        tags?.name ||
-        "",
+          url:
+            url?.id ||
+            "",
 
-      propertyMappings: {
-        title:
+          tags:
+            tags?.id ||
+            ""
+        },
+
+        titleProperty:
           title?.name ||
           "Name",
 
-        url:
+        urlProperty:
           url?.name ||
           "",
 
-        tags:
+        tagsProperty:
           tags?.name ||
-          ""
-      }
-    });
+          "",
+
+        propertyMappings: {
+          title:
+            title?.name ||
+            "Name",
+
+          url:
+            url?.name ||
+            "",
+
+          tags:
+            tags?.name ||
+            ""
+        }
+      });
+
+  syncNotionFieldEditor(
+    updated
+  );
+
+  return updated;
 }
 
 async function applyNotionDatabaseSchema(
