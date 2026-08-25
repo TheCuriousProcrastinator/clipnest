@@ -1188,3 +1188,31 @@ body[data-destination="notion"]
   color: inherit;
   opacity: .42;
 }
+
+
+/* NOTION FLOATING TAG DROPDOWN */
+
+body[data-destination="notion"] .tags-autocomplete-field {
+  position: relative;
+}
+
+body[data-destination="notion"] #obsidianTagSuggestions {
+  position: absolute !important;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  max-height: 230px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .42);
+}
+
+body[data-destination="notion"] #obsidianTagSuggestions.hidden {
+  display: none !important;
+}
+
+body[data-destination="notion"] #obsidianTagSyncMeta {
+  display: none !important;
+}
