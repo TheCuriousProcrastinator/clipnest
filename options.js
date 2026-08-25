@@ -3154,35 +3154,59 @@ async function testNotion() {
     return;
   }
 
-  const now =
-    new Date();
+  const timestamp =
+    new Date()
+      .toLocaleString();
 
   const title =
-    `ClipNest test - ${
-      now.toLocaleString()
-    }`;
+    `ClipNest content test - ${timestamp}`;
+
+  const markdown = `## ClipNest content test
+
+This paragraph was written by ClipNest through your existing Notion browser session.
+
+Here is a [test link](https://example.com).
+
+- Bullet item one
+- Bullet item two
+
+1. Numbered item one
+2. Numbered item two
+
+> This is a quote block created by ClipNest.
+
+\`\`\`
+hello from ClipNest
+content block test
+\`\`\`
+
+---
+
+### End of test
+
+If you can read all of this in Notion, the content writer works.`;
 
   const originalLabel =
     els.testNotion.textContent;
+
+  let createdPage =
+    null;
 
   els.testNotion.disabled =
     true;
 
   els.testNotion.textContent =
-    "Creating test page…";
+    "Creating content test…";
 
   showStatus(
     els.notionStatus,
-    `Creating one test page in ${
+    `Creating one content test in ${
       preset.destinationName ||
       "Notion"
     }…`
   );
 
   try {
-    let result =
-      null;
-
     if (
       preset.destinationType ===
         "collection"
@@ -3215,7 +3239,7 @@ async function testNotion() {
             }
           });
 
-      result =
+      createdPage =
         await ClipNestNotionSession
           .createPage({
             workspaceId:
@@ -3239,7 +3263,7 @@ async function testNotion() {
       preset.destinationType ===
         "page"
     ) {
-      result =
+      createdPage =
         await ClipNestNotionSession
           .createPage({
             workspaceId:
@@ -3265,8 +3289,23 @@ async function testNotion() {
       );
     }
 
+    const content =
+      await ClipNestNotionSession
+        .appendMarkdownToPage({
+          workspaceId:
+            preset.workspaceId,
+
+          userId:
+            preset.workspaceUserId,
+
+          pageId:
+            createdPage.id,
+
+          markdown
+        });
+
     console.log(
-      "ClipNest Notion write test succeeded:",
+      "ClipNest Notion content test succeeded:",
       {
         preset:
           preset.name,
@@ -3278,16 +3317,19 @@ async function testNotion() {
           preset.destinationType,
 
         pageId:
-          result?.id,
+          createdPage.id,
 
         pageUrl:
-          result?.url
+          createdPage.url,
+
+        blockCount:
+          content.blockCount
       }
     );
 
     showStatus(
       els.notionStatus,
-      `Created "${title}" in ${
+      `Created "${title}" with ${content.blockCount} content blocks in ${
         preset.destinationName ||
         "Notion"
       }.`,
@@ -3295,7 +3337,7 @@ async function testNotion() {
     );
   } catch (error) {
     console.error(
-      "ClipNest Notion write test failed:",
+      "ClipNest Notion content test failed:",
       error,
       error?.attempts ||
       []
@@ -3304,6 +3346,11 @@ async function testNotion() {
     let message =
       error?.message ||
       String(error);
+
+    if (createdPage?.id) {
+      message =
+        `The test page was created, but writing its content failed. ${message}`;
+    }
 
     if (
       Array.isArray(
@@ -3340,7 +3387,7 @@ async function testNotion() {
   } finally {
     els.testNotion.textContent =
       originalLabel ||
-      "Create test page";
+      "Create content test";
 
     const currentPreset =
       await ClipNestNotionStore
