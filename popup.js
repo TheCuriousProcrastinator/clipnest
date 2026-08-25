@@ -412,9 +412,7 @@ function createNotionPresetChooser() {
   newPreset.addEventListener(
     "click",
     () => {
-      void openNotionPresetEditor(
-        "new"
-      );
+      showNotionDestinationPicker();
     }
   );
 
@@ -733,6 +731,171 @@ async function renderNotionPresetChooser() {
   }
 }
 
+function createNotionDestinationPicker() {
+  const section =
+    document.createElement(
+      "section"
+    );
+
+  section.id =
+    "notionDestinationPicker";
+
+  section.className =
+    "notion-destination-picker hidden";
+
+  const header =
+    document.createElement(
+      "div"
+    );
+
+  header.className =
+    "notion-builder-header";
+
+  const back =
+    document.createElement(
+      "button"
+    );
+
+  back.type =
+    "button";
+
+  back.className =
+    "notion-builder-back";
+
+  back.textContent =
+    "‹";
+
+  back.setAttribute(
+    "aria-label",
+    "Back to presets"
+  );
+
+  const title =
+    document.createElement(
+      "strong"
+    );
+
+  title.textContent =
+    "New preset";
+
+  const spacer =
+    document.createElement(
+      "span"
+    );
+
+  spacer.className =
+    "notion-builder-header-spacer";
+
+  back.addEventListener(
+    "click",
+    () => {
+      void showNotionPresetChooser();
+    }
+  );
+
+  header.append(
+    back,
+    title,
+    spacer
+  );
+
+  const heading =
+    document.createElement(
+      "h2"
+    );
+
+  heading.textContent =
+    "Choose destination";
+
+  const body =
+    document.createElement(
+      "div"
+    );
+
+  body.id =
+    "notionDestinationPickerBody";
+
+  body.className =
+    "notion-destination-picker-body";
+
+  const placeholder =
+    document.createElement(
+      "div"
+    );
+
+  placeholder.className =
+    "notion-builder-placeholder";
+
+  placeholder.textContent =
+    "Loading Notion destinations…";
+
+  body.append(
+    placeholder
+  );
+
+  section.append(
+    header,
+    heading,
+    body
+  );
+
+  return section;
+}
+
+function ensureNotionDestinationPicker() {
+  let picker =
+    document.getElementById(
+      "notionDestinationPicker"
+    );
+
+  if (picker) {
+    return picker;
+  }
+
+  picker =
+    createNotionDestinationPicker();
+
+  if (notionPresetChooserEl) {
+    notionPresetChooserEl.after(
+      picker
+    );
+  }
+
+  return picker;
+}
+
+function showNotionDestinationPicker() {
+  if (
+    state.destination !==
+      "notion"
+  ) {
+    return;
+  }
+
+  const picker =
+    ensureNotionDestinationPicker();
+
+  notionPresetChooserEl?.classList.add(
+    "hidden"
+  );
+
+  notionClipHeaderEl?.classList.add(
+    "hidden"
+  );
+
+  setNotionClipRangeHidden(
+    true
+  );
+
+  notionDynamicFieldsHost?.classList.add(
+    "hidden"
+  );
+
+  picker.classList.remove(
+    "hidden"
+  );
+}
+
 async function showNotionPresetChooser() {
   if (
     state.destination !==
@@ -752,6 +915,14 @@ async function showNotionPresetChooser() {
   notionDynamicFieldsHost?.classList.add(
     "hidden"
   );
+
+  document
+    .getElementById(
+      "notionDestinationPicker"
+    )
+    ?.classList.add(
+      "hidden"
+    );
 
   notionPresetChooserEl?.classList.remove(
     "hidden"

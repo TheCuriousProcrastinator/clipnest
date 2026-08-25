@@ -1536,3 +1536,59 @@ body[data-destination="notion"]
 .notion-custom-field select {
   cursor: pointer;
 }
+
+/* Notion popup preset builder */
+
+.notion-destination-picker {
+  display: grid;
+  gap: 16px;
+}
+
+.notion-destination-picker.hidden {
+  display: none;
+}
+
+.notion-builder-header {
+  display: grid;
+  grid-template-columns: 32px 1fr 32px;
+  align-items: center;
+  min-height: 34px;
+}
+
+.notion-builder-header > strong {
+  text-align: center;
+  font-size: 14px;
+}
+
+.notion-builder-back {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.notion-builder-header-spacer {
+  width: 32px;
+}
+
+.notion-destination-picker h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.notion-destination-picker-body {
+  display: grid;
+  gap: 12px;
+}
+
+.notion-builder-placeholder {
+  padding: 18px;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 10px;
+  font-size: 13px;
+  opacity: 0.7;
+}
