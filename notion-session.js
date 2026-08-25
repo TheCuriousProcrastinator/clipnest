@@ -2511,6 +2511,897 @@
     throw error;
   }
 
+  function cleanMarkdownInlineText(
+    value
+  ) {
+    return String(
+      value ||
+      ""
+    )
+      .replace(
+        /!\[([^\]]*)\]\([^)]+\)/g,
+        "$1"
+      )
+      .replace(
+        /\*\*([^*]+)\*\*/g,
+        "$1"
+      )
+      .replace(
+        /__([^_]+)__/g,
+        "$1"
+      )
+      .replace(
+        /~~([^~]+)~~/g,
+        "$1"
+      )
+      .replace(
+        /`([^`]+)`/g,
+        "$1"
+      )
+      .replace(
+        /\\([\\`*_[\]{}()#+\-.!>])/g,
+        "$1"
+      );
+  }
+
+  function notionInlineRichText(
+    value
+  ) {
+    const source =
+      String(
+        value ||
+        ""
+      );
+
+    const segments =
+      [];
+
+    const linkPattern =
+      /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
+
+    let lastIndex =
+      0;
+
+    let match =
+      null;
+
+    while (
+      (
+        match =
+          linkPattern.exec(
+            source
+          )
+      )
+    ) {
+      if (
+        match.index >
+        lastIndex
+      ) {
+        const before =
+          cleanMarkdownInlineText(
+            source.slice(
+              lastIndex,
+              match.index
+            )
+          );
+
+        if (before) {
+          segments.push([
+            before
+          ]);
+        }
+      }
+
+      const label =
+        cleanMarkdownInlineText(
+          match[1]
+        ) ||
+        match[2];
+
+      segments.push([
+        label,
+        [
+          [
+            "a",
+            match[2]
+          ]
+        ]
+      ]);
+
+      lastIndex =
+        match.index +
+        match[0].length;
+    }
+
+    if (
+      lastIndex <
+      source.length
+    ) {
+      const after =
+        cleanMarkdownInlineText(
+          source.slice(
+            lastIndex
+          )
+        );
+
+      if (after) {
+        segments.push([
+          after
+        ]);
+      }
+    }
+
+    if (!segments.length) {
+      const plain =
+        cleanMarkdownInlineText(
+          source
+        );
+
+      if (plain) {
+        segments.push([
+          plain
+        ]);
+      }
+    }
+
+    return segments;
+  }
+
+  function splitNotionBlockText(
+    value,
+    maxLength = 1800
+  ) {
+    const text =
+      String(
+        value ||
+        ""
+      );
+
+    if (
+      text.length <=
+      maxLength
+    ) {
+      return [
+        text
+      ];
+    }
+
+    const chunks =
+      [];
+
+    let rest =
+      text;
+
+    while (
+      rest.length >
+      maxLength
+    ) {
+      let cut =
+        rest.lastIndexOf(
+          "\n",
+          maxLength
+        );
+
+      if (
+        cut <
+        maxLength *
+          0.55
+      ) {
+        cut =
+          rest.lastIndexOf(
+            " ",
+            maxLength
+          );
+      }
+
+      if (
+        cut <
+        maxLength *
+          0.55
+      ) {
+        cut =
+          maxLength;
+      }
+
+      const chunk =
+        rest
+          .slice(
+            0,
+            cut
+          )
+          .trim();
+
+      if (chunk) {
+        chunks.push(
+          chunk
+        );
+      }
+
+      rest =
+        rest
+          .slice(
+            cut
+          )
+          .trimStart();
+    }
+
+    if (
+      rest.trim()
+    ) {
+      chunks.push(
+        rest.trim()
+      );
+    }
+
+    return chunks;
+  }
+
+  function isMarkdownTableSeparator(
+    line
+  ) {
+    const value =
+      String(
+        line ||
+        ""
+      ).trim();
+
+    if (
+      !value.includes(
+        "|"
+      )
+    ) {
+      return false;
+    }
+
+    const cells =
+      value
+        .replace(
+          /^\|/,
+          ""
+        )
+        .replace(
+          /\|$/,
+          ""
+        )
+        .split(
+          "|"
+        )
+        .map(
+          (cell) =>
+            cell.trim()
+        );
+
+    return (
+      cells.length >=
+        2 &&
+      cells.every(
+        (cell) =>
+          /^:?-{3,}:?$/.test(
+            cell
+          )
+      )
+    );
+  }
+
+  function markdownToNotionBlocks(
+    markdown
+  ) {
+    const lines =
+      String(
+        markdown ||
+        ""
+      )
+        .replace(
+          /\r\n?/g,
+          "\n"
+        )
+        .split(
+          "\n"
+        );
+
+    const blocks =
+      [];
+
+    let paragraph =
+      [];
+
+    let codeFence =
+      null;
+
+    function pushBlock(
+      type,
+      text = "",
+      extra = {}
+    ) {
+      if (
+        type !==
+          "divider" &&
+        !String(
+          text ||
+          ""
+        ).trim()
+      ) {
+        return;
+      }
+
+      const pieces =
+        type ===
+          "divider"
+          ? [
+              ""
+            ]
+          : splitNotionBlockText(
+              text
+            );
+
+      for (
+        const piece of
+          pieces
+      ) {
+        blocks.push({
+          type,
+          text:
+            piece,
+          ...extra
+        });
+      }
+    }
+
+    function flushParagraph() {
+      if (!paragraph.length) {
+        return;
+      }
+
+      const value =
+        paragraph
+          .join(
+            "\n"
+          )
+          .trim();
+
+      paragraph =
+        [];
+
+      if (value) {
+        pushBlock(
+          "text",
+          value
+        );
+      }
+    }
+
+    for (
+      let index = 0;
+      index <
+        lines.length;
+      index += 1
+    ) {
+      const line =
+        lines[index];
+
+      if (codeFence) {
+        if (
+          /^```/.test(
+            line.trim()
+          )
+        ) {
+          pushBlock(
+            "code",
+            codeFence.lines.join(
+              "\n"
+            ),
+            {
+              language:
+                codeFence.language ||
+                "Plain Text"
+            }
+          );
+
+          codeFence =
+            null;
+
+          continue;
+        }
+
+        codeFence.lines.push(
+          line
+        );
+
+        continue;
+      }
+
+      const fence =
+        line.match(
+          /^```([^`]*)$/
+        );
+
+      if (fence) {
+        flushParagraph();
+
+        codeFence = {
+          language:
+            fence[1]
+              .trim() ||
+            "Plain Text",
+
+          lines:
+            []
+        };
+
+        continue;
+      }
+
+      if (
+        line.includes(
+          "|"
+        ) &&
+        index + 1 <
+          lines.length &&
+        isMarkdownTableSeparator(
+          lines[
+            index + 1
+          ]
+        )
+      ) {
+        flushParagraph();
+
+        const table =
+          [
+            line,
+            lines[
+              index + 1
+            ]
+          ];
+
+        index += 2;
+
+        while (
+          index <
+            lines.length &&
+          lines[index]
+            .includes(
+              "|"
+            ) &&
+          lines[index]
+            .trim()
+        ) {
+          table.push(
+            lines[index]
+          );
+
+          index += 1;
+        }
+
+        index -= 1;
+
+        pushBlock(
+          "code",
+          table.join(
+            "\n"
+          ),
+          {
+            language:
+              "Markdown"
+          }
+        );
+
+        continue;
+      }
+
+      if (
+        !line.trim()
+      ) {
+        flushParagraph();
+        continue;
+      }
+
+      const heading =
+        line.match(
+          /^(#{1,3})\s+(.+)$/
+        );
+
+      if (heading) {
+        flushParagraph();
+
+        pushBlock(
+          heading[1].length ===
+            1
+            ? "header"
+            : (
+                heading[1].length ===
+                  2
+                  ? "sub_header"
+                  : "sub_sub_header"
+              ),
+          heading[2]
+        );
+
+        continue;
+      }
+
+      if (
+        /^\s*(?:---+|\*\*\*+|___+)\s*$/.test(
+          line
+        )
+      ) {
+        flushParagraph();
+
+        pushBlock(
+          "divider"
+        );
+
+        continue;
+      }
+
+      const bullet =
+        line.match(
+          /^\s*[-*+]\s+(.+)$/
+        );
+
+      if (bullet) {
+        flushParagraph();
+
+        pushBlock(
+          "bulleted_list",
+          bullet[1]
+        );
+
+        continue;
+      }
+
+      const numbered =
+        line.match(
+          /^\s*\d+[.)]\s+(.+)$/
+        );
+
+      if (numbered) {
+        flushParagraph();
+
+        pushBlock(
+          "numbered_list",
+          numbered[1]
+        );
+
+        continue;
+      }
+
+      const quote =
+        line.match(
+          /^\s*>\s?(.*)$/
+        );
+
+      if (quote) {
+        flushParagraph();
+
+        const quoteLines =
+          [
+            quote[1]
+          ];
+
+        while (
+          index + 1 <
+            lines.length
+        ) {
+          const next =
+            lines[
+              index + 1
+            ].match(
+              /^\s*>\s?(.*)$/
+            );
+
+          if (!next) {
+            break;
+          }
+
+          index += 1;
+
+          quoteLines.push(
+            next[1]
+          );
+        }
+
+        pushBlock(
+          "quote",
+          quoteLines.join(
+            "\n"
+          )
+        );
+
+        continue;
+      }
+
+      paragraph.push(
+        line
+      );
+    }
+
+    if (codeFence) {
+      pushBlock(
+        "code",
+        codeFence.lines.join(
+          "\n"
+        ),
+        {
+          language:
+            codeFence.language ||
+            "Plain Text"
+        }
+      );
+    }
+
+    flushParagraph();
+
+    return blocks;
+  }
+
+  function buildAppendMarkdownOperations({
+    workspaceId,
+    userId,
+    parentPageId,
+    markdown
+  } = {}) {
+    const spaceId =
+      normalizeNotionRecordId(
+        workspaceId
+      );
+
+    const parentId =
+      normalizeNotionRecordId(
+        parentPageId
+      );
+
+    if (!spaceId) {
+      throw new Error(
+        "Notion workspace is missing."
+      );
+    }
+
+    if (!parentId) {
+      throw new Error(
+        "Notion parent page is missing."
+      );
+    }
+
+    const blocks =
+      markdownToNotionBlocks(
+        markdown
+      );
+
+    const operations =
+      [];
+
+    const blockIds =
+      [];
+
+    let previousId =
+      "";
+
+    for (
+      const block of
+        blocks
+    ) {
+      const id =
+        createNotionId();
+
+      const now =
+        Date.now();
+
+      const properties =
+        {};
+
+      if (
+        block.type !==
+          "divider"
+      ) {
+        properties.title =
+          notionInlineRichText(
+            block.text
+          );
+      }
+
+      if (
+        block.type ===
+          "code"
+      ) {
+        properties.language = [
+          [
+            block.language ||
+            "Plain Text"
+          ]
+        ];
+      }
+
+      operations.push({
+        id,
+
+        table:
+          "block",
+
+        path:
+          [],
+
+        command:
+          "update",
+
+        args: {
+          type:
+            block.type,
+
+          id,
+
+          space_id:
+            spaceId,
+
+          parent_id:
+            parentId,
+
+          parent_table:
+            "block",
+
+          alive:
+            true,
+
+          version:
+            1,
+
+          created_time:
+            now,
+
+          last_edited_time:
+            now,
+
+          ...(
+            userId
+              ? {
+                  created_by_table:
+                    "notion_user",
+
+                  created_by_id:
+                    userId,
+
+                  last_edited_by_table:
+                    "notion_user",
+
+                  last_edited_by_id:
+                    userId
+                }
+              : {}
+          ),
+
+          ...(
+            Object.keys(
+              properties
+            ).length
+              ? {
+                  properties
+                }
+              : {}
+          )
+        }
+      });
+
+      operations.push({
+        table:
+          "block",
+
+        id:
+          parentId,
+
+        path: [
+          "content"
+        ],
+
+        command:
+          "listAfter",
+
+        args: {
+          ...(
+            previousId
+              ? {
+                  after:
+                    previousId
+                }
+              : {}
+          ),
+
+          id
+        }
+      });
+
+      blockIds.push(
+        id
+      );
+
+      previousId =
+        id;
+    }
+
+    return {
+      blocks,
+      blockIds,
+      operations
+    };
+  }
+
+  function chunkNotionOperations(
+    operations,
+    maxOperations = 200
+  ) {
+    const chunks =
+      [];
+
+    for (
+      let index = 0;
+      index <
+        operations.length;
+      index +=
+        maxOperations
+    ) {
+      chunks.push(
+        operations.slice(
+          index,
+          index +
+            maxOperations
+        )
+      );
+    }
+
+    return chunks;
+  }
+
+  async function appendMarkdownToPage({
+    workspaceId,
+    userId,
+    pageId,
+    markdown
+  } = {}) {
+    const built =
+      buildAppendMarkdownOperations({
+        workspaceId,
+        userId,
+        parentPageId:
+          pageId,
+        markdown
+      });
+
+    if (
+      !built.operations.length
+    ) {
+      return {
+        blockCount:
+          0,
+
+        blockIds:
+          []
+      };
+    }
+
+    const chunks =
+      chunkNotionOperations(
+        built.operations,
+        200
+      );
+
+    for (
+      const operations of
+        chunks
+    ) {
+      await submitOperations({
+        workspaceId,
+        userId,
+        operations
+      });
+    }
+
+    return {
+      blockCount:
+        built.blockIds.length,
+
+      blockIds:
+        built.blockIds
+    };
+  }
+
   async function createPage({
     workspaceId,
     userId,
@@ -2835,6 +3726,9 @@
       getDatabaseSchema,
       encodeDatabaseProperties,
       buildCreatePageOperations,
+      markdownToNotionBlocks,
+      buildAppendMarkdownOperations,
+      appendMarkdownToPage,
       submitOperations,
       createPage,
       postNotion
