@@ -1939,3 +1939,87 @@ body[data-destination="notion"]
 .notion-builder-add-field:hover {
   background: rgba(255, 255, 255, .04);
 }
+
+/* Add Notion preset field */
+
+.notion-builder-add-field-picker {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--border, #444);
+}
+
+.notion-builder-add-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.notion-builder-add-field-close {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.notion-builder-add-field-search {
+  width: 100%;
+}
+
+.notion-builder-add-field-list {
+  display: grid;
+  gap: 3px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.notion-builder-property-option {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notion-builder-property-option:not(:disabled):hover {
+  background: rgba(144, 39, 219, .16);
+}
+
+.notion-builder-property-option:disabled {
+  cursor: default;
+  opacity: .45;
+}
+
+.notion-builder-property-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.notion-builder-property-copy small {
+  opacity: .65;
+}
+
+.notion-builder-property-action {
+  font-size: 12px;
+  opacity: .75;
+}
+
+.notion-builder-property-option:not(:disabled)
+.notion-builder-property-action {
+  font-size: 22px;
+  color: #b86cff;
+}
+
+.notion-builder-add-field-empty {
+  padding: 12px;
+  opacity: .6;
+}
