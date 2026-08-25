@@ -943,8 +943,12 @@ main > :last-child {
 
 body[data-destination="notion"] #vaultField,
 body[data-destination="notion"] #folderField,
-body[data-destination="notion"] #templateField,
-body[data-destination="notion"] #tagsField {
+body[data-destination="notion"] #templateField {
+  display: none !important;
+}
+
+body[data-destination="notion"] #obsidianTagSuggestions,
+body[data-destination="notion"] #obsidianTagSyncMeta {
   display: none !important;
 }
 
