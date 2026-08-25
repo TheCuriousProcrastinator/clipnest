@@ -8,6 +8,18 @@ const els = {};
 
 document.addEventListener("DOMContentLoaded", init);
 
+let notionPresetChooserEl =
+  null;
+
+let notionClipHeaderEl =
+  null;
+
+let notionClipRangeNodes =
+  [];
+
+let notionPresetFieldRoot =
+  null;
+
 async function init() {
   els.siteLabel = document.getElementById("siteLabel");
   els.settingsButton = document.getElementById("settingsButton");
@@ -34,6 +46,8 @@ async function init() {
   els.saveButton = document.getElementById("saveButton");
   els.status = document.getElementById("status");
   els.destinationButtons = [...document.querySelectorAll(".destination-button")];
+
+  setupNotionPresetNavigation();
 
   els.settingsButton.addEventListener("click", () => chrome.runtime.openOptionsPage());
   els.saveButton.addEventListener("click", save);
@@ -149,6 +163,588 @@ async function init() {
   );
 }
 
+function findCommonAncestor(
+  first,
+  second
+) {
+  let current =
+    first;
+
+  while (current) {
+    if (
+      current.contains(
+        second
+      )
+    ) {
+      return current;
+    }
+
+    current =
+      current.parentElement;
+  }
+
+  return null;
+}
+
+function directChildUnder(
+  ancestor,
+  element
+) {
+  let current =
+    element;
+
+  while (
+    current &&
+    current.parentElement !==
+      ancestor
+  ) {
+    current =
+      current.parentElement;
+  }
+
+  return current;
+}
+
+function collectNotionClipRangeNodes() {
+  const start =
+    els.notionPresetField;
+
+  const end =
+    els.saveButton;
+
+  if (
+    !start ||
+    !end
+  ) {
+    return [];
+  }
+
+  const ancestor =
+    findCommonAncestor(
+      start,
+      end
+    );
+
+  if (!ancestor) {
+    return [];
+  }
+
+  const startRoot =
+    directChildUnder(
+      ancestor,
+      start
+    );
+
+  const endRoot =
+    directChildUnder(
+      ancestor,
+      end
+    );
+
+  if (
+    !startRoot ||
+    !endRoot
+  ) {
+    return [];
+  }
+
+  const children =
+    [...ancestor.children];
+
+  const startIndex =
+    children.indexOf(
+      startRoot
+    );
+
+  const endIndex =
+    children.indexOf(
+      endRoot
+    );
+
+  if (
+    startIndex < 0 ||
+    endIndex < 0 ||
+    endIndex < startIndex
+  ) {
+    return [];
+  }
+
+  notionPresetFieldRoot =
+    startRoot;
+
+  return children.slice(
+    startIndex,
+    endIndex + 1
+  );
+}
+
+function setNotionClipRangeHidden(
+  hidden
+) {
+  notionClipRangeNodes.forEach(
+    (element) => {
+      element.classList.toggle(
+        "notion-navigation-hidden",
+        hidden
+      );
+    }
+  );
+}
+
+function hideNotionNavigationViews() {
+  notionPresetChooserEl?.classList.add(
+    "hidden"
+  );
+
+  notionClipHeaderEl?.classList.add(
+    "hidden"
+  );
+}
+
+function createNotionPresetChooser() {
+  const section =
+    document.createElement(
+      "section"
+    );
+
+  section.id =
+    "notionPresetChooser";
+
+  section.className =
+    "notion-preset-chooser hidden";
+
+  const heading =
+    document.createElement(
+      "div"
+    );
+
+  heading.className =
+    "notion-preset-chooser-heading";
+
+  const title =
+    document.createElement(
+      "h2"
+    );
+
+  title.textContent =
+    "Choose preset";
+
+  heading.append(
+    title
+  );
+
+  const list =
+    document.createElement(
+      "div"
+    );
+
+  list.id =
+    "notionPresetChooserList";
+
+  list.className =
+    "notion-preset-chooser-list";
+
+  const newPreset =
+    document.createElement(
+      "button"
+    );
+
+  newPreset.type =
+    "button";
+
+  newPreset.className =
+    "notion-new-preset-button";
+
+  newPreset.innerHTML =
+    '<span class="notion-new-preset-plus">+</span><span>New preset</span>';
+
+  newPreset.addEventListener(
+    "click",
+    () => {
+      chrome.runtime
+        .openOptionsPage();
+    }
+  );
+
+  section.append(
+    heading,
+    list,
+    newPreset
+  );
+
+  return section;
+}
+
+function createNotionClipHeader() {
+  const header =
+    document.createElement(
+      "div"
+    );
+
+  header.id =
+    "notionClipHeader";
+
+  header.className =
+    "notion-clip-header hidden";
+
+  const back =
+    document.createElement(
+      "button"
+    );
+
+  back.type =
+    "button";
+
+  back.className =
+    "notion-clip-back";
+
+  back.setAttribute(
+    "aria-label",
+    "Back to presets"
+  );
+
+  back.title =
+    "Back to presets";
+
+  back.textContent =
+    "‹";
+
+  const title =
+    document.createElement(
+      "div"
+    );
+
+  title.id =
+    "notionClipPresetName";
+
+  title.className =
+    "notion-clip-preset-name";
+
+  const edit =
+    document.createElement(
+      "button"
+    );
+
+  edit.type =
+    "button";
+
+  edit.className =
+    "notion-clip-edit";
+
+  edit.setAttribute(
+    "aria-label",
+    "Edit preset"
+  );
+
+  edit.title =
+    "Edit preset";
+
+  edit.textContent =
+    "⚙";
+
+  back.addEventListener(
+    "click",
+    () => {
+      void showNotionPresetChooser();
+    }
+  );
+
+  edit.addEventListener(
+    "click",
+    () => {
+      chrome.runtime
+        .openOptionsPage();
+    }
+  );
+
+  header.append(
+    back,
+    title,
+    edit
+  );
+
+  return header;
+}
+
+function setupNotionPresetNavigation() {
+  notionClipRangeNodes =
+    collectNotionClipRangeNodes();
+
+  if (
+    !notionClipRangeNodes.length
+  ) {
+    console.warn(
+      "ClipNest could not determine the Notion clip UI range."
+    );
+
+    return;
+  }
+
+  const first =
+    notionClipRangeNodes[0];
+
+  const parent =
+    first.parentElement;
+
+  if (!parent) {
+    return;
+  }
+
+  notionPresetChooserEl =
+    createNotionPresetChooser();
+
+  notionClipHeaderEl =
+    createNotionClipHeader();
+
+  parent.insertBefore(
+    notionPresetChooserEl,
+    first
+  );
+
+  parent.insertBefore(
+    notionClipHeaderEl,
+    first
+  );
+}
+
+async function renderNotionPresetChooser() {
+  const list =
+    document.getElementById(
+      "notionPresetChooserList"
+    );
+
+  if (!list) {
+    return;
+  }
+
+  list.replaceChildren();
+
+  const info =
+    await ClipNestNotionStore
+      .listPresets();
+
+  if (!info.presets.length) {
+    const empty =
+      document.createElement(
+        "div"
+      );
+
+    empty.className =
+      "notion-preset-empty";
+
+    empty.textContent =
+      "No Notion presets yet.";
+
+    list.append(
+      empty
+    );
+
+    return;
+  }
+
+  for (
+    const preset of
+      info.presets
+  ) {
+    const button =
+      document.createElement(
+        "button"
+      );
+
+    button.type =
+      "button";
+
+    button.className =
+      "notion-preset-card";
+
+    const icon =
+      document.createElement(
+        "span"
+      );
+
+    icon.className =
+      "notion-preset-card-icon";
+
+    icon.textContent =
+      preset.destinationType ===
+        "page"
+        ? "↗"
+        : "▣";
+
+    const copy =
+      document.createElement(
+        "span"
+      );
+
+    copy.className =
+      "notion-preset-card-copy";
+
+    const name =
+      document.createElement(
+        "strong"
+      );
+
+    name.textContent =
+      preset.name ||
+      "Untitled preset";
+
+    const meta =
+      document.createElement(
+        "small"
+      );
+
+    const destination =
+      preset.destinationName ||
+      (
+        preset.destinationType ===
+          "page"
+          ? "Notion page"
+          : "Notion database"
+      );
+
+    const workspace =
+      preset.workspaceName ||
+      "Notion";
+
+    meta.textContent =
+      `${destination} · ${workspace}`;
+
+    copy.append(
+      name,
+      meta
+    );
+
+    const arrow =
+      document.createElement(
+        "span"
+      );
+
+    arrow.className =
+      "notion-preset-card-arrow";
+
+    arrow.textContent =
+      "›";
+
+    button.append(
+      icon,
+      copy,
+      arrow
+    );
+
+    button.addEventListener(
+      "click",
+      async () => {
+        button.disabled =
+          true;
+
+        try {
+          await ClipNestNotionStore
+            .setActivePreset(
+              preset.id
+            );
+
+          await loadNotionPresetPicker();
+
+          notionSelectedTags =
+            [];
+
+          if (els.tagsInput) {
+            els.tagsInput.value =
+              "";
+          }
+
+          renderNotionSelectedTags();
+
+          await loadNotionTagOptions();
+
+          showNotionPresetClip(
+            preset
+          );
+        } catch (error) {
+          setStatus(
+            error?.message ||
+            String(error),
+            "error"
+          );
+
+          button.disabled =
+            false;
+        }
+      }
+    );
+
+    list.append(
+      button
+    );
+  }
+}
+
+async function showNotionPresetChooser() {
+  if (
+    state.destination !==
+      "notion"
+  ) {
+    return;
+  }
+
+  notionClipHeaderEl?.classList.add(
+    "hidden"
+  );
+
+  setNotionClipRangeHidden(
+    true
+  );
+
+  notionPresetChooserEl?.classList.remove(
+    "hidden"
+  );
+
+  await renderNotionPresetChooser();
+}
+
+function showNotionPresetClip(
+  preset
+) {
+  notionPresetChooserEl?.classList.add(
+    "hidden"
+  );
+
+  setNotionClipRangeHidden(
+    false
+  );
+
+  /*
+   * The old preset dropdown remains as the
+   * internal state source during Phase 1,
+   * but is no longer part of the user-facing UI.
+   */
+  notionPresetFieldRoot?.classList.add(
+    "notion-navigation-hidden"
+  );
+
+  notionClipHeaderEl?.classList.remove(
+    "hidden"
+  );
+
+  const title =
+    document.getElementById(
+      "notionClipPresetName"
+    );
+
+  if (title) {
+    title.textContent =
+      preset?.name ||
+      "Notion preset";
+  }
+
+  els.tagsInput?.focus({
+    preventScroll:
+      true
+  });
+
+  els.tagsInput?.blur();
+}
+
 function setDestination(destination) {
   state.destination =
     destination;
@@ -192,13 +788,25 @@ function setDestination(destination) {
     destination ===
       "notion"
   ) {
-    void loadNotionTagOptions();
-  } else {
-    notionTagOptions =
-      [];
+    void showNotionPresetChooser();
 
-    void loadObsidianTags();
+    return;
   }
+
+  hideNotionNavigationViews();
+
+  setNotionClipRangeHidden(
+    false
+  );
+
+  notionPresetFieldRoot?.classList.remove(
+    "notion-navigation-hidden"
+  );
+
+  notionTagOptions =
+    [];
+
+  void loadObsidianTags();
 }
 
 async function loadNotionPresetPicker() {
