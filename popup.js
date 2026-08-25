@@ -277,7 +277,8 @@ async function handleNotionPresetChange() {
     "";
 
   if (
-    value === "__manage__"
+    value ===
+      "__manage__"
   ) {
     await loadNotionPresetPicker();
 
@@ -296,10 +297,13 @@ async function handleNotionPresetChange() {
         value
       );
 
-    if (els.tagsInput) {
-      els.tagsInput.value =
-        "";
-    }
+    notionSelectedTags =
+      [];
+
+    els.tagsInput.value =
+      "";
+
+    renderNotionSelectedTags();
 
     await loadNotionPresetPicker();
 
@@ -898,7 +902,7 @@ async function save() {
 
 function buildPayload() {
   const title = els.titleInput.value.trim() || state.capture.title || "Untitled";
-  const tags = parseTags(els.tagsInput.value);
+  const tags = getCurrentTags();
   const notes = els.notesInput.value.trim();
   const contentMode = getContentMode();
 
@@ -1330,7 +1334,10 @@ async function restoreQuickClipDraft(tab, capture) {
   }
 
   if (typeof pendingQuickClipDraft.tags === "string") {
-    els.tagsInput.value = pendingQuickClipDraft.tags;
+    restoreTagEditorValue(
+      pendingQuickClipDraft.tags,
+      pendingQuickClipDraft.destination
+    );
   }
 
   if (typeof pendingQuickClipDraft.notes === "string") {
@@ -1392,7 +1399,7 @@ async function startAreaSelection() {
         tabId: tab.id,
         url: tab.url || "",
         title: els.titleInput.value,
-        tags: els.tagsInput.value,
+        tags: serializeCurrentTags(),
         notes: els.notesInput.value,
         templatePath: els.templateSelect?.value || "",
         destination: state.destination,
@@ -1693,6 +1700,9 @@ async function loadObsidianTemplates(
 let notionTagOptions =
   [];
 
+let notionSelectedTags =
+  [];
+
 async function loadNotionTagOptions() {
   notionTagOptions =
     [];
@@ -1741,10 +1751,13 @@ async function loadNotionTagOptions() {
           : "No existing Notion tags";
     }
 
+    renderNotionSelectedTags();
     renderObsidianTagSuggestions();
   } catch (error) {
     notionTagOptions =
       [];
+
+    renderNotionSelectedTags();
 
     els.tagSuggestions?.classList.add(
       "hidden"
@@ -1760,7 +1773,9 @@ async function loadNotionTagOptions() {
 
 function setupObsidianTagAutocomplete() {
   const field =
-    els.tagsInput?.closest(".field");
+    els.tagsInput?.closest(
+      ".field"
+    );
 
   if (!field) {
     return;
@@ -1770,8 +1785,48 @@ function setupObsidianTagAutocomplete() {
     "tags-autocomplete-field"
   );
 
+  const editor =
+    document.createElement(
+      "div"
+    );
+
+  editor.id =
+    "notionTagsEditor";
+
+  editor.className =
+    "notion-tags-editor";
+
+  const selectedTags =
+    document.createElement(
+      "div"
+    );
+
+  selectedTags.id =
+    "notionSelectedTags";
+
+  selectedTags.className =
+    "notion-selected-tags";
+
+  els.tagsInput.insertAdjacentElement(
+    "beforebegin",
+    editor
+  );
+
+  editor.append(
+    selectedTags,
+    els.tagsInput
+  );
+
+  els.notionTagsEditor =
+    editor;
+
+  els.notionSelectedTags =
+    selectedTags;
+
   const suggestions =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
   suggestions.id =
     "obsidianTagSuggestions";
@@ -1779,10 +1834,14 @@ function setupObsidianTagAutocomplete() {
   suggestions.className =
     "tag-suggestions hidden";
 
-  field.append(suggestions);
+  field.append(
+    suggestions
+  );
 
   const meta =
-    document.createElement("small");
+    document.createElement(
+      "small"
+    );
 
   meta.id =
     "obsidianTagSyncMeta";
@@ -1804,6 +1863,19 @@ function setupObsidianTagAutocomplete() {
   els.tagSyncMeta =
     meta;
 
+  editor.addEventListener(
+    "click",
+    (event) => {
+      if (
+        event.target === editor ||
+        event.target ===
+          selectedTags
+      ) {
+        els.tagsInput.focus();
+      }
+    }
+  );
+
   els.tagsInput.addEventListener(
     "input",
     renderObsidianTagSuggestions
@@ -1818,12 +1890,61 @@ function setupObsidianTagAutocomplete() {
     "keydown",
     (event) => {
       if (
-        event.key === "Escape" &&
-        els.tagSuggestions
+        event.key ===
+          "Escape"
       ) {
-        els.tagSuggestions.classList.add(
+        els.tagSuggestions?.classList.add(
           "hidden"
         );
+
+        return;
+      }
+
+      if (
+        state.destination ===
+          "notion" &&
+        event.key ===
+          "Backspace" &&
+        !els.tagsInput.value &&
+        notionSelectedTags.length
+      ) {
+        event.preventDefault();
+
+        const last =
+          notionSelectedTags[
+            notionSelectedTags.length - 1
+          ];
+
+        removeNotionSelectedTag(
+          last.tag
+        );
+
+        return;
+      }
+
+      if (
+        state.destination ===
+          "notion" &&
+        event.key ===
+          "Enter"
+      ) {
+        const query =
+          normalizeNotionTagName(
+            els.tagsInput.value
+          );
+
+        const match =
+          getNotionOptionForTag(
+            query
+          );
+
+        if (match) {
+          event.preventDefault();
+
+          addNotionSelectedTag(
+            match.tag
+          );
+        }
       }
     }
   );
@@ -1831,13 +1952,18 @@ function setupObsidianTagAutocomplete() {
   els.tagsInput.addEventListener(
     "blur",
     () => {
-      setTimeout(() => {
-        els.tagSuggestions?.classList.add(
-          "hidden"
-        );
-      }, 120);
+      setTimeout(
+        () => {
+          els.tagSuggestions?.classList.add(
+            "hidden"
+          );
+        },
+        120
+      );
     }
   );
+
+  renderNotionSelectedTags();
 }
 
 async function loadObsidianTags() {
@@ -1907,6 +2033,333 @@ function updateTagSyncMeta(info) {
 
   els.tagSyncMeta.textContent =
     `${count} Obsidian tags`;
+}
+
+function normalizeNotionTagName(
+  value
+) {
+  return String(
+    value ||
+    ""
+  )
+    .trim()
+    .replace(
+      /^#/,
+      ""
+    );
+}
+
+function notionTagKey(
+  value
+) {
+  return normalizeNotionTagName(
+    value
+  ).toLowerCase();
+}
+
+function getNotionOptionForTag(
+  tag
+) {
+  const key =
+    notionTagKey(
+      tag
+    );
+
+  return notionTagOptions.find(
+    (option) =>
+      notionTagKey(
+        option?.tag
+      ) === key
+  ) || null;
+}
+
+function uniqueTagNames(
+  values
+) {
+  const seen =
+    new Set();
+
+  const result =
+    [];
+
+  for (const value of values) {
+    const tag =
+      normalizeNotionTagName(
+        value
+      );
+
+    const key =
+      tag.toLowerCase();
+
+    if (
+      !tag ||
+      seen.has(key)
+    ) {
+      continue;
+    }
+
+    seen.add(key);
+    result.push(tag);
+  }
+
+  return result;
+}
+
+function renderNotionSelectedTags() {
+  const container =
+    els.notionSelectedTags;
+
+  if (!container) {
+    return;
+  }
+
+  container.replaceChildren();
+
+  for (
+    const selected of
+      notionSelectedTags
+  ) {
+    const option =
+      getNotionOptionForTag(
+        selected.tag
+      );
+
+    const tag =
+      option?.tag ||
+      selected.tag;
+
+    const color =
+      option?.color ||
+      selected.color ||
+      "default";
+
+    const chip =
+      document.createElement(
+        "span"
+      );
+
+    chip.className =
+      "notion-selected-tag-chip notion-tag-pill";
+
+    chip.dataset.notionColor =
+      normalizeNotionTagColor(
+        color
+      );
+
+    const label =
+      document.createElement(
+        "span"
+      );
+
+    label.className =
+      "notion-selected-tag-label";
+
+    label.textContent =
+      tag;
+
+    const remove =
+      document.createElement(
+        "button"
+      );
+
+    remove.type =
+      "button";
+
+    remove.className =
+      "notion-selected-tag-remove";
+
+    remove.setAttribute(
+      "aria-label",
+      `Remove ${tag}`
+    );
+
+    remove.title =
+      `Remove ${tag}`;
+
+    remove.textContent =
+      "×";
+
+    remove.addEventListener(
+      "mousedown",
+      (event) => {
+        event.preventDefault();
+      }
+    );
+
+    remove.addEventListener(
+      "click",
+      () => {
+        removeNotionSelectedTag(
+          tag
+        );
+
+        els.tagsInput?.focus();
+      }
+    );
+
+    chip.append(
+      label,
+      remove
+    );
+
+    container.append(
+      chip
+    );
+  }
+}
+
+function addNotionSelectedTag(
+  rawTag
+) {
+  const clean =
+    normalizeNotionTagName(
+      rawTag
+    );
+
+  if (!clean) {
+    return;
+  }
+
+  const key =
+    notionTagKey(
+      clean
+    );
+
+  const exists =
+    notionSelectedTags.some(
+      (item) =>
+        notionTagKey(
+          item.tag
+        ) === key
+    );
+
+  if (!exists) {
+    const option =
+      getNotionOptionForTag(
+        clean
+      );
+
+    notionSelectedTags.push({
+      tag:
+        option?.tag ||
+        clean,
+
+      color:
+        option?.color ||
+        "default"
+    });
+  }
+
+  els.tagsInput.value =
+    "";
+
+  renderNotionSelectedTags();
+
+  els.tagsInput.focus();
+
+  renderObsidianTagSuggestions();
+}
+
+function removeNotionSelectedTag(
+  rawTag
+) {
+  const key =
+    notionTagKey(
+      rawTag
+    );
+
+  notionSelectedTags =
+    notionSelectedTags.filter(
+      (item) =>
+        notionTagKey(
+          item.tag
+        ) !== key
+    );
+
+  renderNotionSelectedTags();
+  renderObsidianTagSuggestions();
+}
+
+function getCurrentTags() {
+  const typed =
+    parseTags(
+      els.tagsInput?.value ||
+      ""
+    );
+
+  if (
+    state.destination !==
+      "notion"
+  ) {
+    return typed;
+  }
+
+  return uniqueTagNames([
+    ...notionSelectedTags.map(
+      (item) =>
+        item.tag
+    ),
+    ...typed
+  ]);
+}
+
+function serializeCurrentTags() {
+  return getCurrentTags()
+    .join(", ");
+}
+
+function restoreTagEditorValue(
+  rawValue,
+  destination =
+    state.destination
+) {
+  const tags =
+    parseTags(
+      rawValue
+    );
+
+  if (
+    destination !==
+      "notion"
+  ) {
+    notionSelectedTags =
+      [];
+
+    els.tagsInput.value =
+      String(
+        rawValue ||
+        ""
+      );
+
+    renderNotionSelectedTags();
+
+    return;
+  }
+
+  notionSelectedTags =
+    tags.map(
+      (tag) => {
+        const option =
+          getNotionOptionForTag(
+            tag
+          );
+
+        return {
+          tag:
+            option?.tag ||
+            tag,
+
+          color:
+            option?.color ||
+            "default"
+        };
+      }
+    );
+
+  els.tagsInput.value =
+    "";
+
+  renderNotionSelectedTags();
 }
 
 function normalizeNotionTagColor(
@@ -1991,8 +2444,20 @@ function renderObsidianTagSuggestions() {
       .toLowerCase();
 
   const selected =
-    new Set(
-      pieces
+    new Set([
+      ...(
+        state.destination ===
+          "notion"
+          ? notionSelectedTags.map(
+              (item) =>
+                notionTagKey(
+                  item.tag
+                )
+            )
+          : []
+      ),
+
+      ...pieces
         .slice(
           0,
           -1
@@ -2008,7 +2473,7 @@ function renderObsidianTagSuggestions() {
               .toLowerCase()
         )
         .filter(Boolean)
-    );
+    ]);
 
   const matches =
     all
@@ -2132,17 +2597,30 @@ function renderObsidianTagSuggestions() {
 }
 
 function chooseObsidianTag(tag) {
+  if (
+    state.destination ===
+      "notion"
+  ) {
+    addNotionSelectedTag(
+      tag
+    );
+
+    return;
+  }
+
   const pieces =
     String(
-      els.tagsInput.value || ""
+      els.tagsInput.value ||
+      ""
     ).split(",");
 
   pieces.pop();
 
   const existing =
     pieces
-      .map((value) =>
-        value.trim()
+      .map(
+        (value) =>
+          value.trim()
       )
       .filter(Boolean);
 

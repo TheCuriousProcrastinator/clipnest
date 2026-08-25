@@ -1046,3 +1046,105 @@ body[data-destination="notion"] .notion-tag-pill[data-notion-color="red"] {
   background: #6e3630;
   color: #f2ccc7;
 }
+
+/* ---------------------------------
+   Notion selected tag chip editor
+   --------------------------------- */
+
+.notion-tags-editor {
+  display: contents;
+}
+
+.notion-selected-tags {
+  display: none;
+}
+
+body[data-destination="notion"] .notion-tags-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+  border-radius: 8px;
+  background: Canvas;
+  cursor: text;
+}
+
+body[data-destination="notion"] .notion-tags-editor:focus-within {
+  border-color: var(--clipper-purple);
+  box-shadow: 0 0 0 2px color-mix(
+    in srgb,
+    var(--clipper-purple) 30%,
+    transparent
+  );
+}
+
+body[data-destination="notion"] .notion-selected-tags {
+  display: contents;
+}
+
+body[data-destination="notion"] #tagsInput {
+  flex: 1 1 130px;
+  width: auto !important;
+  min-width: 100px;
+  min-height: 28px;
+  padding: 3px 2px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+body[data-destination="notion"] #tagsInput:focus {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+body[data-destination="notion"] .notion-selected-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  max-width: 100%;
+  padding: 4px 5px 4px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.notion-selected-tag-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notion-selected-tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: .65;
+}
+
+.notion-selected-tag-remove:hover {
+  background: rgba(255, 255, 255, .12);
+  opacity: 1;
+}
+
+body[data-destination="notion"] .tag-suggestion {
+  min-height: 42px;
+}
