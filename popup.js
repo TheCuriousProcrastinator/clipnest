@@ -1925,24 +1925,29 @@ function setupObsidianTagAutocomplete() {
       if (
         state.destination ===
           "notion" &&
-        event.key ===
-          "Enter"
+        (
+          event.key ===
+            "Enter" ||
+          event.key ===
+            ","
+        )
       ) {
         const query =
           normalizeNotionTagName(
             els.tagsInput.value
           );
 
-        const match =
-          getNotionOptionForTag(
-            query
-          );
-
-        if (match) {
+        if (query) {
           event.preventDefault();
 
+          const match =
+            getNotionOptionForTag(
+              query
+            );
+
           addNotionSelectedTag(
-            match.tag
+            match?.tag ||
+            query
           );
         }
       }
@@ -2246,7 +2251,9 @@ function addNotionSelectedTag(
 
       color:
         option?.color ||
-        "default"
+        chooseNewNotionTagColor(
+          clean
+        )
     });
   }
 
@@ -2351,7 +2358,9 @@ function restoreTagEditorValue(
 
           color:
             option?.color ||
-            "default"
+            chooseNewNotionTagColor(
+              tag
+            )
         };
       }
     );
@@ -2360,6 +2369,54 @@ function restoreTagEditorValue(
     "";
 
   renderNotionSelectedTags();
+}
+
+function chooseNewNotionTagColor(
+  value
+) {
+  const colors = [
+    "gray",
+    "brown",
+    "orange",
+    "yellow",
+    "green",
+    "blue",
+    "purple",
+    "pink",
+    "red"
+  ];
+
+  const text =
+    notionTagKey(
+      value
+    );
+
+  let hash =
+    2166136261;
+
+  for (
+    let index = 0;
+    index < text.length;
+    index += 1
+  ) {
+    hash ^=
+      text.charCodeAt(
+        index
+      );
+
+    hash =
+      Math.imul(
+        hash,
+        16777619
+      );
+  }
+
+  return colors[
+    (
+      hash >>> 0
+    ) %
+    colors.length
+  ];
 }
 
 function normalizeNotionTagColor(
@@ -2412,14 +2469,6 @@ function renderObsidianTagSuggestions() {
             : []
         );
 
-  if (!all.length) {
-    container.classList.add(
-      "hidden"
-    );
-
-    return;
-  }
-
   const raw =
     String(
       els.tagsInput.value ||
@@ -2429,7 +2478,7 @@ function renderObsidianTagSuggestions() {
   const pieces =
     raw.split(",");
 
-  const query =
+  const queryText =
     String(
       pieces[
         pieces.length - 1
@@ -2440,8 +2489,10 @@ function renderObsidianTagSuggestions() {
       .replace(
         /^#/,
         ""
-      )
-      .toLowerCase();
+      );
+
+  const query =
+    queryText.toLowerCase();
 
   const selected =
     new Set([
@@ -2512,15 +2563,38 @@ function renderObsidianTagSuggestions() {
         8
       );
 
-  container.replaceChildren();
-
-  if (!matches.length) {
-    container.classList.add(
-      "hidden"
+  const exactNotionMatch =
+    state.destination ===
+      "notion" &&
+    Boolean(query) &&
+    notionTagOptions.some(
+      (item) =>
+        notionTagKey(
+          item.tag
+        ) === query
     );
 
-    return;
-  }
+  const queryAlreadySelected =
+    state.destination ===
+      "notion" &&
+    Boolean(query) &&
+    notionSelectedTags.some(
+      (item) =>
+        notionTagKey(
+          item.tag
+        ) === query
+    );
+
+  const canCreate =
+    state.destination ===
+      "notion" &&
+    Boolean(
+      queryText
+    ) &&
+    !exactNotionMatch &&
+    !queryAlreadySelected;
+
+  container.replaceChildren();
 
   for (const item of matches) {
     const button =
@@ -2589,6 +2663,79 @@ function renderObsidianTagSuggestions() {
     container.append(
       button
     );
+  }
+
+  if (canCreate) {
+    const button =
+      document.createElement(
+        "button"
+      );
+
+    button.type =
+      "button";
+
+    button.className =
+      "tag-suggestion notion-create-tag-suggestion";
+
+    const prefix =
+      document.createElement(
+        "span"
+      );
+
+    prefix.className =
+      "notion-create-tag-prefix";
+
+    prefix.textContent =
+      "Create";
+
+    const pill =
+      document.createElement(
+        "span"
+      );
+
+    pill.className =
+      "notion-tag-pill";
+
+    pill.dataset.notionColor =
+      normalizeNotionTagColor(
+        chooseNewNotionTagColor(
+          queryText
+        )
+      );
+
+    pill.textContent =
+      queryText;
+
+    button.append(
+      prefix,
+      pill
+    );
+
+    button.addEventListener(
+      "mousedown",
+      (event) => {
+        event.preventDefault();
+
+        addNotionSelectedTag(
+          queryText
+        );
+      }
+    );
+
+    container.append(
+      button
+    );
+  }
+
+  if (
+    !matches.length &&
+    !canCreate
+  ) {
+    container.classList.add(
+      "hidden"
+    );
+
+    return;
   }
 
   container.classList.remove(

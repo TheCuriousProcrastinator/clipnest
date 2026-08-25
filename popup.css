@@ -1148,3 +1148,27 @@ body[data-destination="notion"] .notion-selected-tag-chip {
 body[data-destination="notion"] .tag-suggestion {
   min-height: 42px;
 }
+
+/* ---------------------------------
+   Create new Notion tag
+   --------------------------------- */
+
+body[data-destination="notion"] .notion-create-tag-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+body[data-destination="notion"] .notion-create-tag-prefix {
+  opacity: .68;
+  font-size: 13px;
+}
+
+body[data-destination="notion"] .notion-create-tag-suggestion .notion-tag-pill {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
