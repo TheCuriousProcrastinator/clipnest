@@ -1658,6 +1658,261 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+function notionTagKey(
+  value
+) {
+  return String(
+    value ||
+    ""
+  )
+    .trim()
+    .toLowerCase();
+}
+
+function createNotionTagOptionId() {
+  return crypto.randomUUID();
+}
+
+function chooseNotionTagColor(
+  value
+) {
+  const colors = [
+    "gray",
+    "brown",
+    "orange",
+    "yellow",
+    "green",
+    "blue",
+    "purple",
+    "pink",
+    "red"
+  ];
+
+  const text =
+    notionTagKey(
+      value
+    );
+
+  let hash =
+    2166136261;
+
+  for (
+    let index = 0;
+    index < text.length;
+    index += 1
+  ) {
+    hash ^=
+      text.charCodeAt(
+        index
+      );
+
+    hash =
+      Math.imul(
+        hash,
+        16777619
+      );
+  }
+
+  return colors[
+    (
+      hash >>> 0
+    ) %
+    colors.length
+  ];
+}
+
+async function ensureNotionTagOptionsForSave(
+  preset,
+  rawTags
+) {
+  const tags =
+    [
+      ...new Map(
+        (
+          Array.isArray(
+            rawTags
+          )
+            ? rawTags
+            : []
+        )
+          .map(
+            (tag) =>
+              String(
+                tag ||
+                ""
+              ).trim()
+          )
+          .filter(Boolean)
+          .map(
+            (tag) => [
+              notionTagKey(
+                tag
+              ),
+              tag
+            ]
+          )
+      ).values()
+    ];
+
+  if (
+    !tags.length ||
+    preset.destinationType !==
+      "collection"
+  ) {
+    return tags;
+  }
+
+  const propertyId =
+    String(
+      preset.propertyIds
+        ?.tags ||
+      ""
+    ).trim();
+
+  if (!propertyId) {
+    return tags;
+  }
+
+  const existing =
+    await getNotionTagOptions();
+
+  const existingByKey =
+    new Map(
+      existing.map(
+        (option) => [
+          notionTagKey(
+            option.tag
+          ),
+          option
+        ]
+      )
+    );
+
+  const result =
+    [];
+
+  const missing =
+    [];
+
+  for (const tag of tags) {
+    const key =
+      notionTagKey(
+        tag
+      );
+
+    const known =
+      existingByKey.get(
+        key
+      );
+
+    if (known) {
+      result.push(
+        known.tag
+      );
+
+      continue;
+    }
+
+    const option = {
+      id:
+        createNotionTagOptionId(),
+
+      value:
+        tag,
+
+      color:
+        chooseNotionTagColor(
+          tag
+        )
+    };
+
+    missing.push(
+      option
+    );
+
+    existingByKey.set(
+      key,
+      {
+        id:
+          option.id,
+
+        tag:
+          option.value,
+
+        color:
+          option.color
+      }
+    );
+
+    result.push(
+      option.value
+    );
+  }
+
+  if (!missing.length) {
+    return result;
+  }
+
+  const operations =
+    missing.map(
+      (option) => ({
+        pointer: {
+          table:
+            "collection",
+
+          id:
+            preset.destinationId,
+
+          spaceId:
+            preset.workspaceId
+        },
+
+        command:
+          "keyedObjectListUpdate",
+
+        path: [
+          "schema",
+          propertyId,
+          "options"
+        ],
+
+        args: {
+          value:
+            option
+        }
+      })
+    );
+
+  await ClipNestNotionSession
+    .submitOperations({
+      workspaceId:
+        preset.workspaceId,
+
+      userId:
+        preset.workspaceUserId,
+
+      operations
+    });
+
+  for (const option of missing) {
+    console.log(
+      "ClipNest created Notion tag option:",
+      {
+        tag:
+          option.value,
+
+        color:
+          option.color,
+
+        database:
+          preset.destinationName
+      }
+    );
+  }
+
+  return result;
+}
+
 async function getNotionTagOptions() {
   await ClipNestNotionStore
     .migrateLegacy();
@@ -1933,12 +2188,19 @@ async function saveToNotion(
       );
     }
 
+    const databaseTags =
+      await ensureNotionTagOptionsForSave(
+        preset,
+        tags
+      );
+
     const properties =
       ClipNestNotionSession
         .encodeDatabaseProperties({
           title,
           url,
-          tags,
+          tags:
+            databaseTags,
 
           propertyIds: {
             title:
