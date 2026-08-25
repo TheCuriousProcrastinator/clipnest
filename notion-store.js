@@ -62,6 +62,306 @@
     ];
   }
 
+  function normalizePresetField(
+    field,
+    fallbackOrder = 0
+  ) {
+    if (
+      !field ||
+      typeof field !==
+        "object"
+    ) {
+      return null;
+    }
+
+    const propertyId =
+      cleanText(
+        field.propertyId
+      );
+
+    if (!propertyId) {
+      return null;
+    }
+
+    const propertyType =
+      cleanText(
+        field.propertyType
+      );
+
+    const propertyName =
+      cleanText(
+        field.propertyName ||
+        field.label
+      );
+
+    const label =
+      cleanText(
+        field.label ||
+        propertyName
+      ) ||
+      "Field";
+
+    const rawOrder =
+      Number(
+        field.order
+      );
+
+    const order =
+      Number.isFinite(
+        rawOrder
+      )
+        ? rawOrder
+        : fallbackOrder;
+
+    let defaultValue;
+
+    if (
+      Object.prototype
+        .hasOwnProperty.call(
+          field,
+          "defaultValue"
+        )
+    ) {
+      defaultValue =
+        Array.isArray(
+          field.defaultValue
+        )
+          ? [
+              ...field.defaultValue
+            ]
+          : field.defaultValue;
+    } else {
+      defaultValue =
+        propertyType ===
+          "multi_select"
+          ? []
+          : "";
+    }
+
+    return {
+      ...field,
+
+      propertyId,
+
+      propertyName,
+
+      propertyType,
+
+      label,
+
+      order,
+
+      visible:
+        field.visible !==
+          false,
+
+      source:
+        cleanText(
+          field.source
+        ) ||
+        "manual",
+
+      required:
+        field.required ===
+          true,
+
+      defaultValue
+    };
+  }
+
+  function deriveLegacyPresetFields(
+    raw,
+    {
+      titleProperty = "Name",
+      urlProperty = "",
+      tagsProperty = ""
+    } = {}
+  ) {
+    const propertyIds =
+      raw?.propertyIds &&
+      typeof raw.propertyIds ===
+        "object"
+        ? raw.propertyIds
+        : {};
+
+    const fields =
+      [];
+
+    const titleId =
+      cleanText(
+        propertyIds.title
+      );
+
+    if (titleId) {
+      fields.push({
+        propertyId:
+          titleId,
+
+        propertyName:
+          cleanText(
+            titleProperty
+          ) ||
+          "Name",
+
+        propertyType:
+          "title",
+
+        label:
+          "Title",
+
+        order:
+          fields.length,
+
+        visible:
+          true,
+
+        source:
+          "page_title",
+
+        required:
+          true,
+
+        defaultValue:
+          ""
+      });
+    }
+
+    const tagsId =
+      cleanText(
+        propertyIds.tags
+      );
+
+    if (tagsId) {
+      fields.push({
+        propertyId:
+          tagsId,
+
+        propertyName:
+          cleanText(
+            tagsProperty
+          ) ||
+          "Tags",
+
+        propertyType:
+          "multi_select",
+
+        label:
+          "Tags",
+
+        order:
+          fields.length,
+
+        visible:
+          true,
+
+        source:
+          "manual",
+
+        required:
+          false,
+
+        defaultValue:
+          []
+      });
+    }
+
+    const urlId =
+      cleanText(
+        propertyIds.url
+      );
+
+    if (urlId) {
+      fields.push({
+        propertyId:
+          urlId,
+
+        propertyName:
+          cleanText(
+            urlProperty
+          ) ||
+          "URL",
+
+        propertyType:
+          "url",
+
+        label:
+          "URL",
+
+        order:
+          fields.length,
+
+        visible:
+          false,
+
+        source:
+          "page_url",
+
+        required:
+          false,
+
+        defaultValue:
+          ""
+      });
+    }
+
+    return fields;
+  }
+
+  function normalizePresetFields(
+    raw,
+    names = {}
+  ) {
+    const fieldsConfigured =
+      raw?.fieldsConfigured ===
+        true;
+
+    /*
+     * During migration, old property mappings remain
+     * authoritative. This also keeps the existing
+     * Settings editor safe while the new preset editor
+     * is still being built.
+     */
+    const source =
+      fieldsConfigured &&
+      Array.isArray(
+        raw?.fields
+      )
+        ? raw.fields
+        : deriveLegacyPresetFields(
+            raw,
+            names
+          );
+
+    return source
+      .map(
+        (
+          field,
+          index
+        ) =>
+          normalizePresetField(
+            field,
+            index
+          )
+      )
+      .filter(Boolean)
+      .sort(
+        (a, b) =>
+          a.order -
+          b.order
+      )
+      .map(
+        (
+          field,
+          index
+        ) => ({
+          ...field,
+
+          order:
+            index
+        })
+      );
+  }
+
   function normalizePreset(
     raw = {},
     index = 0
@@ -100,6 +400,20 @@
       cleanText(
         raw.tagsProperty ??
         mappings.tags
+      );
+
+    const fieldsConfigured =
+      raw.fieldsConfigured ===
+        true;
+
+    const fields =
+      normalizePresetFields(
+        raw,
+        {
+          titleProperty,
+          urlProperty,
+          tagsProperty
+        }
       );
 
     return {
@@ -175,6 +489,10 @@
         cleanText(
           raw.destinationParentTable
         ),
+
+      fieldsConfigured,
+
+      fields,
 
       propertyIds: {
         title:
