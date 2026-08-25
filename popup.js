@@ -20,6 +20,21 @@ let notionClipRangeNodes =
 let notionPresetFieldRoot =
   null;
 
+let notionDynamicFieldsHost =
+  null;
+
+let notionTitleFieldNode =
+  null;
+
+let notionTagsFieldNode =
+  null;
+
+let notionTitleFieldPlaceholder =
+  null;
+
+let notionTagsFieldPlaceholder =
+  null;
+
 async function init() {
   els.siteLabel = document.getElementById("siteLabel");
   els.settingsButton = document.getElementById("settingsButton");
@@ -695,11 +710,407 @@ async function showNotionPresetChooser() {
     true
   );
 
+  notionDynamicFieldsHost?.classList.add(
+    "hidden"
+  );
+
   notionPresetChooserEl?.classList.remove(
     "hidden"
   );
 
   await renderNotionPresetChooser();
+}
+
+function ensureNotionDynamicFieldsHost() {
+  if (
+    notionDynamicFieldsHost
+  ) {
+    return true;
+  }
+
+  notionTitleFieldNode =
+    els.titleInput?.closest(
+      ".field"
+    ) ||
+    null;
+
+  notionTagsFieldNode =
+    els.tagsField ||
+    els.tagsInput?.closest(
+      ".field"
+    ) ||
+    null;
+
+  if (
+    !notionTitleFieldNode ||
+    !notionTagsFieldNode
+  ) {
+    console.warn(
+      "ClipNest could not locate the shared Title/Tags fields."
+    );
+
+    return false;
+  }
+
+  const parent =
+    notionTitleFieldNode
+      .parentElement;
+
+  if (
+    !parent ||
+    notionTagsFieldNode
+      .parentElement !==
+        parent
+  ) {
+    console.warn(
+      "ClipNest expected Title and Tags to share a parent."
+    );
+
+    return false;
+  }
+
+  notionTitleFieldPlaceholder =
+    document.createComment(
+      "clipnest-title-field"
+    );
+
+  notionTagsFieldPlaceholder =
+    document.createComment(
+      "clipnest-tags-field"
+    );
+
+  parent.insertBefore(
+    notionTitleFieldPlaceholder,
+    notionTitleFieldNode
+  );
+
+  parent.insertBefore(
+    notionTagsFieldPlaceholder,
+    notionTagsFieldNode
+  );
+
+  notionDynamicFieldsHost =
+    document.createElement(
+      "div"
+    );
+
+  notionDynamicFieldsHost.id =
+    "notionDynamicFields";
+
+  notionDynamicFieldsHost.className =
+    "notion-dynamic-fields hidden";
+
+  parent.insertBefore(
+    notionDynamicFieldsHost,
+    notionTitleFieldNode
+  );
+
+  return true;
+}
+
+function setSharedFieldLabel(
+  fieldNode,
+  label
+) {
+  if (!fieldNode) {
+    return;
+  }
+
+  const labelNode =
+    fieldNode.querySelector(
+      ":scope > span"
+    );
+
+  if (labelNode) {
+    labelNode.textContent =
+      label;
+  }
+}
+
+function restoreSharedPresetFields() {
+  if (
+    !notionDynamicFieldsHost
+  ) {
+    return;
+  }
+
+  notionTitleFieldNode
+    ?.classList.remove(
+      "notion-dynamic-field-hidden"
+    );
+
+  notionTagsFieldNode
+    ?.classList.remove(
+      "notion-dynamic-field-hidden"
+    );
+
+  setSharedFieldLabel(
+    notionTitleFieldNode,
+    "Title"
+  );
+
+  setSharedFieldLabel(
+    notionTagsFieldNode,
+    "Tags"
+  );
+
+  if (
+    notionTitleFieldPlaceholder
+      ?.parentNode &&
+    notionTitleFieldNode
+  ) {
+    notionTitleFieldPlaceholder
+      .parentNode
+      .insertBefore(
+        notionTitleFieldNode,
+        notionTitleFieldPlaceholder
+          .nextSibling
+      );
+  }
+
+  if (
+    notionTagsFieldPlaceholder
+      ?.parentNode &&
+    notionTagsFieldNode
+  ) {
+    notionTagsFieldPlaceholder
+      .parentNode
+      .insertBefore(
+        notionTagsFieldNode,
+        notionTagsFieldPlaceholder
+          .nextSibling
+      );
+  }
+
+  notionDynamicFieldsHost
+    .replaceChildren();
+
+  notionDynamicFieldsHost
+    .classList.add(
+      "hidden"
+    );
+}
+
+function getNotionPresetFieldNode(
+  preset,
+  field
+) {
+  const propertyId =
+    String(
+      field?.propertyId ||
+      ""
+    ).trim();
+
+  const propertyType =
+    String(
+      field?.propertyType ||
+      ""
+    ).trim();
+
+  const titlePropertyId =
+    String(
+      preset?.propertyIds
+        ?.title ||
+      ""
+    ).trim();
+
+  const tagsPropertyId =
+    String(
+      preset?.propertyIds
+        ?.tags ||
+      ""
+    ).trim();
+
+  if (
+    propertyId &&
+    titlePropertyId &&
+    propertyId ===
+      titlePropertyId
+  ) {
+    return {
+      node:
+        notionTitleFieldNode,
+
+      fallbackLabel:
+        "Title"
+    };
+  }
+
+  if (
+    propertyType ===
+      "title" &&
+    !titlePropertyId
+  ) {
+    return {
+      node:
+        notionTitleFieldNode,
+
+      fallbackLabel:
+        "Title"
+    };
+  }
+
+  if (
+    propertyId &&
+    tagsPropertyId &&
+    propertyId ===
+      tagsPropertyId
+  ) {
+    return {
+      node:
+        notionTagsFieldNode,
+
+      fallbackLabel:
+        "Tags"
+    };
+  }
+
+  return null;
+}
+
+function renderNotionPresetFields(
+  preset
+) {
+  if (
+    !ensureNotionDynamicFieldsHost()
+  ) {
+    return;
+  }
+
+  restoreSharedPresetFields();
+
+  notionDynamicFieldsHost
+    .classList.remove(
+      "hidden"
+    );
+
+  /*
+   * Move the shared fields into the Notion host
+   * first, but keep them hidden until fields[]
+   * explicitly asks for them.
+   */
+  notionTitleFieldNode
+    ?.classList.add(
+      "notion-dynamic-field-hidden"
+    );
+
+  notionTagsFieldNode
+    ?.classList.add(
+      "notion-dynamic-field-hidden"
+    );
+
+  if (notionTitleFieldNode) {
+    notionDynamicFieldsHost
+      .append(
+        notionTitleFieldNode
+      );
+  }
+
+  if (notionTagsFieldNode) {
+    notionDynamicFieldsHost
+      .append(
+        notionTagsFieldNode
+      );
+  }
+
+  const fields =
+    Array.isArray(
+      preset?.fields
+    )
+      ? [
+          ...preset.fields
+        ]
+      : [];
+
+  /*
+   * Safety fallback for a genuinely old or
+   * incomplete preset. Phase 2 presets should
+   * normally always have fields[].
+   */
+  if (!fields.length) {
+    notionTitleFieldNode
+      ?.classList.remove(
+        "notion-dynamic-field-hidden"
+      );
+
+    notionTagsFieldNode
+      ?.classList.remove(
+        "notion-dynamic-field-hidden"
+      );
+
+    setSharedFieldLabel(
+      notionTitleFieldNode,
+      "Title"
+    );
+
+    setSharedFieldLabel(
+      notionTagsFieldNode,
+      "Tags"
+    );
+
+    return;
+  }
+
+  fields
+    .slice()
+    .sort(
+      (a, b) =>
+        Number(
+          a?.order ||
+          0
+        ) -
+        Number(
+          b?.order ||
+          0
+        )
+    )
+    .forEach(
+      (field) => {
+        if (
+          field?.visible ===
+            false
+        ) {
+          return;
+        }
+
+        const match =
+          getNotionPresetFieldNode(
+            preset,
+            field
+          );
+
+        if (
+          !match?.node
+        ) {
+          return;
+        }
+
+        match.node
+          .classList.remove(
+            "notion-dynamic-field-hidden"
+          );
+
+        setSharedFieldLabel(
+          match.node,
+          String(
+            field.label ||
+            field.propertyName ||
+            match.fallbackLabel
+          ).trim() ||
+          match.fallbackLabel
+        );
+
+        /*
+         * append() is intentional. It gives us
+         * preset-defined field ordering without
+         * rebuilding the working controls.
+         */
+        notionDynamicFieldsHost
+          .append(
+            match.node
+          );
+      }
+    );
 }
 
 function showNotionPresetClip(
@@ -714,12 +1125,16 @@ function showNotionPresetClip(
   );
 
   /*
-   * The old preset dropdown remains as the
-   * internal state source during Phase 1,
-   * but is no longer part of the user-facing UI.
+   * The old preset dropdown remains the
+   * internal selection bridge for now,
+   * but it is not user-facing.
    */
   notionPresetFieldRoot?.classList.add(
     "notion-navigation-hidden"
+  );
+
+  renderNotionPresetFields(
+    preset
   );
 
   notionClipHeaderEl?.classList.remove(
@@ -802,6 +1217,8 @@ function setDestination(destination) {
   notionPresetFieldRoot?.classList.remove(
     "notion-navigation-hidden"
   );
+
+  restoreSharedPresetFields();
 
   notionTagOptions =
     [];

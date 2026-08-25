@@ -1508,3 +1508,19 @@ body[data-destination="notion"]
   font-size: 20px;
   font-weight: 750;
 }
+
+/* =================================
+   NOTION PRESET DYNAMIC FIELDS
+   ================================= */
+
+.notion-dynamic-fields {
+  display: contents;
+}
+
+.notion-dynamic-fields.hidden {
+  display: none;
+}
+
+.notion-dynamic-field-hidden {
+  display: none !important;
+}
