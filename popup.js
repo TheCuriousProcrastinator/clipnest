@@ -2519,85 +2519,83 @@ function positionNotionTagSuggestions() {
     document.documentElement
       .clientWidth;
 
-  const viewportHeight =
-    document.documentElement
-      .clientHeight;
-
-  const horizontalGap =
-    12;
-
   const verticalGap =
     6;
+
+  const rightMargin =
+    18;
+
+  const desiredWidth =
+    Math.min(
+      440,
+      Math.max(
+        300,
+        rect.width * 0.72
+      )
+    );
+
+  const availableWidth =
+    Math.max(
+      220,
+      viewportWidth -
+        rect.left -
+        rightMargin
+    );
+
+  const width =
+    Math.min(
+      desiredWidth,
+      availableWidth
+    );
 
   const saveRect =
     els.saveButton
       ?.getBoundingClientRect();
 
-  const left =
-    Math.max(
-      horizontalGap,
-      rect.left
-    );
-
-  const width =
-    Math.max(
-      120,
-      Math.min(
-        rect.width,
-        viewportWidth -
-          left -
-          horizontalGap
-      )
-    );
-
-  let lowerBoundary =
-    viewportHeight -
-    12;
+  let maxHeight =
+    188;
 
   if (
     saveRect &&
     saveRect.top >
       rect.bottom
   ) {
-    lowerBoundary =
-      Math.min(
-        lowerBoundary,
-        saveRect.top -
-          12
+    const roomBeforeSave =
+      saveRect.top -
+      rect.bottom -
+      18;
+
+    maxHeight =
+      Math.max(
+        92,
+        Math.min(
+          188,
+          roomBeforeSave
+        )
       );
   }
 
-  const spaceBelow =
-    Math.max(
-      0,
-      lowerBoundary -
-        rect.bottom -
-        verticalGap
-    );
-
-  const spaceAbove =
-    Math.max(
-      0,
-      rect.top -
-        12 -
-        verticalGap
-    );
-
-  const preferredHeight =
-    230;
-
-  const minimumUsefulHeight =
-    110;
-
-  const openBelow =
-    spaceBelow >=
-      minimumUsefulHeight ||
-    spaceBelow >=
-      spaceAbove;
-
   els.tagSuggestions.style.setProperty(
     "left",
-    `${left}px`,
+    `${rect.left}px`,
+    "important"
+  );
+
+  els.tagSuggestions.style.setProperty(
+    "top",
+    `${rect.bottom + verticalGap}px`,
+    "important"
+  );
+
+  els.tagSuggestions.style.setProperty(
+    "bottom",
+    "auto",
+    "important"
+  );
+
+  els.tagSuggestions.style.setProperty(
+    "right",
+    "auto",
     "important"
   );
 
@@ -2608,70 +2606,10 @@ function positionNotionTagSuggestions() {
   );
 
   els.tagSuggestions.style.setProperty(
-    "right",
-    "auto",
+    "max-height",
+    `${maxHeight}px`,
     "important"
   );
-
-  if (openBelow) {
-    const maxHeight =
-      Math.max(
-        72,
-        Math.min(
-          preferredHeight,
-          spaceBelow
-        )
-      );
-
-    els.tagSuggestions.style.setProperty(
-      "top",
-      `${rect.bottom + verticalGap}px`,
-      "important"
-    );
-
-    els.tagSuggestions.style.setProperty(
-      "bottom",
-      "auto",
-      "important"
-    );
-
-    els.tagSuggestions.style.setProperty(
-      "max-height",
-      `${maxHeight}px`,
-      "important"
-    );
-  } else {
-    const maxHeight =
-      Math.max(
-        72,
-        Math.min(
-          preferredHeight,
-          spaceAbove
-        )
-      );
-
-    els.tagSuggestions.style.setProperty(
-      "top",
-      "auto",
-      "important"
-    );
-
-    els.tagSuggestions.style.setProperty(
-      "bottom",
-      `${
-        viewportHeight -
-        rect.top +
-        verticalGap
-      }px`,
-      "important"
-    );
-
-    els.tagSuggestions.style.setProperty(
-      "max-height",
-      `${maxHeight}px`,
-      "important"
-    );
-  }
 }
 
 function renderObsidianTagSuggestions() {

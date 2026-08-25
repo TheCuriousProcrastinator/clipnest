@@ -1220,3 +1220,59 @@ body[data-destination="notion"] #obsidianTagSyncMeta {
 body[data-destination="notion"] #obsidianTagSuggestions {
   box-sizing: border-box !important;
 }
+
+
+/* NOTION COMPACT SCROLLABLE TAG PICKER */
+
+body[data-destination="notion"] #obsidianTagSuggestions {
+  position: fixed !important;
+  z-index: 10000 !important;
+
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+
+  box-sizing: border-box !important;
+
+  margin: 0 !important;
+  padding: 5px !important;
+
+  scrollbar-width: thin;
+
+  border-radius: 9px;
+
+  box-shadow:
+    0 12px 26px
+    rgba(0, 0, 0, .44);
+}
+
+body[data-destination="notion"] #obsidianTagSuggestions.hidden {
+  display: none !important;
+}
+
+body[data-destination="notion"] #obsidianTagSuggestions .tag-suggestion {
+  display: flex;
+  align-items: center;
+
+  width: 100%;
+
+  min-height: 40px !important;
+  height: 40px;
+
+  margin: 0 !important;
+  padding: 5px 8px !important;
+
+  border-radius: 7px;
+
+  box-sizing: border-box;
+}
+
+body[data-destination="notion"]
+#obsidianTagSuggestions
+.tag-suggestion + .tag-suggestion {
+  margin-top: 2px !important;
+}
+
+body[data-destination="notion"] #obsidianTagSyncMeta {
+  display: none !important;
+}
