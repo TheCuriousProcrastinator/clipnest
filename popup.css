@@ -1276,3 +1276,24 @@ body[data-destination="notion"]
 body[data-destination="notion"] #obsidianTagSyncMeta {
   display: none !important;
 }
+
+
+/* NOTION TIGHTER TAG ROWS */
+
+body[data-destination="notion"] #obsidianTagSuggestions {
+  padding: 4px !important;
+}
+
+body[data-destination="notion"]
+#obsidianTagSuggestions
+.tag-suggestion {
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 3px 7px !important;
+}
+
+body[data-destination="notion"]
+#obsidianTagSuggestions
+.tag-suggestion + .tag-suggestion {
+  margin-top: 1px !important;
+}
