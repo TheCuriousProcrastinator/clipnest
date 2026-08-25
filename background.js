@@ -1680,43 +1680,262 @@ async function getNotionConfig() {
   };
 }
 
-async function saveToNotion(payload) {
-  const config = await getNotionConfig();
+async function saveToNotion(
+  payload
+) {
+  await ClipNestNotionStore
+    .migrateLegacy();
 
-  if (!config.token) throw new Error("Notion token is missing. Open Settings and add it.");
-  if (!config.dataSourceId) throw new Error("Notion data source ID is missing. Open Settings and add it.");
-  if (!config.titleProperty) throw new Error("Notion title property name is missing.");
+  const preset =
+    await ClipNestNotionStore
+      .getActivePreset();
 
-  const properties = {
-    [config.titleProperty]: {
-      title: [
-        {
-          type: "text",
-          text: { content: String(payload.title || "Untitled").slice(0, 2000) }
-        }
-      ]
-    }
-  };
-
-  if (config.urlProperty && payload.url) {
-    properties[config.urlProperty] = { url: payload.url };
+  if (!preset) {
+    throw new Error(
+      "No Notion preset is selected. Open Settings and create one."
+    );
   }
 
-  const body = {
-    parent: { data_source_id: config.dataSourceId },
-    properties,
-    markdown: payload.markdown || ""
-  };
+  if (
+    !preset.workspaceId ||
+    !preset.workspaceUserId
+  ) {
+    throw new Error(
+      "The selected Notion preset does not have a workspace."
+    );
+  }
 
-  const response = await notionFetch(config.token, "/v1/pages", {
-    method: "POST",
-    body: JSON.stringify(body)
-  });
+  if (
+    !preset.destinationId ||
+    !preset.destinationType
+  ) {
+    throw new Error(
+      "The selected Notion preset does not have a destination."
+    );
+  }
 
-  return {
-    id: response.id,
-    url: response.url
-  };
+  const title =
+    String(
+      payload?.title ||
+      "Untitled"
+    )
+      .trim()
+      .slice(
+        0,
+        2000
+      ) ||
+    "Untitled";
+
+  const url =
+    String(
+      payload?.url ||
+      ""
+    ).trim();
+
+  const tags =
+    Array.isArray(
+      payload?.tags
+    )
+      ? [
+          ...new Set(
+            payload.tags
+              .map(
+                (tag) =>
+                  String(
+                    tag ||
+                    ""
+                  ).trim()
+              )
+              .filter(Boolean)
+          )
+        ]
+      : [];
+
+  const markdown =
+    String(
+      payload?.markdown ||
+      ""
+    ).trim();
+
+  let page =
+    null;
+
+  if (
+    preset.destinationType ===
+      "collection"
+  ) {
+    const titlePropertyId =
+      String(
+        preset.propertyIds
+          ?.title ||
+        ""
+      ).trim();
+
+    if (!titlePropertyId) {
+      throw new Error(
+        "The selected Notion database has no Title property mapping."
+      );
+    }
+
+    const properties =
+      ClipNestNotionSession
+        .encodeDatabaseProperties({
+          title,
+          url,
+          tags,
+
+          propertyIds: {
+            title:
+              titlePropertyId,
+
+            url:
+              preset.propertyIds
+                ?.url ||
+              "",
+
+            tags:
+              preset.propertyIds
+                ?.tags ||
+              ""
+          }
+        });
+
+    page =
+      await ClipNestNotionSession
+        .createPage({
+          workspaceId:
+            preset.workspaceId,
+
+          userId:
+            preset.workspaceUserId,
+
+          parentId:
+            preset.destinationId,
+
+          parentTable:
+            "collection",
+
+          title:
+            "",
+
+          properties
+        });
+  } else if (
+    preset.destinationType ===
+      "page"
+  ) {
+    page =
+      await ClipNestNotionSession
+        .createPage({
+          workspaceId:
+            preset.workspaceId,
+
+          userId:
+            preset.workspaceUserId,
+
+          parentId:
+            preset.destinationId,
+
+          parentTable:
+            "block",
+
+          title,
+
+          properties:
+            {}
+        });
+  } else {
+    throw new Error(
+      "The selected Notion destination type is not supported."
+    );
+  }
+
+  try {
+    const content =
+      await ClipNestNotionSession
+        .appendMarkdownToPage({
+          workspaceId:
+            preset.workspaceId,
+
+          userId:
+            preset.workspaceUserId,
+
+          pageId:
+            page.id,
+
+          markdown
+        });
+
+    console.log(
+      "ClipNest Notion save succeeded:",
+      {
+        preset:
+          preset.name,
+
+        workspace:
+          preset.workspaceName,
+
+        destination:
+          preset.destinationName,
+
+        destinationType:
+          preset.destinationType,
+
+        pageId:
+          page.id,
+
+        blockCount:
+          content.blockCount
+      }
+    );
+
+    return {
+      id:
+        page.id,
+
+      url:
+        page.url,
+
+      blockCount:
+        content.blockCount
+    };
+  } catch (error) {
+    console.error(
+      "ClipNest created the Notion page but failed to append content:",
+      {
+        pageId:
+          page?.id,
+
+        pageUrl:
+          page?.url,
+
+        error
+      }
+    );
+
+    const wrapped =
+      new Error(
+        "The Notion page was created, but ClipNest could not write its content. " +
+        (
+          error?.message ||
+          String(error)
+        )
+      );
+
+    wrapped.pageId =
+      page?.id ||
+      "";
+
+    wrapped.pageUrl =
+      page?.url ||
+      "";
+
+    wrapped.attempts =
+      error?.attempts ||
+      [];
+
+    throw wrapped;
+  }
 }
 
 async function testNotion(payload = {}) {
