@@ -1620,6 +1620,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "notion.tags.options") {
+    getNotionTagOptions()
+      .then(
+        (options) =>
+          sendResponse({
+            ok: true,
+            options
+          })
+      )
+      .catch(
+        (error) =>
+          sendResponse({
+            ok: false,
+            error:
+              normalizeError(
+                error
+              )
+          })
+      );
+
+    return true;
+  }
+
   if (message?.type === "notion.save") {
     saveToNotion(message.payload)
       .then((result) => sendResponse({ ok: true, result }))
@@ -1634,6 +1657,139 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 });
+
+async function getNotionTagOptions() {
+  await ClipNestNotionStore
+    .migrateLegacy();
+
+  const preset =
+    await ClipNestNotionStore
+      .getActivePreset();
+
+  if (
+    !preset ||
+    preset.destinationType !==
+      "collection" ||
+    !preset.destinationId
+  ) {
+    return [];
+  }
+
+  const tagsPropertyId =
+    String(
+      preset.propertyIds
+        ?.tags ||
+      ""
+    ).trim();
+
+  if (!tagsPropertyId) {
+    return [];
+  }
+
+  let parentPageId =
+    String(
+      preset.destinationParentId ||
+      ""
+    ).trim();
+
+  if (!parentPageId) {
+    const result =
+      await ClipNestNotionSession
+        .searchDestinations({
+          workspaceId:
+            preset.workspaceId,
+
+          userId:
+            preset.workspaceUserId,
+
+          query:
+            preset.destinationName ||
+            ""
+        });
+
+    const destination =
+      result.destinations.find(
+        (candidate) =>
+          candidate.type ===
+            "collection" &&
+          candidate.id ===
+            preset.destinationId
+      );
+
+    parentPageId =
+      destination?.parentId ||
+      "";
+  }
+
+  if (!parentPageId) {
+    throw new Error(
+      "ClipNest could not determine this Notion database's parent page."
+    );
+  }
+
+  const database =
+    await ClipNestNotionSession
+      .getDatabaseSchema({
+        workspaceId:
+          preset.workspaceId,
+
+        userId:
+          preset.workspaceUserId,
+
+        collectionId:
+          preset.destinationId,
+
+        parentPageId
+      });
+
+  const tagsProperty =
+    database.properties.find(
+      (property) =>
+        property.id ===
+          tagsPropertyId &&
+        property.type ===
+          "multi_select"
+    );
+
+  if (!tagsProperty) {
+    return [];
+  }
+
+  const options =
+    Array.isArray(
+      tagsProperty.options
+    )
+      ? tagsProperty.options
+      : [];
+
+  return options
+    .map(
+      (option) => ({
+        id:
+          String(
+            option?.id ||
+            ""
+          ).trim(),
+
+        tag:
+          String(
+            option?.value ??
+            option?.name ??
+            ""
+          ).trim(),
+
+        color:
+          String(
+            option?.color ||
+            ""
+          ).trim()
+      })
+    )
+    .filter(
+      (option) =>
+        option.tag
+    );
+}
 
 async function getNotionConfig() {
   /*
