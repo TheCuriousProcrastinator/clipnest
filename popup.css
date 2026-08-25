@@ -974,3 +974,14 @@ body[data-destination="notion"] #obsidianTagSuggestions,
 body[data-destination="notion"] #obsidianTagSyncMeta {
   display: none !important;
 }
+
+
+/* NOTION TAG OPTIONS AUTOCOMPLETE */
+
+body[data-destination="notion"] #obsidianTagSuggestions:not(.hidden) {
+  display: block !important;
+}
+
+body[data-destination="notion"] #obsidianTagSyncMeta {
+  display: block !important;
+}

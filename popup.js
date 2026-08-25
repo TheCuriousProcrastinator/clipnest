@@ -95,10 +95,23 @@ async function init() {
     "obsidianSubfolder"
   ]);
 
-  setDestination(settings.defaultDestination === "notion" ? "notion" : "obsidian");
-  els.tagsInput.value = settings.obsidianDefaultTags || "";
+  els.tagsInput.value =
+    settings.defaultDestination ===
+      "notion"
+      ? ""
+      : (
+          settings.obsidianDefaultTags ||
+          ""
+        );
+
+  setDestination(
+    settings.defaultDestination ===
+      "notion"
+      ? "notion"
+      : "obsidian"
+  );
+
   setContentMode("article");
-  void loadObsidianTags();
 
   els.templateSelect?.addEventListener("change", async () => {
     const value =
@@ -155,18 +168,37 @@ function setDestination(destination) {
 
   els.vaultField?.classList.toggle(
     "hidden",
-    destination !== "obsidian"
+    destination !==
+      "obsidian"
   );
 
   els.folderField?.classList.toggle(
     "hidden",
-    destination !== "obsidian"
+    destination !==
+      "obsidian"
   );
 
   els.notionPresetField?.classList.toggle(
     "hidden",
-    destination !== "notion"
+    destination !==
+      "notion"
   );
+
+  els.tagSuggestions?.classList.add(
+    "hidden"
+  );
+
+  if (
+    destination ===
+      "notion"
+  ) {
+    void loadNotionTagOptions();
+  } else {
+    notionTagOptions =
+      [];
+
+    void loadObsidianTags();
+  }
 }
 
 async function loadNotionPresetPicker() {
@@ -260,9 +292,18 @@ async function handleNotionPresetChange() {
 
   try {
     await ClipNestNotionStore
-      .setActivePreset(value);
+      .setActivePreset(
+        value
+      );
+
+    if (els.tagsInput) {
+      els.tagsInput.value =
+        "";
+    }
 
     await loadNotionPresetPicker();
+
+    await loadNotionTagOptions();
 
     setStatus("");
   } catch (error) {
@@ -1649,6 +1690,74 @@ async function loadObsidianTemplates(
   }
 }
 
+let notionTagOptions =
+  [];
+
+async function loadNotionTagOptions() {
+  notionTagOptions =
+    [];
+
+  if (
+    state.destination !==
+      "notion"
+  ) {
+    return;
+  }
+
+  if (els.tagSyncMeta) {
+    els.tagSyncMeta.textContent =
+      "Loading Notion tags…";
+  }
+
+  try {
+    const response =
+      await chrome.runtime.sendMessage({
+        type:
+          "notion.tags.options"
+      });
+
+    if (!response?.ok) {
+      throw new Error(
+        response?.error?.message ||
+        "Could not load Notion tags."
+      );
+    }
+
+    notionTagOptions =
+      Array.isArray(
+        response.options
+      )
+        ? response.options
+        : [];
+
+    if (els.tagSyncMeta) {
+      els.tagSyncMeta.textContent =
+        notionTagOptions.length
+          ? `${notionTagOptions.length} Notion tag${
+              notionTagOptions.length === 1
+                ? ""
+                : "s"
+            } available`
+          : "No existing Notion tags";
+    }
+
+    renderObsidianTagSuggestions();
+  } catch (error) {
+    notionTagOptions =
+      [];
+
+    els.tagSuggestions?.classList.add(
+      "hidden"
+    );
+
+    if (els.tagSyncMeta) {
+      els.tagSyncMeta.textContent =
+        error?.message ||
+        String(error);
+    }
+  }
+}
+
 function setupObsidianTagAutocomplete() {
   const field =
     els.tagsInput?.closest(".field");
@@ -1809,9 +1918,16 @@ function renderObsidianTagSuggestions() {
   }
 
   const all =
-    Array.isArray(state.obsidianTags)
-      ? state.obsidianTags
-      : [];
+    state.destination ===
+      "notion"
+      ? notionTagOptions
+      : (
+          Array.isArray(
+            state.obsidianTags
+          )
+            ? state.obsidianTags
+            : []
+        );
 
   if (!all.length) {
     container.classList.add(
@@ -1823,7 +1939,8 @@ function renderObsidianTagSuggestions() {
 
   const raw =
     String(
-      els.tagsInput.value || ""
+      els.tagsInput.value ||
+      ""
     );
 
   const pieces =
@@ -1831,51 +1948,74 @@ function renderObsidianTagSuggestions() {
 
   const query =
     String(
-      pieces[pieces.length - 1] || ""
+      pieces[
+        pieces.length - 1
+      ] ||
+      ""
     )
       .trim()
-      .replace(/^#/, "")
+      .replace(
+        /^#/,
+        ""
+      )
       .toLowerCase();
 
   const selected =
     new Set(
       pieces
-        .slice(0, -1)
-        .map((tag) =>
-          tag
-            .trim()
-            .replace(/^#/, "")
-            .toLowerCase()
+        .slice(
+          0,
+          -1
+        )
+        .map(
+          (tag) =>
+            tag
+              .trim()
+              .replace(
+                /^#/,
+                ""
+              )
+              .toLowerCase()
         )
         .filter(Boolean)
     );
 
   const matches =
     all
-      .filter((item) => {
-        const tag =
-          String(item.tag || "");
+      .filter(
+        (item) => {
+          const tag =
+            String(
+              item.tag ||
+              ""
+            );
 
-        if (!tag) {
-          return false;
+          if (!tag) {
+            return false;
+          }
+
+          if (
+            selected.has(
+              tag.toLowerCase()
+            )
+          ) {
+            return false;
+          }
+
+          return (
+            !query ||
+            tag
+              .toLowerCase()
+              .includes(
+                query
+              )
+          );
         }
-
-        if (
-          selected.has(
-            tag.toLowerCase()
-          )
-        ) {
-          return false;
-        }
-
-        return (
-          !query ||
-          tag
-            .toLowerCase()
-            .includes(query)
-        );
-      })
-      .slice(0, 8);
+      )
+      .slice(
+        0,
+        8
+      );
 
   container.replaceChildren();
 
@@ -1889,23 +2029,37 @@ function renderObsidianTagSuggestions() {
 
   for (const item of matches) {
     const button =
-      document.createElement("button");
+      document.createElement(
+        "button"
+      );
 
-    button.type = "button";
+    button.type =
+      "button";
+
     button.className =
       "tag-suggestion";
 
     const label =
-      document.createElement("span");
+      document.createElement(
+        "span"
+      );
 
     label.textContent =
       item.tag;
 
     const count =
-      document.createElement("small");
+      document.createElement(
+        "small"
+      );
 
     count.textContent =
-      String(item.count || "");
+      state.destination ===
+        "notion"
+        ? ""
+        : String(
+            item.count ||
+            ""
+          );
 
     button.append(
       label,
@@ -1923,7 +2077,9 @@ function renderObsidianTagSuggestions() {
       }
     );
 
-    container.append(button);
+    container.append(
+      button
+    );
   }
 
   container.classList.remove(
