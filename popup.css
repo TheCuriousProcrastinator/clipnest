@@ -959,7 +959,6 @@ body[data-destination="obsidian"] #notionPresetField {
 /* NOTION TAG FIELD - FINAL OVERRIDE */
 
 body[data-destination="notion"] #tagsField {
-  display: flex !important;
   flex-direction: column !important;
 }
 
