@@ -90,8 +90,14 @@ async function init() {
   );
 
   els.notionDestinationSearch.addEventListener(
+    "focus",
+    openNotionDestinationResults
+  );
+
+  els.notionDestinationSearch.addEventListener(
     "input",
     () => {
+      openNotionDestinationResults();
       clearTimeout(
         notionDestinationSearchTimer
       );
@@ -1067,6 +1073,20 @@ function fillNotionDestinationIcon(
       "fallback"
     );
   }
+}
+
+function openNotionDestinationResults() {
+  els.notionDestinationResults
+    ?.classList.remove(
+      "hidden"
+    );
+}
+
+function closeNotionDestinationResults() {
+  els.notionDestinationResults
+    ?.classList.add(
+      "hidden"
+    );
 }
 
 function renderNotionDestinationResults(
@@ -2912,6 +2932,12 @@ async function handleNotionDataSourceChange() {
   renderNotionDestinationResults(
     updated
   );
+
+  closeNotionDestinationResults();
+
+  els.notionDestinationSearch.value =
+    updated.destinationName ||
+    "";
 
   els.testNotion.disabled =
     false;
