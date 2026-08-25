@@ -985,3 +985,64 @@ body[data-destination="notion"] #obsidianTagSuggestions:not(.hidden) {
 body[data-destination="notion"] #obsidianTagSyncMeta {
   display: block !important;
 }
+
+/* NOTION TAG COLORS */
+
+body[data-destination="notion"] .notion-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 5px;
+  line-height: 1.2;
+}
+
+body[data-destination="notion"] .notion-tag-pill[data-notion-color="default"] {
+  background: #373737;
+  color: #e6e6e6;
+}
+
+body[data-destination="notion"] .notion-tag-pill[data-notion-color="gray"] {
+  background: #5a5a5a;
+  color: #f1f1ef;
+}
+
+body[data-destination="notion"] .notion-tag-pill[data-notion-color="brown"] {
+  background: #603b2c;
+  color: #e9d5c7;
+}
+
+body[data-destination="notion"] .notion-tag-pill[data-notion-color="orange"] {
+  background: #854c1d;
+  color: #f5d5b0;
+}
+
+body[data-destination="notion"] .notion-tag-pill[data-notion-color="yellow"] {
+  background: #89632a;
+  color: #f3dfb2;
+}
+
+body[data-destination="notion"] .notion-tag-pill[data-notion-color="green"] {
+  background: #2b593f;
+  color: #c8e6d2;
+}
+
+body[data-destination="notion"] .notion-tag-pill[data-notion-color="blue"] {
+  background: #28456c;
+  color: #cbdcf3;
+}
+
+body[data-destination="notion"] .notion-tag-pill[data-notion-color="purple"] {
+  background: #492f64;
+  color: #dfc9f3;
+}
+
+body[data-destination="notion"] .notion-tag-pill[data-notion-color="pink"] {
+  background: #69314c;
+  color: #f0c9dc;
+}
+
+body[data-destination="notion"] .notion-tag-pill[data-notion-color="red"] {
+  background: #6e3630;
+  color: #f2ccc7;
+}

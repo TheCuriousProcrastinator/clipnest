@@ -1909,6 +1909,36 @@ function updateTagSyncMeta(info) {
     `${count} Obsidian tags`;
 }
 
+function normalizeNotionTagColor(
+  value
+) {
+  const color =
+    String(
+      value ||
+      "default"
+    )
+      .trim()
+      .toLowerCase();
+
+  const allowed =
+    new Set([
+      "default",
+      "gray",
+      "brown",
+      "orange",
+      "yellow",
+      "green",
+      "blue",
+      "purple",
+      "pink",
+      "red"
+    ]);
+
+  return allowed.has(color)
+    ? color
+    : "default";
+}
+
 function renderObsidianTagSuggestions() {
   const container =
     els.tagSuggestions;
@@ -2046,6 +2076,20 @@ function renderObsidianTagSuggestions() {
 
     label.textContent =
       item.tag;
+
+    if (
+      state.destination ===
+        "notion"
+    ) {
+      label.classList.add(
+        "notion-tag-pill"
+      );
+
+      label.dataset.notionColor =
+        normalizeNotionTagColor(
+          item.color
+        );
+    }
 
     const count =
       document.createElement(
