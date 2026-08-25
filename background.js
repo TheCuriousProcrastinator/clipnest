@@ -1,5 +1,6 @@
 import "./vault-store.js";
 import "./notion-store.js";
+import "./notion-session.js";
 import "./article-engine.js";
 
 const NOTION_VERSION = "2026-03-11";
