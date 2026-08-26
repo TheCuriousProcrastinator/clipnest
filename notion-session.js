@@ -1934,7 +1934,13 @@
                   property
                     ?.collection_pointer
                     ?.id ||
-                  ""
+                  "",
+
+                numberFormat:
+                  String(
+                    property?.number_format ||
+                    ""
+                  ).trim()
               })
             )
             .sort(
@@ -2115,7 +2121,7 @@
     );
   }
 
-  function encodeDatabaseProperties({
+function encodeDatabaseProperties({
     title = "",
     url = "",
     tags = [],
@@ -2227,20 +2233,16 @@
           ""
         ).trim();
 
-      const value =
-        String(
-          field?.value ??
-          ""
-        ).trim();
-
       if (
         !propertyId ||
-        !value ||
         ![
           "select",
           "status",
           "text",
-          "rich_text"
+          "rich_text",
+          "checkbox",
+          "number",
+          "date"
         ].includes(
           propertyType
         )
@@ -2256,6 +2258,188 @@
         propertyId ===
           tagsId
       ) {
+        continue;
+      }
+
+      const rawValue =
+        field?.value;
+
+      if (
+        propertyType ===
+          "checkbox"
+      ) {
+        const checked =
+          rawValue ===
+            true ||
+          String(
+            rawValue ??
+            ""
+          )
+            .trim()
+            .toLowerCase() ===
+            "true" ||
+          String(
+            rawValue ??
+            ""
+          )
+            .trim()
+            .toLowerCase() ===
+            "yes";
+
+        properties[
+          propertyId
+        ] = [
+          [
+            checked
+              ? "Yes"
+              : "No"
+          ]
+        ];
+
+        continue;
+      }
+
+      if (
+        propertyType ===
+          "number"
+      ) {
+        const value =
+          String(
+            rawValue ??
+            ""
+          ).trim();
+
+        if (!value) {
+          continue;
+        }
+
+        const parsed =
+          Number.parseFloat(
+            value
+          );
+
+        if (
+          !Number.isFinite(
+            parsed
+          )
+        ) {
+          continue;
+        }
+
+        const normalized =
+          String(
+            field?.numberFormat ||
+            ""
+          ) === "percent"
+            ? parsed / 100
+            : parsed;
+
+        properties[
+          propertyId
+        ] = [
+          [
+            String(
+              normalized
+            )
+          ]
+        ];
+
+        continue;
+      }
+
+      if (
+        propertyType ===
+          "date"
+      ) {
+        const rawDate =
+          String(
+            rawValue ??
+            ""
+          ).trim();
+
+        if (!rawDate) {
+          continue;
+        }
+
+        let dateValue =
+          "";
+
+        if (
+          /^\d{4}-\d{2}-\d{2}$/
+            .test(
+              rawDate
+            )
+        ) {
+          dateValue =
+            rawDate;
+        } else {
+          const parsed =
+            new Date(
+              rawDate
+            );
+
+          if (
+            Number.isNaN(
+              parsed.getTime()
+            )
+          ) {
+            continue;
+          }
+
+          const year =
+            parsed.getFullYear();
+
+          const month =
+            String(
+              parsed.getMonth() +
+              1
+            ).padStart(
+              2,
+              "0"
+            );
+
+          const day =
+            String(
+              parsed.getDate()
+            ).padStart(
+              2,
+              "0"
+            );
+
+          dateValue =
+            `${year}-${month}-${day}`;
+        }
+
+        properties[
+          propertyId
+        ] = [
+          [
+            "‣",
+            [
+              [
+                "d",
+                {
+                  type:
+                    "date",
+
+                  start_date:
+                    dateValue
+                }
+              ]
+            ]
+          ]
+        ];
+
+        continue;
+      }
+
+      const value =
+        String(
+          rawValue ??
+          ""
+        ).trim();
+
+      if (!value) {
         continue;
       }
 

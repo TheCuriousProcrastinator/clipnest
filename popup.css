@@ -2554,3 +2554,41 @@ body[data-destination="notion"] .content-mode,
 body[data-destination="notion"] .clipper-ux-mode-segmented {
   display: none !important;
 }
+
+/* Notion Checkbox / Number / Date */
+
+.notion-builder-checkbox-value,
+.notion-custom-checkbox-control {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  cursor: pointer;
+}
+
+.notion-builder-checkbox-value input,
+.notion-custom-checkbox-control input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: #9027db;
+  cursor: pointer;
+}
+
+.notion-builder-checkbox-value span,
+.notion-custom-checkbox-control span {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.notion-custom-field input[type="date"],
+.notion-custom-field input[type="number"],
+.notion-builder-fixed-value input[type="date"],
+.notion-builder-fixed-value input[type="number"] {
+  width: 100%;
+}
+
+.notion-custom-field input[type="date"],
+.notion-builder-fixed-value input[type="date"] {
+  color-scheme: dark;
+}

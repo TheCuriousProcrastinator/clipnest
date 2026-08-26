@@ -2496,7 +2496,9 @@ function notionBuilderPresetFieldsForStore() {
         false;
 
       let defaultValue =
-        "";
+        type === "checkbox"
+          ? false
+          : "";
 
       if (
         type === "title"
@@ -2549,11 +2551,18 @@ function notionBuilderPresetFieldsForStore() {
         visible =
           false;
 
-        defaultValue =
-          String(
-            field.fixedValue ||
-            ""
-          );
+        if (
+          type ===
+            "checkbox"
+        ) {
+          defaultValue =
+            field.fixedValue ===
+              true;
+        } else {
+          defaultValue =
+            field.fixedValue ??
+            "";
+        }
       }
 
       return {
@@ -2567,6 +2576,12 @@ function notionBuilderPresetFieldsForStore() {
 
         propertyType:
           field.propertyType,
+
+        numberFormat:
+          String(
+            field.numberFormat ||
+            ""
+          ),
 
         label:
           field.propertyName,
@@ -2642,6 +2657,11 @@ function notionBuilderFieldFromStoredField(
       ""
     );
 
+  const propertyType =
+    field?.propertyType ||
+    schemaProperty?.type ||
+    "";
+
   let mapping =
     "Manual";
 
@@ -2671,6 +2691,40 @@ function notionBuilderFieldFromStoredField(
       "Fixed value";
   }
 
+  let fixedValue =
+    "";
+
+  if (
+    source === "fixed"
+  ) {
+    if (
+      propertyType ===
+        "checkbox"
+    ) {
+      fixedValue =
+        field.defaultValue ===
+          true ||
+        String(
+          field.defaultValue ??
+          ""
+        )
+          .trim()
+          .toLowerCase() ===
+          "true" ||
+        String(
+          field.defaultValue ??
+          ""
+        )
+          .trim()
+          .toLowerCase() ===
+          "yes";
+    } else {
+      fixedValue =
+        field.defaultValue ??
+        "";
+    }
+  }
+
   return {
     propertyId:
       field.propertyId ||
@@ -2682,10 +2736,15 @@ function notionBuilderFieldFromStoredField(
       schemaProperty?.name ||
       "Untitled property",
 
-    propertyType:
-      field.propertyType ||
-      schemaProperty?.type ||
-      "",
+    propertyType,
+
+    numberFormat:
+      String(
+        field.numberFormat ||
+        schemaProperty?.numberFormat ||
+        schemaProperty?.number_format ||
+        ""
+      ),
 
     options:
       Array.isArray(
@@ -2700,13 +2759,7 @@ function notionBuilderFieldFromStoredField(
 
     mapping,
 
-    fixedValue:
-      source === "fixed"
-        ? String(
-            field.defaultValue ||
-            ""
-          )
-        : ""
+    fixedValue
   };
 }
 
@@ -3731,7 +3784,10 @@ function notionBuilderSupportedProperty(
     "select",
     "status",
     "text",
-    "rich_text"
+    "rich_text",
+    "checkbox",
+    "number",
+    "date"
   ].includes(
     String(
       property?.type ||
@@ -3763,7 +3819,16 @@ function notionBuilderPropertyTypeLabel(
       "Text",
 
     rich_text:
-      "Rich text"
+      "Rich text",
+
+    checkbox:
+      "Checkbox",
+
+    number:
+      "Number",
+
+    date:
+      "Date"
   };
 
   return labels[
@@ -3785,7 +3850,10 @@ function notionBuilderFieldIsConfigurable(
     "select",
     "status",
     "text",
-    "rich_text"
+    "rich_text",
+    "checkbox",
+    "number",
+    "date"
   ].includes(
     String(
       field?.propertyType ||
@@ -3801,9 +3869,19 @@ function notionBuilderFieldMappingLabel(
     field?.mapping ===
       "Fixed value"
   ) {
+    if (
+      field.propertyType ===
+        "checkbox"
+    ) {
+      return field.fixedValue ===
+        true
+        ? "Fixed: Checked"
+        : "Fixed: Unchecked";
+    }
+
     const value =
       String(
-        field?.fixedValue ||
+        field?.fixedValue ??
         ""
       ).trim();
 
@@ -4010,7 +4088,18 @@ function renderNotionBuilderFieldConfiguration(
             "Manual"
         ) {
           field.fixedValue =
-            "";
+            field.propertyType ===
+              "checkbox"
+              ? false
+              : "";
+        } else if (
+          field.propertyType ===
+            "checkbox" &&
+          typeof field.fixedValue !==
+            "boolean"
+        ) {
+          field.fixedValue =
+            false;
         }
 
         await persistNotionPresetBuilderState(
@@ -4118,7 +4207,7 @@ function renderNotionBuilderFieldConfiguration(
 
       select.value =
         String(
-          field.fixedValue ||
+          field.fixedValue ??
           ""
         );
 
@@ -4139,21 +4228,97 @@ function renderNotionBuilderFieldConfiguration(
       fixed.append(
         select
       );
-    } else {
+    } else if (
+      field.propertyType ===
+        "checkbox"
+    ) {
+      const checkbox =
+        document.createElement(
+          "label"
+        );
+
+      checkbox.className =
+        "notion-builder-checkbox-value";
+
       const input =
         document.createElement(
           "input"
         );
 
       input.type =
-        "text";
+        "checkbox";
+
+      input.checked =
+        field.fixedValue ===
+          true;
+
+      const copy =
+        document.createElement(
+          "span"
+        );
+
+      copy.textContent =
+        input.checked
+          ? "Checked"
+          : "Unchecked";
+
+      input.addEventListener(
+        "change",
+        async () => {
+          field.fixedValue =
+            input.checked;
+
+          await persistNotionPresetBuilderState(
+            "config"
+          );
+
+          renderNotionBuilderConfiguredFields();
+        }
+      );
+
+      checkbox.append(
+        input,
+        copy
+      );
+
+      fixed.append(
+        checkbox
+      );
+    } else {
+      const input =
+        document.createElement(
+          "input"
+        );
 
       input.autocomplete =
         "off";
 
+      if (
+        field.propertyType ===
+          "number"
+      ) {
+        input.type =
+          "number";
+
+        input.step =
+          "any";
+
+        input.inputMode =
+          "decimal";
+      } else if (
+        field.propertyType ===
+          "date"
+      ) {
+        input.type =
+          "date";
+      } else {
+        input.type =
+          "text";
+      }
+
       input.value =
         String(
-          field.fixedValue ||
+          field.fixedValue ??
           ""
         );
 
@@ -4660,7 +4825,10 @@ function notionBuilderPropertyCanBeAdded(
       "select",
       "status",
       "text",
-      "rich_text"
+      "rich_text",
+      "checkbox",
+      "number",
+      "date"
     ].includes(
       type
     )
@@ -4699,11 +4867,15 @@ function notionBuilderDefaultMapping(
       ""
     );
 
-  if (type === "title") {
+  if (
+    type === "title"
+  ) {
     return "Page Title";
   }
 
-  if (type === "url") {
+  if (
+    type === "url"
+  ) {
     return "Page URL";
   }
 
@@ -4718,7 +4890,10 @@ function notionBuilderDefaultMapping(
       "select",
       "status",
       "text",
-      "rich_text"
+      "rich_text",
+      "checkbox",
+      "number",
+      "date"
     ].includes(
       type
     )
@@ -4746,6 +4921,13 @@ function notionBuilderConfiguredField(
       property.type ||
       "",
 
+    numberFormat:
+      String(
+        property.numberFormat ||
+        property.number_format ||
+        ""
+      ),
+
     options:
       Array.isArray(
         property.options
@@ -4760,7 +4942,10 @@ function notionBuilderConfiguredField(
       ),
 
     fixedValue:
-      ""
+      property.type ===
+        "checkbox"
+        ? false
+        : ""
   };
 }
 
@@ -6109,7 +6294,7 @@ function createNotionCustomFieldNode(
 
     const initial =
       String(
-        field?.defaultValue ||
+        field?.defaultValue ??
         ""
       );
 
@@ -6150,6 +6335,173 @@ function createNotionCustomFieldNode(
   }
 
   if (
+    type === "checkbox"
+  ) {
+    const control =
+      document.createElement(
+        "label"
+      );
+
+    control.className =
+      "notion-custom-checkbox-control";
+
+    const input =
+      document.createElement(
+        "input"
+      );
+
+    input.type =
+      "checkbox";
+
+    input.checked =
+      field?.defaultValue ===
+        true ||
+      String(
+        field?.defaultValue ??
+        ""
+      )
+        .trim()
+        .toLowerCase() ===
+        "true" ||
+      String(
+        field?.defaultValue ??
+        ""
+      )
+        .trim()
+        .toLowerCase() ===
+        "yes";
+
+    const copy =
+      document.createElement(
+        "span"
+      );
+
+    copy.textContent =
+      "Checked";
+
+    notionDynamicFieldValues[
+      propertyId
+    ] =
+      input.checked;
+
+    input.addEventListener(
+      "change",
+      () => {
+        notionDynamicFieldValues[
+          propertyId
+        ] =
+          input.checked;
+      }
+    );
+
+    control.append(
+      input,
+      copy
+    );
+
+    wrapper.append(
+      control
+    );
+
+    return wrapper;
+  }
+
+  if (
+    type === "number"
+  ) {
+    const input =
+      document.createElement(
+        "input"
+      );
+
+    input.type =
+      "number";
+
+    input.step =
+      "any";
+
+    input.inputMode =
+      "decimal";
+
+    input.autocomplete =
+      "off";
+
+    input.value =
+      String(
+        field?.defaultValue ??
+        ""
+      );
+
+    notionDynamicFieldValues[
+      propertyId
+    ] =
+      input.value;
+
+    input.addEventListener(
+      "input",
+      () => {
+        notionDynamicFieldValues[
+          propertyId
+        ] =
+          input.value;
+      }
+    );
+
+    wrapper.append(
+      input
+    );
+
+    return wrapper;
+  }
+
+  if (
+    type === "date"
+  ) {
+    const input =
+      document.createElement(
+        "input"
+      );
+
+    input.type =
+      "date";
+
+    const initial =
+      String(
+        field?.defaultValue ??
+        ""
+      );
+
+    input.value =
+      /^\d{4}-\d{2}-\d{2}$/
+        .test(
+          initial
+        )
+          ? initial
+          : "";
+
+    notionDynamicFieldValues[
+      propertyId
+    ] =
+      input.value;
+
+    input.addEventListener(
+      "input",
+      () => {
+        notionDynamicFieldValues[
+          propertyId
+        ] =
+          input.value;
+      }
+    );
+
+    wrapper.append(
+      input
+    );
+
+    return wrapper;
+  }
+
+  if (
     type === "text" ||
     type === "rich_text"
   ) {
@@ -6166,7 +6518,7 @@ function createNotionCustomFieldNode(
 
     input.value =
       String(
-        field?.defaultValue ||
+        field?.defaultValue ??
         ""
       );
 

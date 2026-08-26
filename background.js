@@ -2136,7 +2136,10 @@ async function saveToNotion(
             "select",
             "status",
             "text",
-            "rich_text"
+            "rich_text",
+            "checkbox",
+            "number",
+            "date"
           ].includes(
             String(
               field?.propertyType ||
@@ -2155,6 +2158,12 @@ async function saveToNotion(
           propertyType:
             String(
               field.propertyType ||
+              ""
+            ).trim(),
+
+          numberFormat:
+            String(
+              field.numberFormat ||
               ""
             ).trim(),
 
