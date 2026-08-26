@@ -1241,6 +1241,14 @@ function renderNotionPresetDisplayIcon(
       rawIcon.trim();
 
     if (
+      value.startsWith(
+        "/"
+      )
+    ) {
+      url =
+        "https://www.notion.so" +
+        value;
+    } else if (
       /^https?:\/\//i.test(
         value
       )
