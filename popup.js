@@ -134,7 +134,6 @@ async function init() {
 
   const settings = await chrome.storage.local.get([
     "defaultDestination",
-    "obsidianDefaultTags",
     "obsidianDefaultTemplatePath",
     "obsidianSubfolder",
     NOTION_PRESET_BUILDER_STATE_KEY,
@@ -177,13 +176,7 @@ async function init() {
         );
 
   els.tagsInput.value =
-    initialDestination ===
-      "notion"
-      ? ""
-      : (
-          settings.obsidianDefaultTags ||
-          ""
-        );
+    "";
 
   setDestination(
     initialDestination
@@ -8983,13 +8976,11 @@ async function refreshPopupVaultContext() {
 
   const settings =
     await chrome.storage.local.get([
-      "obsidianDefaultTags",
       "obsidianDefaultTemplatePath",
       "obsidianSubfolder"
     ]);
 
   els.tagsInput.value =
-    settings.obsidianDefaultTags ||
     "";
 
   state.obsidianTags = [];
@@ -10059,6 +10050,21 @@ async function loadObsidianFolders(
       separator
     );
 
+    const createFolder =
+      document.createElement(
+        "option"
+      );
+
+    createFolder.value =
+      "__create__";
+
+    createFolder.textContent =
+      "Create folder…";
+
+    els.folderSelect.append(
+      createFolder
+    );
+
     const refresh =
       document.createElement(
         "option"
@@ -10092,6 +10098,125 @@ async function handleFolderPickerChange() {
 
   const value =
     els.folderSelect.value;
+
+  if (
+    value === "__create__"
+  ) {
+    const settings =
+      await chrome.storage.local.get([
+        "obsidianSubfolder"
+      ]);
+
+    const previous =
+      settings.obsidianSubfolder ||
+      "";
+
+    const rawPath =
+      window.prompt(
+        "Create folder or nested path:",
+        ""
+      );
+
+    if (rawPath === null) {
+      await loadObsidianFolders(
+        previous
+      );
+
+      return;
+    }
+
+    const parts =
+      String(rawPath)
+        .split("/")
+        .map(
+          (part) =>
+            part.trim()
+        )
+        .filter(Boolean);
+
+    if (
+      !parts.length ||
+      parts.some(
+        (part) =>
+          part === "." ||
+          part === ".."
+      )
+    ) {
+      await loadObsidianFolders(
+        previous
+      );
+
+      setStatus(
+        "Enter a valid folder name.",
+        "error"
+      );
+
+      return;
+    }
+
+    const folderPath =
+      parts.join("/");
+
+    try {
+      const handle =
+        await getVaultHandle();
+
+      if (!handle) {
+        throw new Error(
+          "Connect an Obsidian vault first."
+        );
+      }
+
+      const permission =
+        await ensureWritePermission(
+          handle
+        );
+
+      if (!permission) {
+        throw new Error(
+          "Chrome no longer has permission to write to the vault. Reconnect it in Settings."
+        );
+      }
+
+      await getSubfolder(
+        handle,
+        folderPath
+      );
+
+      await chrome.storage.local.set({
+        obsidianSubfolder:
+          folderPath
+      });
+
+      await ClipNestVaultStore
+        .updateActiveConfig({
+          subfolder:
+            folderPath
+        });
+
+      await loadObsidianFolders(
+        folderPath,
+        true
+      );
+
+      setStatus(
+        `Created folder: ${folderPath}`,
+        "success"
+      );
+    } catch (error) {
+      await loadObsidianFolders(
+        previous
+      );
+
+      setStatus(
+        error?.message ||
+          String(error),
+        "error"
+      );
+    }
+
+    return;
+  }
 
   if (
     value === "__refresh__"

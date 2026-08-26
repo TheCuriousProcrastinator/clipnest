@@ -76,8 +76,6 @@ async function init() {
     "chooseVault",
     "vaultSelect",
     "vaultName",
-    "obsidianSubfolder",
-    "obsidianDefaultTags",
     "disconnectVault",
     "obsidianStatus",
     "exportSettings",
@@ -100,9 +98,7 @@ async function init() {
   for (
     const field of [
       els.defaultDestination,
-      els.notionPresetName,
-      els.obsidianSubfolder,
-      els.obsidianDefaultTags
+      els.notionPresetName
     ]
   ) {
     field.addEventListener(
@@ -302,22 +298,12 @@ async function init() {
 async function loadSettings() {
   const settings =
     await chrome.storage.local.get([
-      "defaultDestination",
-      "obsidianSubfolder",
-      "obsidianDefaultTags"
+      "defaultDestination"
     ]);
 
   els.defaultDestination.value =
     settings.defaultDestination ||
     "obsidian";
-
-  els.obsidianSubfolder.value =
-    settings.obsidianSubfolder ||
-    "";
-
-  els.obsidianDefaultTags.value =
-    settings.obsidianDefaultTags ||
-    "";
 
   const preset =
     await ClipNestNotionStore
@@ -413,29 +399,10 @@ async function loadSettings() {
 }
 
 async function saveSettings() {
-  const obsidianConfig = {
-    subfolder:
-      els.obsidianSubfolder.value.trim(),
-
-    defaultTags:
-      els.obsidianDefaultTags.value.trim()
-  };
-
   await chrome.storage.local.set({
     defaultDestination:
-      els.defaultDestination.value,
-
-    obsidianSubfolder:
-      obsidianConfig.subfolder,
-
-    obsidianDefaultTags:
-      obsidianConfig.defaultTags
+      els.defaultDestination.value
   });
-
-  await ClipNestVaultStore
-    .updateActiveConfig(
-      obsidianConfig
-    );
 
   const preset =
     await ClipNestNotionStore

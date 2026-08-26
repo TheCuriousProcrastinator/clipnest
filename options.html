@@ -284,7 +284,7 @@
 
     <section class="card">
       <h2>Obsidian</h2>
-      <p class="help">Choose the root of your Obsidian vault. Chrome stores the folder handle locally and writes Markdown directly into the vault.</p>
+      <p class="help">Connect the Obsidian vaults ClipNest can access. Vault access stays local to this computer.</p>
 
       <label class="field">
         <span>Connected vault</span>
@@ -299,18 +299,6 @@
       </div>
 
       <span id="vaultName" class="vault-name">No vault connected</span>
-
-      <label class="field">
-        <span>Subfolder <em>optional</em></span>
-        <input id="obsidianSubfolder" type="text" placeholder="Inbox/Clippings" />
-        <small>Created automatically if it does not exist.</small>
-      </label>
-
-      <label class="field">
-        <span>Default tags <em>optional</em></span>
-        <input id="obsidianDefaultTags" type="text" placeholder="web-clip, reading" />
-        <small>Comma-separated. You can edit them before every save.</small>
-      </label>
 
       <div id="obsidianStatus" class="status"></div>
     </section>

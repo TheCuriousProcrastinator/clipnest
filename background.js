@@ -133,7 +133,6 @@ async function quickClipSelectedText(
     const settings =
       await chrome.storage.local.get([
         "defaultDestination",
-        "obsidianDefaultTags",
         "obsidianDefaultTemplatePath",
         "obsidianSubfolder"
       ]);
@@ -145,9 +144,7 @@ async function quickClipSelectedText(
         : "obsidian";
 
     const tags =
-      parseQuickTags(
-        settings.obsidianDefaultTags || ""
-      );
+      [];
 
     const title =
       String(
@@ -937,7 +934,6 @@ async function quickClipArticle(
     const settings =
       await chrome.storage.local.get([
         "defaultDestination",
-        "obsidianDefaultTags",
         "obsidianDefaultTemplatePath",
         "obsidianSubfolder"
       ]);
@@ -949,10 +945,7 @@ async function quickClipArticle(
         : "obsidian";
 
     const tags =
-      parseQuickTags(
-        settings.obsidianDefaultTags ||
-        ""
-      );
+      [];
 
     let template = null;
 
