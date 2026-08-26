@@ -2592,3 +2592,197 @@ body[data-destination="notion"] .clipper-ux-mode-segmented {
 .notion-builder-fixed-value input[type="date"] {
   color-scheme: dark;
 }
+
+
+/* =================================
+   NOTION CLIP FORM POLISH
+   ================================= */
+
+/* tighter field rhythm */
+
+body[data-destination="notion"] #notionDynamicFields {
+  gap: 11px;
+}
+
+body[data-destination="notion"] .notion-custom-field {
+  margin: 0;
+}
+
+body[data-destination="notion"] .notion-custom-field > span {
+  display: block;
+  margin: 0 0 5px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 650;
+  color: rgba(255, 255, 255, .72);
+}
+
+/* shared control appearance */
+
+body[data-destination="notion"] .notion-custom-field input:not([type="checkbox"]),
+body[data-destination="notion"] .notion-custom-field select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 11px !important;
+  border: 1px solid rgba(255, 255, 255, .15) !important;
+  border-radius: 9px !important;
+  background: #171717 !important;
+  color: rgba(255, 255, 255, .94) !important;
+  font-size: 14px !important;
+  font-weight: 450 !important;
+  line-height: 20px !important;
+  outline: none;
+  box-shadow: none !important;
+  color-scheme: dark;
+}
+
+body[data-destination="notion"] .notion-custom-field input:not([type="checkbox"]):hover,
+body[data-destination="notion"] .notion-custom-field select:hover {
+  border-color: rgba(255, 255, 255, .26) !important;
+}
+
+body[data-destination="notion"] .notion-custom-field input:not([type="checkbox"]):focus,
+body[data-destination="notion"] .notion-custom-field select:focus {
+  border-color: #9027db !important;
+  box-shadow: 0 0 0 1px #9027db !important;
+}
+
+body[data-destination="notion"] .notion-custom-field select {
+  cursor: pointer;
+}
+
+/* checkbox as compact toggle row */
+
+body[data-destination="notion"] .notion-custom-field:has(.notion-custom-checkbox-control) {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 9px;
+  background: #171717;
+}
+
+body[data-destination="notion"] .notion-custom-field:has(.notion-custom-checkbox-control) > span {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, .88);
+}
+
+body[data-destination="notion"] .notion-custom-checkbox-control {
+  display: flex;
+  align-items: center;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+/* remove redundant Checked text */
+
+body[data-destination="notion"] .notion-custom-checkbox-control > span {
+  display: none;
+}
+
+body[data-destination="notion"] .notion-custom-checkbox-control input {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 32px !important;
+  height: 18px !important;
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #3a3a3a;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+body[data-destination="notion"] .notion-custom-checkbox-control input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 120ms ease;
+}
+
+body[data-destination="notion"] .notion-custom-checkbox-control input:checked {
+  background: #9027db;
+}
+
+body[data-destination="notion"] .notion-custom-checkbox-control input:checked::after {
+  transform: translateX(14px);
+}
+
+/* date */
+
+body[data-destination="notion"] .notion-custom-field input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: .65;
+  cursor: pointer;
+}
+
+/* builder fixed values */
+
+.notion-builder-fixed-value input:not([type="checkbox"]),
+.notion-builder-fixed-value select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 10px !important;
+  border: 1px solid rgba(255, 255, 255, .15) !important;
+  border-radius: 8px !important;
+  background: #171717 !important;
+  color: rgba(255, 255, 255, .94) !important;
+  outline: none;
+  box-shadow: none !important;
+  color-scheme: dark;
+}
+
+.notion-builder-fixed-value input:not([type="checkbox"]):focus,
+.notion-builder-fixed-value select:focus {
+  border-color: #9027db !important;
+}
+
+/* multi-add picker */
+
+.notion-builder-add-field-picker {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, .13);
+  border-radius: 10px;
+  background: #151515;
+}
+
+.notion-builder-add-field-header {
+  margin-bottom: 8px;
+}
+
+.notion-builder-add-field-search {
+  box-sizing: border-box;
+  width: 100% !important;
+  height: 36px !important;
+  margin: 0 0 8px !important;
+  padding: 0 10px !important;
+  border-radius: 8px !important;
+  background: #101010 !important;
+}
+
+.notion-builder-property-option {
+  border-radius: 7px;
+}
+
+.notion-builder-property-option:not(:disabled):hover {
+  background: rgba(144, 39, 219, .12);
+}

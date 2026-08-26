@@ -5181,7 +5181,7 @@ function renderNotionBuilderAddFieldPicker(
     );
 
   title.textContent =
-    "Add field";
+    "Add fields";
 
   const close =
     document.createElement(
@@ -5267,7 +5267,9 @@ function renderNotionBuilderAddFieldPicker(
       "notion-builder-add-field-empty";
 
     empty.textContent =
-      "No properties found.";
+      normalizedQuery
+        ? "No matching properties."
+        : "All available fields have been added.";
 
     list.append(
       empty
@@ -5351,6 +5353,9 @@ function renderNotionBuilderAddFieldPicker(
       button.addEventListener(
         "click",
         async () => {
+          const currentQuery =
+            search.value;
+
           if (
             !Array.isArray(
               draft.configuredFields
@@ -5371,6 +5376,10 @@ function renderNotionBuilderAddFieldPicker(
           );
 
           renderNotionBuilderConfiguredFields();
+
+          renderNotionBuilderAddFieldPicker(
+            currentQuery
+          );
         }
       );
     }
