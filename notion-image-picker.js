@@ -299,6 +299,436 @@
     return pageCandidatesPromise;
   }
 
+
+  async function captureVisibleImagePreview(
+    targetUrl
+  ) {
+    const normalized =
+      normalizeImageUrl(
+        targetUrl
+      );
+
+    if (!normalized) {
+      return "";
+    }
+
+    try {
+      const tabs =
+        await chrome.tabs.query({
+          active:
+            true,
+
+          currentWindow:
+            true
+        });
+
+      const tab =
+        tabs?.[0];
+
+      if (
+        !Number.isInteger(
+          tab?.id
+        )
+      ) {
+        return "";
+      }
+
+      const rectResult =
+        await chrome.scripting
+          .executeScript({
+            target: {
+              tabId:
+                tab.id
+            },
+
+            func: (
+              wantedUrl
+            ) => {
+              const normalize =
+                (raw) => {
+                  try {
+                    const url =
+                      new URL(
+                        raw,
+                        document.baseURI
+                      );
+
+                    const path =
+                      url.pathname
+                        .replace(
+                          /\._[^/]*_\.(?=[A-Za-z0-9]+$)/g,
+                          "."
+                        );
+
+                    return {
+                      href:
+                        url.href,
+
+                      key:
+                        url.hostname +
+                        path
+                    };
+                  } catch {
+                    return {
+                      href:
+                        "",
+
+                      key:
+                        ""
+                    };
+                  }
+                };
+
+              const wanted =
+                normalize(
+                  wantedUrl
+                );
+
+              const viewportWidth =
+                window.innerWidth;
+
+              const viewportHeight =
+                window.innerHeight;
+
+              const candidates =
+                [
+                  ...document.images
+                ]
+                  .map(
+                    (
+                      image,
+                      index
+                    ) => {
+                      const rect =
+                        image
+                          .getBoundingClientRect();
+
+                      const width =
+                        Math.max(
+                          0,
+                          Math.min(
+                            rect.right,
+                            viewportWidth
+                          ) -
+                          Math.max(
+                            rect.left,
+                            0
+                          )
+                        );
+
+                      const height =
+                        Math.max(
+                          0,
+                          Math.min(
+                            rect.bottom,
+                            viewportHeight
+                          ) -
+                          Math.max(
+                            rect.top,
+                            0
+                          )
+                        );
+
+                      if (
+                        width < 60 ||
+                        height < 60
+                      ) {
+                        return null;
+                      }
+
+                      const src =
+                        normalize(
+                          image.currentSrc ||
+                          image.src
+                        );
+
+                      const ratio =
+                        width /
+                        Math.max(
+                          height,
+                          1
+                        );
+
+                      const shapePenalty =
+                        ratio > 3 ||
+                        ratio < .25
+                          ? .15
+                          : 1;
+
+                      return {
+                        index,
+
+                        href:
+                          src.href,
+
+                        key:
+                          src.key,
+
+                        x:
+                          Math.max(
+                            rect.left,
+                            0
+                          ),
+
+                        y:
+                          Math.max(
+                            rect.top,
+                            0
+                          ),
+
+                        width,
+
+                        height,
+
+                        score:
+                          width *
+                          height *
+                          shapePenalty
+                      };
+                    }
+                  )
+                  .filter(Boolean);
+
+              let selected =
+                candidates.find(
+                  (candidate) =>
+                    candidate.href ===
+                    wanted.href
+                );
+
+              if (
+                !selected &&
+                wanted.key
+              ) {
+                selected =
+                  candidates.find(
+                    (candidate) =>
+                      candidate.key ===
+                      wanted.key
+                  );
+              }
+
+              if (!selected) {
+                selected =
+                  [...candidates]
+                    .sort(
+                      (a, b) =>
+                        b.score -
+                        a.score
+                    )[0] ||
+                  null;
+              }
+
+              if (!selected) {
+                return null;
+              }
+
+              return {
+                x:
+                  selected.x,
+
+                y:
+                  selected.y,
+
+                width:
+                  selected.width,
+
+                height:
+                  selected.height,
+
+                viewportWidth,
+
+                viewportHeight
+              };
+            },
+
+            args: [
+              normalized
+            ]
+          });
+
+      const info =
+        rectResult?.[0]?.result;
+
+      if (
+        !info ||
+        !info.width ||
+        !info.height ||
+        !info.viewportWidth ||
+        !info.viewportHeight
+      ) {
+        return "";
+      }
+
+      const screenshot =
+        await chrome.tabs
+          .captureVisibleTab(
+            tab.windowId,
+            {
+              format:
+                "jpeg",
+
+              quality:
+                86
+            }
+          );
+
+      if (!screenshot) {
+        return "";
+      }
+
+      const shot =
+        document.createElement(
+          "img"
+        );
+
+      await new Promise(
+        (
+          resolve,
+          reject
+        ) => {
+          shot.onload =
+            resolve;
+
+          shot.onerror =
+            reject;
+
+          shot.src =
+            screenshot;
+        }
+      );
+
+      const scaleX =
+        shot.naturalWidth /
+        info.viewportWidth;
+
+      const scaleY =
+        shot.naturalHeight /
+        info.viewportHeight;
+
+      const sourceX =
+        Math.max(
+          0,
+          Math.round(
+            info.x *
+            scaleX
+          )
+        );
+
+      const sourceY =
+        Math.max(
+          0,
+          Math.round(
+            info.y *
+            scaleY
+          )
+        );
+
+      const sourceWidth =
+        Math.min(
+          shot.naturalWidth -
+            sourceX,
+          Math.max(
+            1,
+            Math.round(
+              info.width *
+              scaleX
+            )
+          )
+        );
+
+      const sourceHeight =
+        Math.min(
+          shot.naturalHeight -
+            sourceY,
+          Math.max(
+            1,
+            Math.round(
+              info.height *
+              scaleY
+            )
+          )
+        );
+
+      if (
+        sourceWidth < 20 ||
+        sourceHeight < 20
+      ) {
+        return "";
+      }
+
+      const maxSize =
+        360;
+
+      const outputScale =
+        Math.min(
+          1,
+          maxSize /
+            sourceWidth,
+          maxSize /
+            sourceHeight
+        );
+
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
+
+      canvas.width =
+        Math.max(
+          1,
+          Math.round(
+            sourceWidth *
+            outputScale
+          )
+        );
+
+      canvas.height =
+        Math.max(
+          1,
+          Math.round(
+            sourceHeight *
+            outputScale
+          )
+        );
+
+      const context =
+        canvas.getContext(
+          "2d"
+        );
+
+      if (!context) {
+        return "";
+      }
+
+      context.drawImage(
+        shot,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      return canvas.toDataURL(
+        "image/jpeg",
+        .86
+      );
+    } catch (
+      error
+    ) {
+      console.warn(
+        "ClipNest could not create a local image preview:",
+        error
+      );
+
+      return "";
+    }
+  }
+
   function create({
     detectedImage = "",
     initialValue = "",
@@ -495,9 +925,62 @@
 
       image.addEventListener(
         "error",
-        () => {
+        async () => {
+          const requestedUrl =
+            selected;
+
           preview.classList.add(
             "image-error"
+          );
+
+          const fallback =
+            await captureVisibleImagePreview(
+              requestedUrl
+            );
+
+          if (
+            requestedUrl !==
+              selected
+          ) {
+            return;
+          }
+
+          if (fallback) {
+            const localImage =
+              document.createElement(
+                "img"
+              );
+
+            localImage.src =
+              fallback;
+
+            localImage.alt =
+              "Selected image";
+
+            preview.replaceChildren(
+              localImage
+            );
+
+            preview.classList.remove(
+              "image-error"
+            );
+
+            return;
+          }
+
+          const status =
+            document.createElement(
+              "span"
+            );
+
+          status.className =
+            "notion-image-empty";
+
+          status.textContent =
+            "Image detected";
+
+          preview.replaceChildren(
+            status
           );
         },
         {

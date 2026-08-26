@@ -4085,3 +4085,27 @@ body[data-destination="notion"]
   line-height: 1.35;
   text-align: center;
 }
+
+
+/* BOOK CAPTURE POLISH - V1.5.3 */
+
+.notion-builder-create-button {
+  background:
+    #9027db !important;
+
+  border-color:
+    #9027db !important;
+
+  color:
+    #ffffff !important;
+}
+
+.notion-builder-create-button:hover:not(:disabled) {
+  filter:
+    brightness(.94);
+}
+
+.notion-builder-create-button:active:not(:disabled) {
+  filter:
+    brightness(.88);
+}

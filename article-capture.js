@@ -48,7 +48,11 @@ function extractPage() {
         ""
       )
       .replace(
-        /\s+\((?:author|editor|contributor)\)\s*$/i,
+        /\s*\((?:author|editor|contributor)\).*$/i,
+        ""
+      )
+      .replace(
+        /\s+Format\s*:.*$/i,
         ""
       )
       .trim();
@@ -355,12 +359,36 @@ function extractPage() {
         return cleanMetadata;
       }
 
+      const targetedAuthor =
+        document.querySelector(
+          [
+            '#bylineInfo .author a',
+            '#bylineInfo .contributorNameID',
+            '[data-feature-name="bylineInfo"] .author a',
+            '[itemprop="author"] [itemprop="name"]',
+            '[itemprop="author"] a',
+            '[itemprop="creator"] [itemprop="name"]',
+            '[rel="author"]',
+            '.author a'
+          ].join(",")
+        );
+
+      const targetedName =
+        cleanAuthorName(
+          targetedAuthor
+            ?.textContent ||
+          ""
+        );
+
+      if (targetedName) {
+        return targetedName;
+      }
+
       const pageAuthor =
         getMeta(
           '[itemprop="author"]',
           '[itemprop="creator"]',
           '[rel="author"]',
-          '#bylineInfo',
           '.author a'
         );
 
