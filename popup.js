@@ -4191,6 +4191,9 @@ function setupNotionBuilderFieldDrag(
   handle.draggable =
     true;
 
+  let dragGhost =
+    null;
+
   handle.addEventListener(
     "dragstart",
     (event) => {
@@ -4218,17 +4221,48 @@ function setupNotionBuilderFieldDrag(
           notionPresetBuilderDraggedFieldId
         );
 
+        dragGhost =
+          document.createElement(
+            "div"
+          );
+
+        dragGhost.className =
+          "notion-builder-drag-ghost";
+
+        const grip =
+          document.createElement(
+            "span"
+          );
+
+        grip.textContent =
+          "⠿";
+
+        const label =
+          document.createElement(
+            "strong"
+          );
+
+        label.textContent =
+          field.propertyName ||
+          "Field";
+
+        dragGhost.append(
+          grip,
+          label
+        );
+
+        document.body.append(
+          dragGhost
+        );
+
         try {
           event.dataTransfer.setDragImage(
-            row,
-            Math.max(
-              20,
-              row.offsetWidth - 30
-            ),
-            24
+            dragGhost,
+            14,
+            20
           );
         } catch {
-          // Native drag preview is fine.
+          // Fall back to Chrome's default drag image.
         }
       }
     }
@@ -4314,6 +4348,10 @@ function setupNotionBuilderFieldDrag(
       row.classList.remove(
         "notion-builder-field-dragging"
       );
+
+      dragGhost?.remove();
+      dragGhost =
+        null;
 
       if (
         notionPresetBuilderDraggedFieldId

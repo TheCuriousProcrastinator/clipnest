@@ -2480,3 +2480,42 @@ body[data-destination="notion"]
 .notion-builder-field-config {
   padding: 12px 14px 14px 46px;
 }
+
+/* Compact custom drag preview */
+
+.notion-builder-drag-ghost {
+  position: fixed;
+  left: -1000px;
+  top: -1000px;
+  z-index: 999999;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 240px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 9px;
+  background: #1d1d1f;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.notion-builder-drag-ghost > span {
+  font-size: 17px;
+  opacity: .55;
+}
+
+.notion-builder-drag-ghost > strong {
+  max-width: 185px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notion-builder-field-dragging {
+  opacity: .3;
+  outline: 1px dashed rgba(144, 39, 219, .55);
+  outline-offset: -1px;
+  background: rgba(144, 39, 219, .06);
+}
