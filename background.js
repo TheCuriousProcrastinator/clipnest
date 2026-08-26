@@ -2875,7 +2875,30 @@ async function saveToNotion(
                   "page_image"
                 ? payload?.image ||
                   ""
-                : field.defaultValue
+                : (
+                    field.source ===
+                      "page_author" ||
+                    (
+                      field.source !==
+                        "fixed" &&
+                      (
+                        field.propertyType ===
+                          "text" ||
+                        field.propertyType ===
+                          "rich_text"
+                      ) &&
+                      String(
+                        field.propertyName ||
+                        ""
+                      )
+                        .trim()
+                        .toLowerCase() ===
+                        "author"
+                    )
+                  )
+                  ? payload?.author ||
+                    ""
+                  : field.defaultValue
         })
       );
 

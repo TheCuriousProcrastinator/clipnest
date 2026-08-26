@@ -3466,6 +3466,15 @@ function notionBuilderPresetFieldsForStore() {
         defaultValue =
           [];
       } else if (
+        notionBuilderIsAuthorProperty(
+          field
+        ) &&
+        mapping ===
+          "Page author"
+      ) {
+        source =
+          "page_author";
+      } else if (
         (
           type === "file" ||
           type === "files"
@@ -3621,6 +3630,23 @@ function notionBuilderFieldFromStoredField(
   ) {
     mapping =
       "Tags";
+  } else if (
+    source ===
+      "page_author" ||
+    (
+      source !==
+        "fixed" &&
+      notionBuilderIsAuthorProperty({
+        propertyType,
+        propertyName:
+          field?.propertyName ||
+          schemaProperty?.name ||
+          ""
+      })
+    )
+  ) {
+    mapping =
+      "Page author";
   } else if (
     source ===
       "page_image"
@@ -5089,11 +5115,22 @@ function renderNotionBuilderFieldConfiguration(
   modes.className =
     "notion-builder-field-config-modes";
 
+  const mappingModes =
+    notionBuilderIsAuthorProperty(
+      field
+    )
+      ? [
+          "Page author",
+          "Fixed value"
+        ]
+      : [
+          "Manual",
+          "Fixed value"
+        ];
+
   for (
-    const mode of [
-      "Manual",
-      "Fixed value"
-    ]
+    const mode of
+      mappingModes
   ) {
     const button =
       document.createElement(
@@ -5872,6 +5909,34 @@ function notionBuilderPropertyCanBeAdded(
   );
 }
 
+function notionBuilderIsAuthorProperty(
+  property
+) {
+  const type =
+    String(
+      property?.propertyType ||
+      property?.type ||
+      ""
+    );
+
+  const name =
+    String(
+      property?.propertyName ||
+      property?.name ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  return (
+    (
+      type === "text" ||
+      type === "rich_text"
+    ) &&
+    name === "author"
+  );
+}
+
 function notionBuilderDefaultMapping(
   property
 ) {
@@ -5905,6 +5970,14 @@ function notionBuilderDefaultMapping(
       "tags"
         ? "Tags"
         : "Manual";
+  }
+
+  if (
+    notionBuilderIsAuthorProperty(
+      property
+    )
+  ) {
+    return "Page author";
   }
 
   if (
@@ -6593,6 +6666,23 @@ async function loadNotionPresetConfigFields() {
         notionBuilderConfiguredField(
           url,
           "Page URL"
+        )
+      );
+    }
+
+    const author =
+      properties.find(
+        (property) =>
+          notionBuilderIsAuthorProperty(
+            property
+          )
+      );
+
+    if (author) {
+      configured.push(
+        notionBuilderConfiguredField(
+          author,
+          "Page author"
         )
       );
     }
@@ -9416,11 +9506,28 @@ function createNotionCustomFieldNode(
     input.autocomplete =
       "off";
 
-    input.value =
-      String(
-        field?.defaultValue ??
-        ""
+    const usePageAuthor =
+      field?.source ===
+        "page_author" ||
+      (
+        field?.source !==
+          "fixed" &&
+        notionBuilderIsAuthorProperty(
+          field
+        )
       );
+
+    input.value =
+      usePageAuthor
+        ? String(
+            state.capture?.author ||
+            field?.defaultValue ||
+            ""
+          )
+        : String(
+            field?.defaultValue ??
+            ""
+          );
 
     notionDynamicFieldValues[
       propertyId

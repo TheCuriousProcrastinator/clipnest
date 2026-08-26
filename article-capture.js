@@ -34,6 +34,341 @@ function extractPage() {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
+
+  const cleanAuthorName = (value) =>
+    normalizeText(
+      value
+    )
+      .replace(
+        /^by\s+/i,
+        ""
+      )
+      .replace(
+        /^author\s*:\s*/i,
+        ""
+      )
+      .replace(
+        /\s+\((?:author|editor|contributor)\)\s*$/i,
+        ""
+      )
+      .trim();
+
+  const authorNames = (
+    value
+  ) => {
+    const items =
+      Array.isArray(
+        value
+      )
+        ? value
+        : [
+            value
+          ];
+
+    const names =
+      [];
+
+    const addName = (
+      raw
+    ) => {
+      const name =
+        cleanAuthorName(
+          raw
+        );
+
+      if (
+        !name ||
+        names.some(
+          (existing) =>
+            existing.toLowerCase() ===
+            name.toLowerCase()
+        )
+      ) {
+        return;
+      }
+
+      names.push(
+        name
+      );
+    };
+
+    for (
+      const item of
+        items
+    ) {
+      if (
+        typeof item ===
+          "string"
+      ) {
+        addName(
+          item
+        );
+
+        continue;
+      }
+
+      if (
+        !item ||
+        typeof item !==
+          "object"
+      ) {
+        continue;
+      }
+
+      if (item.name) {
+        addName(
+          item.name
+        );
+
+        continue;
+      }
+
+      const fullName =
+        [
+          item.givenName,
+          item.familyName
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+      if (fullName) {
+        addName(
+          fullName
+        );
+      }
+    }
+
+    return names;
+  };
+
+  const extractJsonLdAuthor =
+    () => {
+      const nodes =
+        [];
+
+      const visit = (
+        value
+      ) => {
+        if (
+          Array.isArray(
+            value
+          )
+        ) {
+          value.forEach(
+            visit
+          );
+
+          return;
+        }
+
+        if (
+          !value ||
+          typeof value !==
+            "object"
+        ) {
+          return;
+        }
+
+        nodes.push(
+          value
+        );
+
+        for (
+          const child of
+            Object.values(
+              value
+            )
+        ) {
+          if (
+            child &&
+            typeof child ===
+              "object"
+          ) {
+            visit(
+              child
+            );
+          }
+        }
+      };
+
+      document
+        .querySelectorAll(
+          'script[type="application/ld+json"]'
+        )
+        .forEach(
+          (script) => {
+            const raw =
+              String(
+                script.textContent ||
+                ""
+              ).trim();
+
+            if (!raw) {
+              return;
+            }
+
+            try {
+              visit(
+                JSON.parse(
+                  raw
+                )
+              );
+            } catch {
+              return;
+            }
+          }
+        );
+
+      const rankNode = (
+        node
+      ) => {
+        const rawType =
+          node?.["@type"];
+
+        const types =
+          (
+            Array.isArray(
+              rawType
+            )
+              ? rawType
+              : [
+                  rawType
+                ]
+          )
+            .map(
+              (value) =>
+                String(
+                  value ||
+                  ""
+                )
+                  .trim()
+                  .toLowerCase()
+            )
+            .filter(Boolean);
+
+        if (
+          types.includes(
+            "book"
+          )
+        ) {
+          return 0;
+        }
+
+        if (
+          types.includes(
+            "product"
+          )
+        ) {
+          return 1;
+        }
+
+        if (
+          types.some(
+            (type) =>
+              [
+                "article",
+                "newsarticle",
+                "blogposting",
+                "creativework"
+              ].includes(
+                type
+              )
+          )
+        ) {
+          return 2;
+        }
+
+        return 3;
+      };
+
+      const candidates =
+        nodes
+          .map(
+            (
+              node,
+              index
+            ) => ({
+              names:
+                authorNames(
+                  node?.author ??
+                  node?.creator
+                ),
+
+              rank:
+                rankNode(
+                  node
+                ),
+
+              index
+            })
+          )
+          .filter(
+            (candidate) =>
+              candidate.names.length
+          )
+          .sort(
+            (a, b) =>
+              a.rank -
+                b.rank ||
+              a.index -
+                b.index
+          );
+
+      return (
+        candidates[0]
+          ?.names
+          ?.join(", ") ||
+        ""
+      );
+    };
+
+  const extractAuthor =
+    () => {
+      const structured =
+        extractJsonLdAuthor();
+
+      if (structured) {
+        return structured;
+      }
+
+      const metadata =
+        getMeta(
+          'meta[name="citation_author"]',
+          'meta[name="author"]',
+          'meta[name="parsely-author"]',
+          'meta[name="dc.creator"]',
+          'meta[name="DC.creator"]',
+          'meta[property="article:author"]'
+        );
+
+      const cleanMetadata =
+        cleanAuthorName(
+          metadata
+        );
+
+      if (
+        cleanMetadata &&
+        !/^https?:\/\//i.test(
+          cleanMetadata
+        )
+      ) {
+        return cleanMetadata;
+      }
+
+      const pageAuthor =
+        getMeta(
+          '[itemprop="author"]',
+          '[itemprop="creator"]',
+          '[rel="author"]',
+          '#bylineInfo',
+          '.author a'
+        );
+
+      return cleanAuthorName(
+        pageAuthor
+      );
+    };
+
   const inline = (node) => {
     if (!node) return "";
     if (node.nodeType === Node.TEXT_NODE) return node.nodeValue || "";
@@ -175,7 +510,7 @@ function extractPage() {
   const selection = normalizeText(window.getSelection()?.toString() || "").slice(0, 50000);
   const title = getMeta('meta[property="og:title"]', 'meta[name="twitter:title"]') || document.title || "Untitled";
   const description = getMeta('meta[name="description"]', 'meta[property="og:description"]');
-  const author = getMeta('meta[name="author"]', 'meta[property="article:author"]', '[rel="author"]');
+  const author = extractAuthor();
   const siteName = getMeta('meta[property="og:site_name"]') || location.hostname;
   const image = absoluteUrl(getMeta('meta[property="og:image"]', 'meta[name="twitter:image"]'));
 
