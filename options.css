@@ -1012,3 +1012,29 @@ button:active {
     justify-content: flex-start;
   }
 }
+
+/* Notion preset management moved to the popup. */
+
+.notion-popup-management-note {
+  margin-bottom: 18px;
+}
+
+/* Keep browser-session controls in Settings.
+   Hide the obsolete preset editor without removing
+   its DOM yet, so existing session/admin code remains safe. */
+
+label:has(#notionPresetSelect),
+label:has(#notionPresetName),
+label:has(#notionWorkspacePickerButton),
+label:has(#notionDestinationSearch),
+label:has(#notionDataSourceId),
+.vault-actions:has(#newNotionPreset),
+#newNotionPreset,
+#removeNotionPreset,
+#notionWorkspaceHelp,
+#notionDestinationResults,
+#notionDataSourceHelp,
+.notion-fields-editor,
+.notion-property-bridge {
+  display: none !important;
+}
