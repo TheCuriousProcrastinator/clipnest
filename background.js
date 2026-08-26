@@ -6,7 +6,15 @@ import "./article-engine.js";
 // Keep extension-local settings, including the personal Notion token, out of
 // any untrusted/content-script context.
 try {
-  chrome.storage.local.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" });
+  chrome.storage.local.setAccessLevel({
+    accessLevel:
+      "TRUSTED_CONTEXTS"
+  });
+
+  chrome.storage.sync.setAccessLevel({
+    accessLevel:
+      "TRUSTED_CONTEXTS"
+  });
 } catch {
   // Older Chromium builds may not expose setAccessLevel. V1 still functions.
 }
