@@ -3709,3 +3709,47 @@ body[data-destination="notion"]
   font-size: 18px;
   line-height: 1;
 }
+
+
+/* CLIPNEST VECTOR PRESET ICONS - V1.4.1 */
+
+.clipnest-preset-svg {
+  display: block;
+  width: 23px;
+  height: 23px;
+  overflow: visible;
+  flex: 0 0 auto;
+}
+
+.notion-builder-icon-option {
+  font-size: 0 !important;
+}
+
+.notion-builder-icon-option
+.clipnest-preset-svg {
+  width: 21px;
+  height: 21px;
+}
+
+.notion-builder-icon-button
+.clipnest-preset-svg {
+  width: 22px;
+  height: 22px;
+}
+
+.notion-preset-card-icon
+.clipnest-preset-svg {
+  width: 22px;
+  height: 22px;
+}
+
+.notion-builder-icon-option:hover
+.clipnest-preset-svg {
+  transform: scale(1.06);
+}
+
+.notion-builder-icon-option
+.clipnest-preset-svg {
+  transition:
+    transform 100ms ease;
+}

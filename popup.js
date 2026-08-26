@@ -628,36 +628,567 @@ function setupNotionPresetNavigation() {
   );
 }
 
+const CLIPNEST_PRESET_ICON_PREFIX =
+  "clipnest:";
+
 const NOTION_PRESET_ICON_CHOICES = [
-  "📥",
-  "📚",
-  "📰",
-  "✍️",
-  "💡",
-  "✅",
-  "📌",
-  "🗂️",
-  "🧠",
-  "🔖",
-  "⭐",
-  "🚀",
-  "💼",
-  "👥",
-  "💬",
-  "📅",
-  "🧪",
-  "🔧",
-  "💰",
-  "🛒",
-  "🎯",
-  "🎬",
-  "🎵",
-  "🌐",
-  "🧭",
-  "🔥",
-  "❤️",
-  "⚡"
+  {
+    id: "inbox",
+    label: "Inbox",
+    legacy: "📥",
+    primary: [
+      "M4 13v6h16v-6",
+      "M7 13l2 3h6l2-3"
+    ],
+    accent: [
+      "M12 3v9",
+      "M9 9l3 3 3-3"
+    ]
+  },
+  {
+    id: "reading",
+    label: "Reading",
+    legacy: "📚",
+    primary: [
+      "M4 5c3-1 5-.5 8 2v12c-3-2.5-5-2.5-8-2V5",
+      "M20 5c-3-1-5-.5-8 2v12c3-2.5 5-2.5 8-2V5"
+    ],
+    accent: [
+      "M12 7v12"
+    ]
+  },
+  {
+    id: "article",
+    label: "Article",
+    legacy: "📰",
+    primary: [
+      "M6 3h9l3 3v15H6z",
+      "M15 3v4h4",
+      "M9 11h6",
+      "M9 15h6"
+    ],
+    accent: [
+      "M9 7h3"
+    ]
+  },
+  {
+    id: "notes",
+    label: "Notes",
+    legacy: "✍️",
+    primary: [
+      "M5 19l1-4L16 5l3 3L9 18l-4 1z"
+    ],
+    accent: [
+      "M14.5 6.5l3 3",
+      "M5 19l4-1"
+    ]
+  },
+  {
+    id: "idea",
+    label: "Ideas",
+    legacy: "💡",
+    primary: [
+      "M12 3a6 6 0 0 0-3.5 10.9L10 16h4l1.5-2.1A6 6 0 0 0 12 3z",
+      "M10 19h4",
+      "M11 22h2"
+    ],
+    accent: [
+      "M12 1v1",
+      "M4.5 4.5l1.2 1.2",
+      "M18.3 5.7l1.2-1.2"
+    ]
+  },
+  {
+    id: "tasks",
+    label: "Tasks",
+    legacy: "✅",
+    primary: [
+      "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"
+    ],
+    accent: [
+      "M8 12l2.5 2.5L16.5 8.5"
+    ]
+  },
+  {
+    id: "pin",
+    label: "Pin",
+    legacy: "📌",
+    primary: [
+      "M9 3h6l-1 5 3 3v2H7v-2l3-3z"
+    ],
+    accent: [
+      "M12 13v8"
+    ]
+  },
+  {
+    id: "projects",
+    label: "Projects",
+    legacy: "🗂️",
+    primary: [
+      "M3 7h7l2 2h9v10H3z"
+    ],
+    accent: [
+      "M3 7V5h6l2 2"
+    ]
+  },
+  {
+    id: "knowledge",
+    label: "Knowledge",
+    legacy: "🧠",
+    primary: [
+      "M9 4a3 3 0 0 0-3 3v1a3 3 0 0 0-1 5 3 3 0 0 0 3 4h1",
+      "M15 4a3 3 0 0 1 3 3v1a3 3 0 0 1 1 5 3 3 0 0 1-3 4h-1",
+      "M9 4v16",
+      "M15 4v16"
+    ],
+    accent: [
+      "M9 9h2",
+      "M13 14h2"
+    ]
+  },
+  {
+    id: "bookmark",
+    label: "Bookmark",
+    legacy: "🔖",
+    primary: [
+      "M7 3h10v18l-5-3-5 3z"
+    ],
+    accent: [
+      "M12 3v15"
+    ]
+  },
+  {
+    id: "favorites",
+    label: "Favorites",
+    legacy: "⭐",
+    primary: [
+      "M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"
+    ],
+    accent: [
+      "M12 6v8"
+    ]
+  },
+  {
+    id: "launch",
+    label: "Launch",
+    legacy: "🚀",
+    primary: [
+      "M14 4c3-1 5-1 6-1 0 1 0 3-1 6l-7 7-4-4z",
+      "M10 10l-4 1-3 3 6 1",
+      "M14 14l-1 6-3 1-1-6"
+    ],
+    accent: [
+      "M7 17l-3 3",
+      "M10 18l-2 3"
+    ]
+  },
+  {
+    id: "goals",
+    label: "Goals",
+    legacy: "🎯",
+    primary: [
+      "M12 3a9 9 0 1 0 9 9",
+      "M12 7a5 5 0 1 0 5 5",
+      "M12 11a1 1 0 1 0 1 1"
+    ],
+    accent: [
+      "M13 11l7-7",
+      "M17 4h3v3"
+    ]
+  },
+  {
+    id: "calendar",
+    label: "Calendar",
+    legacy: "📅",
+    primary: [
+      "M4 6h16v14H4z",
+      "M4 10h16"
+    ],
+    accent: [
+      "M8 3v5",
+      "M16 3v5",
+      "M8 14h2",
+      "M14 14h2"
+    ]
+  },
+  {
+    id: "people",
+    label: "People",
+    legacy: "👥",
+    primary: [
+      "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+      "M3 21v-2a6 6 0 0 1 12 0v2"
+    ],
+    accent: [
+      "M17 11a3 3 0 1 0 0-6",
+      "M17 15a5 5 0 0 1 4 5"
+    ]
+  },
+  {
+    id: "discussions",
+    label: "Discussions",
+    legacy: "💬",
+    primary: [
+      "M4 5h13v10H9l-5 4z"
+    ],
+    accent: [
+      "M8 9h5",
+      "M8 12h3",
+      "M18 8h2v8l-3-2"
+    ]
+  },
+  {
+    id: "code",
+    label: "Code",
+    legacy: "🔧",
+    primary: [
+      "M8 7l-5 5 5 5",
+      "M16 7l5 5-5 5"
+    ],
+    accent: [
+      "M14 4l-4 16"
+    ]
+  },
+  {
+    id: "research",
+    label: "Research",
+    legacy: "🧪",
+    primary: [
+      "M9 3h6",
+      "M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"
+    ],
+    accent: [
+      "M7.5 16h9",
+      "M9 13h6"
+    ]
+  },
+  {
+    id: "links",
+    label: "Links",
+    legacy: "🌐",
+    primary: [
+      "M9 15l-2 2a4 4 0 1 1-6-6l3-3a4 4 0 0 1 6 0",
+      "M15 9l2-2a4 4 0 1 1 6 6l-3 3a4 4 0 0 1-6 0"
+    ],
+    accent: [
+      "M8 12h8"
+    ]
+  },
+  {
+    id: "work",
+    label: "Work",
+    legacy: "💼",
+    primary: [
+      "M3 8h18v11H3z",
+      "M8 8V5h8v3"
+    ],
+    accent: [
+      "M3 12h18",
+      "M10 12v2h4v-2"
+    ]
+  },
+  {
+    id: "finance",
+    label: "Finance",
+    legacy: "💰",
+    primary: [
+      "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"
+    ],
+    accent: [
+      "M15 8h-4a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H9",
+      "M12 6v12"
+    ]
+  },
+  {
+    id: "shopping",
+    label: "Shopping",
+    legacy: "🛒",
+    primary: [
+      "M3 4h2l2 11h10l3-7H7",
+      "M9 20a1 1 0 1 0 0-2",
+      "M17 20a1 1 0 1 0 0-2"
+    ],
+    accent: [
+      "M9 11h8"
+    ]
+  },
+  {
+    id: "personal",
+    label: "Personal",
+    legacy: "❤️",
+    primary: [
+      "M12 20S4 15 4 9a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 6-6 11-6 11z"
+    ],
+    accent: [
+      "M8 9c0-1 1-2 2-2"
+    ]
+  },
+  {
+    id: "media",
+    label: "Media",
+    legacy: "🎬",
+    primary: [
+      "M4 7h16v12H4z",
+      "M4 7l2-4h4l-2 4",
+      "M12 7l2-4h4l-2 4"
+    ],
+    accent: [
+      "M10 11l5 3-5 3z"
+    ]
+  },
+  {
+    id: "learning",
+    label: "Learning",
+    legacy: "🎓",
+    primary: [
+      "M3 9l9-5 9 5-9 5z",
+      "M7 12v5c3 2 7 2 10 0v-5"
+    ],
+    accent: [
+      "M21 9v6"
+    ]
+  },
+  {
+    id: "web",
+    label: "Web",
+    legacy: "🌍",
+    primary: [
+      "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z",
+      "M3 12h18",
+      "M12 3c3 3 4 6 4 9s-1 6-4 9",
+      "M12 3c-3 3-4 6-4 9s1 6 4 9"
+    ],
+    accent: [
+      "M5 7h14"
+    ]
+  },
+  {
+    id: "explore",
+    label: "Explore",
+    legacy: "🧭",
+    primary: [
+      "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z",
+      "M15.5 8.5l-2 5-5 2 2-5z"
+    ],
+    accent: [
+      "M12 6v1",
+      "M12 17v1"
+    ]
+  },
+  {
+    id: "trending",
+    label: "Trending",
+    legacy: "🔥",
+    primary: [
+      "M12 21c-4 0-7-3-7-7 0-3 2-5 4-7 0 3 2 4 3 5 1-3 1-5 0-7 4 2 7 6 7 10 0 4-3 7-7 7z"
+    ],
+    accent: [
+      "M12 17c-2 0-3-1-3-3 0-1 1-3 3-4 0 2 2 2 2 4 1-2 2-3 1-5 2 2 3 4 3 5 0 2-1 3-3 3z"
+    ]
+  }
 ];
+
+const NOTION_PRESET_ICON_BY_ID =
+  new Map(
+    NOTION_PRESET_ICON_CHOICES.map(
+      (icon) => [
+        icon.id,
+        icon
+      ]
+    )
+  );
+
+const NOTION_PRESET_ICON_LEGACY =
+  new Map(
+    NOTION_PRESET_ICON_CHOICES.map(
+      (icon) => [
+        icon.legacy,
+        icon.id
+      ]
+    )
+  );
+
+function clipNestPresetIconValue(
+  id
+) {
+  return (
+    CLIPNEST_PRESET_ICON_PREFIX +
+    id
+  );
+}
+
+function resolveClipNestPresetIcon(
+  value
+) {
+  const raw =
+    String(
+      value ||
+      ""
+    ).trim();
+
+  if (!raw) {
+    return null;
+  }
+
+  let id =
+    "";
+
+  if (
+    raw.startsWith(
+      CLIPNEST_PRESET_ICON_PREFIX
+    )
+  ) {
+    id =
+      raw.slice(
+        CLIPNEST_PRESET_ICON_PREFIX
+          .length
+      );
+  } else {
+    id =
+      NOTION_PRESET_ICON_LEGACY
+        .get(raw) ||
+      "";
+  }
+
+  return (
+    NOTION_PRESET_ICON_BY_ID
+      .get(id) ||
+    null
+  );
+}
+
+function normalizedClipNestPresetIconValue(
+  value
+) {
+  const icon =
+    resolveClipNestPresetIcon(
+      value
+    );
+
+  if (icon) {
+    return clipNestPresetIconValue(
+      icon.id
+    );
+  }
+
+  return String(
+    value ||
+    ""
+  ).trim();
+}
+
+function appendClipNestPresetSvg(
+  target,
+  icon
+) {
+  const NS =
+    "http://www.w3.org/2000/svg";
+
+  const svg =
+    document.createElementNS(
+      NS,
+      "svg"
+    );
+
+  svg.classList.add(
+    "clipnest-preset-svg"
+  );
+
+  svg.setAttribute(
+    "viewBox",
+    "0 0 24 24"
+  );
+
+  svg.setAttribute(
+    "fill",
+    "none"
+  );
+
+  svg.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+
+  const appendPaths = (
+    paths,
+    stroke
+  ) => {
+    for (
+      const d of paths
+    ) {
+      const path =
+        document.createElementNS(
+          NS,
+          "path"
+        );
+
+      path.setAttribute(
+        "d",
+        d
+      );
+
+      path.setAttribute(
+        "stroke",
+        stroke
+      );
+
+      path.setAttribute(
+        "stroke-width",
+        "1.9"
+      );
+
+      path.setAttribute(
+        "stroke-linecap",
+        "round"
+      );
+
+      path.setAttribute(
+        "stroke-linejoin",
+        "round"
+      );
+
+      svg.append(
+        path
+      );
+    }
+  };
+
+  appendPaths(
+    icon.primary,
+    "#9027db"
+  );
+
+  appendPaths(
+    icon.accent,
+    "#db5b27"
+  );
+
+  target.append(
+    svg
+  );
+}
+
+function renderClipNestPresetIcon(
+  target,
+  value
+) {
+  const icon =
+    resolveClipNestPresetIcon(
+      value
+    );
+
+  if (!icon) {
+    return false;
+  }
+
+  appendClipNestPresetSvg(
+    target,
+    icon
+  );
+
+  return true;
+}
+
 
 function renderNotionPresetDisplayIcon(
   target,
@@ -676,6 +1207,15 @@ function renderNotionPresetDisplayIcon(
     ).trim();
 
   if (custom) {
+    if (
+      renderClipNestPresetIcon(
+        target,
+        custom
+      )
+    ) {
+      return;
+    }
+
     target.textContent =
       custom;
 
@@ -828,12 +1368,14 @@ function updateNotionBuilderIconButton() {
     .forEach(
       (option) => {
         const selected =
-          String(
+          normalizedClipNestPresetIconValue(
             option.dataset
               .presetIcon ||
             ""
           ) ===
-          custom;
+          normalizedClipNestPresetIconValue(
+            custom
+          );
 
         option.classList.toggle(
           "selected",
@@ -928,7 +1470,7 @@ function createNotionBuilderIconPicker() {
   );
 
   for (
-    const emoji of
+    const icon of
       NOTION_PRESET_ICON_CHOICES
   ) {
     const option =
@@ -943,17 +1485,21 @@ function createNotionBuilderIconPicker() {
       "notion-builder-icon-option";
 
     option.dataset.presetIcon =
-      emoji;
-
-    option.textContent =
-      emoji;
+      clipNestPresetIconValue(
+        icon.id
+      );
 
     option.title =
-      `Use ${emoji}`;
+      icon.label;
 
     option.setAttribute(
       "aria-label",
-      `Use ${emoji} as preset icon`
+      `Use ${icon.label} as preset icon`
+    );
+
+    appendClipNestPresetSvg(
+      option,
+      icon
     );
 
     option.addEventListener(
@@ -963,7 +1509,9 @@ function createNotionBuilderIconPicker() {
         event.stopPropagation();
 
         void selectIcon(
-          emoji
+          clipNestPresetIconValue(
+            icon.id
+          )
         );
       }
     );
