@@ -2114,3 +2114,43 @@ body[data-destination="notion"]
   font-weight: 650;
   cursor: pointer;
 }
+
+/* Notion preset field ordering */
+
+.notion-builder-field-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.notion-builder-field-row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.notion-builder-field-order {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.notion-builder-field-order-button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .06);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.notion-builder-field-order-button:hover:not(:disabled) {
+  background: rgba(144, 39, 219, .22);
+}
+
+.notion-builder-field-order-button:disabled {
+  opacity: .25;
+  cursor: default;
+}

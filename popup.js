@@ -3607,6 +3607,197 @@ function renderNotionBuilderFieldConfiguration(
   }
 }
 
+async function moveNotionBuilderConfiguredField(
+  propertyId,
+  direction
+) {
+  const draft =
+    notionPresetBuilderDraft;
+
+  if (
+    !draft ||
+    !Array.isArray(
+      draft.configuredFields
+    )
+  ) {
+    return;
+  }
+
+  const index =
+    draft.configuredFields
+      .findIndex(
+        (field) =>
+          String(
+            field.propertyId ||
+            ""
+          ) ===
+          String(
+            propertyId ||
+            ""
+          )
+      );
+
+  if (index < 0) {
+    return;
+  }
+
+  const target =
+    direction ===
+      "up"
+      ? index - 1
+      : index + 1;
+
+  if (
+    target < 0 ||
+    target >=
+      draft.configuredFields
+        .length
+  ) {
+    return;
+  }
+
+  const fields = [
+    ...draft.configuredFields
+  ];
+
+  [
+    fields[index],
+    fields[target]
+  ] = [
+    fields[target],
+    fields[index]
+  ];
+
+  draft.configuredFields =
+    fields;
+
+  notionPresetBuilderEditingFieldId =
+    "";
+
+  await persistNotionPresetBuilderState(
+    "config"
+  );
+
+  renderNotionBuilderConfiguredFields();
+}
+
+function createNotionBuilderFieldOrderControls(
+  field
+) {
+  const controls =
+    document.createElement(
+      "span"
+    );
+
+  controls.className =
+    "notion-builder-field-order";
+
+  const configured =
+    Array.isArray(
+      notionPresetBuilderDraft
+        ?.configuredFields
+    )
+      ? notionPresetBuilderDraft
+          .configuredFields
+      : [];
+
+  const index =
+    configured.findIndex(
+      (candidate) =>
+        String(
+          candidate.propertyId ||
+          ""
+        ) ===
+        String(
+          field.propertyId ||
+          ""
+        )
+    );
+
+  const up =
+    document.createElement(
+      "button"
+    );
+
+  up.type =
+    "button";
+
+  up.className =
+    "notion-builder-field-order-button";
+
+  up.textContent =
+    "↑";
+
+  up.title =
+    "Move field up";
+
+  up.setAttribute(
+    "aria-label",
+    "Move field up"
+  );
+
+  up.disabled =
+    index <= 0;
+
+  up.addEventListener(
+    "click",
+    (event) => {
+      event.stopPropagation();
+
+      void moveNotionBuilderConfiguredField(
+        field.propertyId,
+        "up"
+      );
+    }
+  );
+
+  const down =
+    document.createElement(
+      "button"
+    );
+
+  down.type =
+    "button";
+
+  down.className =
+    "notion-builder-field-order-button";
+
+  down.textContent =
+    "↓";
+
+  down.title =
+    "Move field down";
+
+  down.setAttribute(
+    "aria-label",
+    "Move field down"
+  );
+
+  down.disabled =
+    index < 0 ||
+    index >=
+      configured.length - 1;
+
+  down.addEventListener(
+    "click",
+    (event) => {
+      event.stopPropagation();
+
+      void moveNotionBuilderConfiguredField(
+        field.propertyId,
+        "down"
+      );
+    }
+  );
+
+  controls.append(
+    up,
+    down
+  );
+
+  return controls;
+}
+
 function createNotionBuilderConfiguredFieldRow(
   field
 ) {
@@ -3655,6 +3846,14 @@ function createNotionBuilderConfiguredFieldRow(
     type
   );
 
+  const actions =
+    document.createElement(
+      "div"
+    );
+
+  actions.className =
+    "notion-builder-field-row-actions";
+
   if (
     notionBuilderFieldIsConfigurable(
       field
@@ -3686,8 +3885,7 @@ function createNotionBuilderConfiguredFieldRow(
       }
     );
 
-    row.append(
-      copy,
+    actions.append(
       mapping
     );
   } else {
@@ -3704,15 +3902,24 @@ function createNotionBuilderConfiguredFieldRow(
         field
       )}`;
 
-    row.append(
-      copy,
+    actions.append(
       mapping
     );
   }
 
+  actions.append(
+    createNotionBuilderFieldOrderControls(
+      field
+    )
+  );
+
+  row.append(
+    copy,
+    actions
+  );
+
   return row;
 }
-
 function notionBuilderPropertyCanBeAdded(
   property
 ) {
