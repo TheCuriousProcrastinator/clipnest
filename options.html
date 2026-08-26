@@ -37,7 +37,7 @@
       </label>
     </section>
 
-    <section class="card">
+    <section class="card backup-card">
       <h2>Backup</h2>
 
       <p class="help">
@@ -80,7 +80,7 @@
       <h2>Notion</h2>
 
       <p class="help notion-popup-management-note">
-        Presets are created and edited directly from the ClipNest popup.
+        Create and edit Notion presets from the ClipNest popup.
       </p>
 
       <p class="help">
@@ -101,6 +101,10 @@
           </button>
         </div>
       </div>
+
+      <p class="help notion-sync-note">
+        Notion presets sync across Chrome. Notion login stays local to this computer.
+      </p>
 
       <label class="field">
         <span>Preset</span>
@@ -311,7 +315,7 @@
       <div id="obsidianStatus" class="status"></div>
     </section>
 
-    <div class="savebar">
+    <div id="settingsSavebar" class="savebar" hidden>
       <button id="saveSettings" class="primary" type="button">Save settings</button>
       <div id="saveStatus" class="status"></div>
     </div>

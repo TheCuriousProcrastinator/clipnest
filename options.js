@@ -18,6 +18,12 @@ let notionOptionsReady =
 let notionOptionsIntentHandling =
   false;
 
+let settingsDirty =
+  false;
+
+let settingsSaveHideTimer =
+  null;
+
 document.addEventListener(
   "DOMContentLoaded",
   init
@@ -78,6 +84,7 @@ async function init() {
     "importSettings",
     "importSettingsFile",
     "settingsBackupStatus",
+    "settingsSavebar",
     "saveSettings",
     "saveStatus"
   ]) {
@@ -89,6 +96,25 @@ async function init() {
     "click",
     saveSettings
   );
+
+  for (
+    const field of [
+      els.defaultDestination,
+      els.notionPresetName,
+      els.obsidianSubfolder,
+      els.obsidianDefaultTags
+    ]
+  ) {
+    field.addEventListener(
+      "input",
+      markSettingsDirty
+    );
+
+    field.addEventListener(
+      "change",
+      markSettingsDirty
+    );
+  }
 
   els.exportSettings.addEventListener(
     "click",
@@ -382,6 +408,8 @@ async function loadSettings() {
       []
     );
   }
+
+  clearSettingsDirty();
 }
 
 async function saveSettings() {
@@ -423,11 +451,112 @@ async function saveSettings() {
     await refreshNotionPresetList();
   }
 
+  showSettingsSaved();
+}
+
+function markSettingsDirty() {
+  settingsDirty =
+    true;
+
+  clearTimeout(
+    settingsSaveHideTimer
+  );
+
+  settingsSaveHideTimer =
+    null;
+
+  els.settingsSavebar.hidden =
+    false;
+
+  document
+    .querySelector(
+      ".page"
+    )
+    ?.classList.add(
+      "settings-dirty"
+    );
+
+  els.saveStatus.textContent =
+    "";
+
+  els.saveStatus.className =
+    "status";
+}
+
+function clearSettingsDirty() {
+  settingsDirty =
+    false;
+
+  clearTimeout(
+    settingsSaveHideTimer
+  );
+
+  settingsSaveHideTimer =
+    null;
+
+  els.settingsSavebar.hidden =
+    true;
+
+  document
+    .querySelector(
+      ".page"
+    )
+    ?.classList.remove(
+      "settings-dirty"
+    );
+
+  els.saveStatus.textContent =
+    "";
+
+  els.saveStatus.className =
+    "status";
+}
+
+function showSettingsSaved() {
+  settingsDirty =
+    false;
+
+  clearTimeout(
+    settingsSaveHideTimer
+  );
+
+  els.settingsSavebar.hidden =
+    false;
+
+  document
+    .querySelector(
+      ".page"
+    )
+    ?.classList.add(
+      "settings-dirty"
+    );
+
   showStatus(
     els.saveStatus,
     "Saved.",
     "success"
   );
+
+  settingsSaveHideTimer =
+    setTimeout(
+      () => {
+        if (settingsDirty) {
+          return;
+        }
+
+        els.settingsSavebar.hidden =
+          true;
+
+        document
+          .querySelector(
+            ".page"
+          )
+          ?.classList.remove(
+            "settings-dirty"
+          );
+      },
+      900
+    );
 }
 
 function portableObject(
