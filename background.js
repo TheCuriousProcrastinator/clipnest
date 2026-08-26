@@ -3,8 +3,6 @@ import "./notion-store.js";
 import "./notion-session.js";
 import "./article-engine.js";
 
-const NOTION_VERSION = "2026-03-11";
-
 // Keep extension-local settings, including the personal Notion token, out of
 // any untrusted/content-script context.
 try {
@@ -1650,13 +1648,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message?.type === "notion.test") {
-    testNotion(message.payload)
-      .then((result) => sendResponse({ ok: true, result }))
-      .catch((error) => sendResponse({ ok: false, error: normalizeError(error) }));
-    return true;
-  }
-});
+  });
 
 function notionTagKey(
   value
@@ -2046,51 +2038,6 @@ async function getNotionTagOptions() {
     );
 }
 
-async function getNotionConfig() {
-  /*
-   * Ensure preset state and the legacy Notion
-   * configuration mirror are synchronized before
-   * every save, including background Quick Clips.
-   */
-  await ClipNestNotionStore
-    .migrateLegacy();
-
-  const config =
-    await chrome.storage.local.get([
-      "notionToken",
-      "notionDataSourceId",
-      "notionTitleProperty",
-      "notionUrlProperty"
-    ]);
-
-  return {
-    token:
-      String(
-        config.notionToken ||
-        ""
-      ).trim(),
-
-    dataSourceId:
-      normalizeNotionId(
-        config.notionDataSourceId ||
-        ""
-      ),
-
-    titleProperty:
-      String(
-        config.notionTitleProperty ||
-        "Name"
-      ).trim() ||
-      "Name",
-
-    urlProperty:
-      String(
-        config.notionUrlProperty ||
-        ""
-      ).trim()
-  };
-}
-
 async function saveToNotion(
   payload
 ) {
@@ -2412,70 +2359,6 @@ async function saveToNotion(
 
     throw wrapped;
   }
-}
-
-async function testNotion(payload = {}) {
-  const stored = await getNotionConfig();
-  const token = String(payload.token || stored.token || "").trim();
-  const dataSourceId = normalizeNotionId(payload.dataSourceId || stored.dataSourceId || "");
-
-  if (!token) throw new Error("Enter a Notion token first.");
-  if (!dataSourceId) throw new Error("Enter a Notion data source ID first.");
-
-  const response = await notionFetch(token, `/v1/data_sources/${encodeURIComponent(dataSourceId)}`, {
-    method: "GET"
-  });
-
-  const properties = Object.values(response.properties || {}).map((property) => ({
-    name: property.name,
-    type: property.type
-  }));
-
-  return {
-    id: response.id,
-    name: response.name || response.title?.map?.((item) => item.plain_text).join("") || "Connected",
-    properties
-  };
-}
-
-async function notionFetch(token, path, options) {
-  const response = await fetch(`https://api.notion.com${path}`, {
-    ...options,
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Notion-Version": NOTION_VERSION,
-      "Content-Type": "application/json",
-      ...(options?.headers || {})
-    }
-  });
-
-  const text = await response.text();
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = null;
-  }
-
-  if (!response.ok) {
-    const message = data?.message || data?.code || text || `Notion returned HTTP ${response.status}`;
-    throw new Error(message);
-  }
-
-  return data;
-}
-
-function normalizeNotionId(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-
-  const compact = raw.replace(/-/g, "");
-  const match = compact.match(/[0-9a-fA-F]{32}/);
-  if (!match) return raw;
-
-  const id = match[0].toLowerCase();
-  return `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`;
 }
 
 function normalizeError(error) {

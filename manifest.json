@@ -8,12 +8,7 @@
     "activeTab",
     "scripting",
     "storage",
-    "contextMenus",
-    "identity"
-  ],
-  "host_permissions": [
-    "https://api.notion.com/*",
-    "https://clipnest-notion-oauth.gerainchick.workers.dev/*"
+    "contextMenus"
   ],
   "background": {
     "service_worker": "background.js",

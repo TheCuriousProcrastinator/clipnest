@@ -1,7 +1,0 @@
-name = "clipnest-notion-oauth"
-main = "worker.js"
-compatibility_date = "2026-08-24"
-workers_dev = true
-
-[vars]
-NOTION_ALLOWED_REDIRECTS = "https://dcknfcknmmanbfifimpaecbgnmklhdim.chromiumapp.org/notion"
