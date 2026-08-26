@@ -2519,3 +2519,31 @@ body[data-destination="notion"]
   outline-offset: -1px;
   background: rgba(144, 39, 219, .06);
 }
+
+/* Delete Notion preset */
+
+.notion-builder-delete-preset {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(219, 91, 39, .38);
+  border-radius: 10px;
+  background: transparent;
+  color: #db5b27;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.notion-builder-delete-preset:hover {
+  background: rgba(219, 91, 39, .08);
+}
+
+.notion-builder-delete-preset.confirming {
+  border-color: #db5b27;
+  background: rgba(219, 91, 39, .14);
+}
+
+.notion-builder-delete-preset:disabled {
+  opacity: .5;
+  cursor: default;
+}

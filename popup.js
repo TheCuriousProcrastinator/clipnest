@@ -2981,6 +2981,119 @@ async function openNotionPresetInBuilder(
   });
 }
 
+async function deleteNotionPresetFromBuilder() {
+  const draft =
+    notionPresetBuilderDraft;
+
+  const button =
+    document.getElementById(
+      "notionBuilderDeletePreset"
+    );
+
+  if (
+    draft?.mode !== "edit" ||
+    !draft.editingPresetId ||
+    !button
+  ) {
+    return;
+  }
+
+  if (
+    button.dataset.confirm !==
+      "true"
+  ) {
+    button.dataset.confirm =
+      "true";
+
+    button.textContent =
+      "Click again to delete";
+
+    button.classList.add(
+      "confirming"
+    );
+
+    setTimeout(
+      () => {
+        if (
+          button.dataset.confirm ===
+            "true"
+        ) {
+          delete button.dataset.confirm;
+
+          button.textContent =
+            "Delete preset";
+
+          button.classList.remove(
+            "confirming"
+          );
+        }
+      },
+      3500
+    );
+
+    return;
+  }
+
+  button.disabled =
+    true;
+
+  button.textContent =
+    "Deleting…";
+
+  try {
+    await ClipNestNotionStore
+      .removePreset(
+        draft.editingPresetId
+      );
+
+    await clearNotionPresetBuilderState();
+
+    notionPresetBuilderDraft =
+      null;
+
+    notionPresetBuilderEditingFieldId =
+      "";
+
+    notionPresetBuilderDraggedFieldId =
+      "";
+
+    await loadNotionPresetPicker();
+
+    document
+      .getElementById(
+        "notionPresetConfigScreen"
+      )
+      ?.classList.add(
+        "hidden"
+      );
+
+    await showNotionPresetChooser();
+
+    setStatus(
+      "Preset deleted.",
+      "success"
+    );
+  } catch (error) {
+    button.disabled =
+      false;
+
+    delete button.dataset.confirm;
+
+    button.textContent =
+      "Delete preset";
+
+    button.classList.remove(
+      "confirming"
+    );
+
+    setStatus(
+      error?.message ||
+      String(error),
+      "error"
+    );
+  }
+}
+
 async function createNotionPresetFromBuilder() {
   const draft =
     notionPresetBuilderDraft;
@@ -3522,6 +3635,31 @@ function createNotionPresetConfigScreen() {
   create.disabled =
     true;
 
+  const remove =
+    document.createElement(
+      "button"
+    );
+
+  remove.id =
+    "notionBuilderDeletePreset";
+
+  remove.type =
+    "button";
+
+  remove.className =
+    "notion-builder-delete-preset hidden";
+
+  remove.textContent =
+    "Delete preset";
+
+  remove.addEventListener(
+    "click",
+    () => {
+      void deleteNotionPresetFromBuilder();
+    }
+  );
+
+
   nameInput.addEventListener(
     "input",
     async () => {
@@ -3553,7 +3691,8 @@ function createNotionPresetConfigScreen() {
     location,
     fieldsLabel,
     fields,
-    create
+    create,
+    remove
   );
 
   return section;
@@ -5311,6 +5450,11 @@ function renderNotionPresetConfigScreen(
       "notionBuilderConfigTitle"
     );
 
+  const remove =
+    document.getElementById(
+      "notionBuilderDeletePreset"
+    );
+
   const isEdit =
     draft.mode ===
       "edit" &&
@@ -5338,6 +5482,25 @@ function renderNotionPresetConfigScreen(
     isEdit
       ? "Save changes"
       : "Create preset";
+
+  if (remove) {
+    remove.classList.toggle(
+      "hidden",
+      !isEdit
+    );
+
+    remove.disabled =
+      false;
+
+    delete remove.dataset.confirm;
+
+    remove.textContent =
+      "Delete preset";
+
+    remove.classList.remove(
+      "confirming"
+    );
+  }
 
   location.disabled =
     isEdit;
