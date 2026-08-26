@@ -1219,6 +1219,9 @@ let notionPresetBuilderDraft =
 let notionPresetBuilderEditingFieldId =
   "";
 
+let notionPresetBuilderDraggedFieldId =
+  "";
+
 const NOTION_PRESET_BUILDER_STATE_KEY =
   "clipnestNotionPresetBuilderStateV1";
 
@@ -3607,15 +3610,18 @@ function renderNotionBuilderFieldConfiguration(
   }
 }
 
-async function moveNotionBuilderConfiguredField(
-  propertyId,
-  direction
-) {
+async function commitNotionBuilderFieldOrder() {
   const draft =
     notionPresetBuilderDraft;
 
+  const container =
+    document.getElementById(
+      "notionBuilderPresetFields"
+    );
+
   if (
     !draft ||
+    !container ||
     !Array.isArray(
       draft.configuredFields
     )
@@ -3623,53 +3629,74 @@ async function moveNotionBuilderConfiguredField(
     return;
   }
 
-  const index =
-    draft.configuredFields
-      .findIndex(
-        (field) =>
+  const order =
+    [
+      ...container.children
+    ]
+      .filter(
+        (element) =>
+          element.classList
+            .contains(
+              "notion-builder-field-row"
+            )
+      )
+      .map(
+        (element) =>
           String(
-            field.propertyId ||
-            ""
-          ) ===
-          String(
-            propertyId ||
+            element.dataset
+              .propertyId ||
             ""
           )
-      );
+      )
+      .filter(Boolean);
 
-  if (index < 0) {
-    return;
-  }
-
-  const target =
-    direction ===
-      "up"
-      ? index - 1
-      : index + 1;
-
-  if (
-    target < 0 ||
-    target >=
+  const byId =
+    new Map(
       draft.configuredFields
-        .length
+        .map(
+          (field) => [
+            String(
+              field.propertyId ||
+              ""
+            ),
+            field
+          ]
+        )
+    );
+
+  const reordered =
+    order
+      .map(
+        (id) =>
+          byId.get(
+            id
+          )
+      )
+      .filter(Boolean);
+
+  for (
+    const field of
+      draft.configuredFields
   ) {
-    return;
+    if (
+      !order.includes(
+        String(
+          field.propertyId ||
+          ""
+        )
+      )
+    ) {
+      reordered.push(
+        field
+      );
+    }
   }
-
-  const fields = [
-    ...draft.configuredFields
-  ];
-
-  [
-    fields[index],
-    fields[target]
-  ] = [
-    fields[target],
-    fields[index]
-  ];
 
   draft.configuredFields =
-    fields;
+    reordered;
+
+  notionPresetBuilderDraggedFieldId =
+    "";
 
   notionPresetBuilderEditingFieldId =
     "";
@@ -3681,121 +3708,145 @@ async function moveNotionBuilderConfiguredField(
   renderNotionBuilderConfiguredFields();
 }
 
-function createNotionBuilderFieldOrderControls(
+function setupNotionBuilderFieldDrag(
+  row,
+  handle,
   field
 ) {
-  const controls =
-    document.createElement(
-      "span"
-    );
+  handle.draggable =
+    true;
 
-  controls.className =
-    "notion-builder-field-order";
-
-  const configured =
-    Array.isArray(
-      notionPresetBuilderDraft
-        ?.configuredFields
-    )
-      ? notionPresetBuilderDraft
-          .configuredFields
-      : [];
-
-  const index =
-    configured.findIndex(
-      (candidate) =>
-        String(
-          candidate.propertyId ||
-          ""
-        ) ===
+  handle.addEventListener(
+    "dragstart",
+    (event) => {
+      notionPresetBuilderDraggedFieldId =
         String(
           field.propertyId ||
           ""
-        )
-    );
+        );
 
-  const up =
-    document.createElement(
-      "button"
-    );
+      notionPresetBuilderEditingFieldId =
+        "";
 
-  up.type =
-    "button";
-
-  up.className =
-    "notion-builder-field-order-button";
-
-  up.textContent =
-    "↑";
-
-  up.title =
-    "Move field up";
-
-  up.setAttribute(
-    "aria-label",
-    "Move field up"
-  );
-
-  up.disabled =
-    index <= 0;
-
-  up.addEventListener(
-    "click",
-    (event) => {
-      event.stopPropagation();
-
-      void moveNotionBuilderConfiguredField(
-        field.propertyId,
-        "up"
+      row.classList.add(
+        "notion-builder-field-dragging"
       );
+
+      if (
+        event.dataTransfer
+      ) {
+        event.dataTransfer.effectAllowed =
+          "move";
+
+        event.dataTransfer.setData(
+          "text/plain",
+          notionPresetBuilderDraggedFieldId
+        );
+
+        try {
+          event.dataTransfer.setDragImage(
+            row,
+            Math.max(
+              20,
+              row.offsetWidth - 30
+            ),
+            24
+          );
+        } catch {
+          // Native drag preview is fine.
+        }
+      }
     }
   );
 
-  const down =
-    document.createElement(
-      "button"
-    );
-
-  down.type =
-    "button";
-
-  down.className =
-    "notion-builder-field-order-button";
-
-  down.textContent =
-    "↓";
-
-  down.title =
-    "Move field down";
-
-  down.setAttribute(
-    "aria-label",
-    "Move field down"
-  );
-
-  down.disabled =
-    index < 0 ||
-    index >=
-      configured.length - 1;
-
-  down.addEventListener(
-    "click",
+  row.addEventListener(
+    "dragover",
     (event) => {
-      event.stopPropagation();
+      if (
+        !notionPresetBuilderDraggedFieldId
+      ) {
+        return;
+      }
 
-      void moveNotionBuilderConfiguredField(
-        field.propertyId,
-        "down"
-      );
+      const container =
+        document.getElementById(
+          "notionBuilderPresetFields"
+        );
+
+      const dragged =
+        container?.querySelector(
+          `.notion-builder-field-row[data-property-id="${CSS.escape(
+            notionPresetBuilderDraggedFieldId
+          )}"]`
+        );
+
+      if (
+        !container ||
+        !dragged ||
+        dragged === row
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (
+        event.dataTransfer
+      ) {
+        event.dataTransfer.dropEffect =
+          "move";
+      }
+
+      const rect =
+        row.getBoundingClientRect();
+
+      const insertAfter =
+        event.clientY >
+        rect.top +
+          rect.height / 2;
+
+      if (insertAfter) {
+        row.after(
+          dragged
+        );
+      } else {
+        row.before(
+          dragged
+        );
+      }
     }
   );
 
-  controls.append(
-    up,
-    down
+  row.addEventListener(
+    "drop",
+    (event) => {
+      if (
+        !notionPresetBuilderDraggedFieldId
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      void commitNotionBuilderFieldOrder();
+    }
   );
 
-  return controls;
+  handle.addEventListener(
+    "dragend",
+    () => {
+      row.classList.remove(
+        "notion-builder-field-dragging"
+      );
+
+      if (
+        notionPresetBuilderDraggedFieldId
+      ) {
+        void commitNotionBuilderFieldOrder();
+      }
+    }
+  );
 }
 
 function createNotionBuilderConfiguredFieldRow(
@@ -3821,6 +3872,9 @@ function createNotionBuilderConfiguredFieldRow(
     document.createElement(
       "div"
     );
+
+  copy.className =
+    "notion-builder-field-copy";
 
   const name =
     document.createElement(
@@ -3907,15 +3961,41 @@ function createNotionBuilderConfiguredFieldRow(
     );
   }
 
+  const handle =
+    document.createElement(
+      "button"
+    );
+
+  handle.type =
+    "button";
+
+  handle.className =
+    "notion-builder-drag-handle";
+
+  handle.textContent =
+    "⠿";
+
+  handle.title =
+    "Drag to reorder";
+
+  handle.setAttribute(
+    "aria-label",
+    `Drag ${field.propertyName || "field"} to reorder`
+  );
+
   actions.append(
-    createNotionBuilderFieldOrderControls(
-      field
-    )
+    handle
   );
 
   row.append(
     copy,
     actions
+  );
+
+  setupNotionBuilderFieldDrag(
+    row,
+    handle,
+    field
   );
 
   return row;
