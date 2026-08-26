@@ -3307,3 +3307,198 @@ body[data-destination="notion"]
   color: rgba(255, 255, 255, .45);
   font-size: 12px;
 }
+
+
+/* NOTION DESTINATION PICKER - COMPACT V1.3.1 */
+
+.notion-destination-picker {
+  gap: 10px !important;
+}
+
+.notion-destination-picker h2 {
+  font-size: 17px !important;
+  line-height: 1.2 !important;
+}
+
+.notion-destination-picker-body {
+  gap: 8px !important;
+}
+
+.notion-builder-field {
+  gap: 5px !important;
+}
+
+.notion-builder-field > span {
+  margin-bottom: 0 !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  opacity: .58 !important;
+}
+
+.notion-builder-workspace-button {
+  grid-template-columns: 30px 1fr auto !important;
+  gap: 9px !important;
+  min-height: 46px !important;
+  height: 46px !important;
+  padding: 6px 10px !important;
+  border-radius: 9px !important;
+  background:
+    rgba(255, 255, 255, .025) !important;
+}
+
+.notion-builder-workspace-avatar {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 7px !important;
+  font-size: 16px !important;
+}
+
+#notionBuilderSearch {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 7px 11px !important;
+  border:
+    1px solid
+    rgba(255, 255, 255, .16) !important;
+  border-radius: 9px !important;
+  background:
+    rgba(255, 255, 255, .035) !important;
+  color: inherit !important;
+  box-shadow: none !important;
+}
+
+#notionBuilderSearch:hover {
+  border-color:
+    rgba(255, 255, 255, .25) !important;
+}
+
+#notionBuilderSearch:focus {
+  border-color: #9027db !important;
+  box-shadow:
+    0 0 0 2px
+    rgba(144, 39, 219, .17) !important;
+}
+
+#notionBuilderSearch:disabled {
+  opacity: .5 !important;
+}
+
+.notion-builder-filter {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  min-height: 32px !important;
+  gap: 0 !important;
+}
+
+.notion-builder-filter > span {
+  display: none !important;
+}
+
+.notion-builder-filter select {
+  width: auto !important;
+  min-width: 108px !important;
+  max-width: 140px !important;
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 4px 28px 4px 10px !important;
+  border:
+    1px solid
+    rgba(255, 255, 255, .13) !important;
+  border-radius: 8px !important;
+  background:
+    rgba(255, 255, 255, .035) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.notion-builder-results {
+  gap: 3px !important;
+  max-height: 330px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding-right: 0 !important;
+  scrollbar-width: none;
+}
+
+.notion-builder-results::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.notion-builder-group {
+  gap: 1px !important;
+}
+
+.notion-builder-group + .notion-builder-group {
+  margin-top: 8px !important;
+}
+
+.notion-builder-group-title {
+  padding: 6px 6px 4px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  opacity: .48 !important;
+}
+
+.notion-builder-result {
+  grid-template-columns: 30px 1fr !important;
+  gap: 9px !important;
+  align-items: center !important;
+  min-height: 48px !important;
+  width: 100% !important;
+  padding: 7px 8px !important;
+  border:
+    1px solid transparent !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.notion-builder-result:hover {
+  border-color:
+    rgba(255, 255, 255, .06) !important;
+  background:
+    rgba(255, 255, 255, .045) !important;
+}
+
+.notion-builder-result.selected {
+  border-color:
+    rgba(144, 39, 219, .58) !important;
+  background:
+    rgba(144, 39, 219, .11) !important;
+}
+
+.notion-builder-result-icon {
+  width: 30px !important;
+  height: 30px !important;
+  font-size: 17px !important;
+}
+
+.notion-builder-result-icon img {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+.notion-builder-result-copy {
+  gap: 2px !important;
+}
+
+.notion-builder-result-copy strong {
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  line-height: 1.25 !important;
+}
+
+.notion-builder-result-copy small {
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  opacity: .46 !important;
+}
+
+.notion-builder-placeholder {
+  padding: 14px 8px !important;
+  font-size: 12px !important;
+  opacity: .58 !important;
+}

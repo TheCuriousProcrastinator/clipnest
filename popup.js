@@ -1100,15 +1100,15 @@ function createNotionDestinationPicker() {
     ] of [
       [
         "all",
-        "Databases & Pages"
+        "All"
       ],
       [
         "collection",
-        "Databases only"
+        "Databases"
       ],
       [
         "page",
-        "Pages only"
+        "Pages"
       ]
     ]
   ) {
