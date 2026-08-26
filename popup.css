@@ -3157,3 +3157,151 @@ body[data-destination="notion"] .notion-custom-field input[type="date"]::-webkit
 .notion-custom-date-footer-button.today {
   color: #c982ff;
 }
+
+/* =================================
+   NOTION CUSTOM MULTI-SELECT
+   ================================= */
+
+.notion-custom-multiselect {
+  position: relative;
+  width: 100%;
+}
+
+.notion-custom-multiselect-editor {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  min-height: 40px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 9px;
+  background: #171717;
+  cursor: text;
+}
+
+.notion-custom-multiselect-editor:hover {
+  border-color: rgba(255, 255, 255, .26);
+}
+
+.notion-custom-multiselect:focus-within
+.notion-custom-multiselect-editor {
+  border-color: #9027db;
+  box-shadow: 0 0 0 1px #9027db;
+}
+
+.notion-custom-multiselect-chips {
+  display: contents;
+}
+
+.notion-custom-multiselect-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 190px;
+  min-height: 26px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: rgba(144, 39, 219, .2);
+  color: #d8a6fa;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.notion-custom-multiselect-chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notion-custom-multiselect-remove {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: currentColor;
+  font-size: 14px;
+  line-height: 1;
+  opacity: .65;
+  cursor: pointer;
+}
+
+.notion-custom-multiselect-remove:hover {
+  opacity: 1;
+}
+
+body[data-destination="notion"]
+.notion-custom-multiselect-input {
+  flex: 1 1 90px;
+  width: auto !important;
+  min-width: 70px;
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 3px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: #fff !important;
+  font-size: 13px !important;
+}
+
+.notion-custom-multiselect-menu {
+  position: absolute;
+  z-index: 110;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  padding: 7px;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 10px;
+  background: #1b1b1b;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
+}
+
+.notion-custom-multiselect-menu.hidden {
+  display: none;
+}
+
+.notion-custom-multiselect-list {
+  display: grid;
+  gap: 2px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.notion-custom-multiselect-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(255, 255, 255, .9);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notion-custom-multiselect-option:hover {
+  background: rgba(255, 255, 255, .07);
+}
+
+.notion-custom-multiselect-option.create {
+  color: #c982ff;
+  font-weight: 650;
+}
+
+.notion-custom-multiselect-empty {
+  padding: 9px;
+  color: rgba(255, 255, 255, .45);
+  font-size: 12px;
+}

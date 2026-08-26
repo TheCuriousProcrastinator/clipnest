@@ -2381,6 +2381,7 @@ function encodeDatabaseProperties({
       if (
         !propertyId ||
         ![
+          "multi_select",
           "select",
           "status",
           "text",
@@ -2408,6 +2409,54 @@ function encodeDatabaseProperties({
 
       const rawValue =
         field?.value;
+
+      if (
+        propertyType ===
+          "multi_select"
+      ) {
+        const values =
+          Array.isArray(
+            rawValue
+          )
+            ? [
+                ...new Map(
+                  rawValue
+                    .map(
+                      (value) =>
+                        String(
+                          value ||
+                          ""
+                        ).trim()
+                    )
+                    .filter(Boolean)
+                    .map(
+                      (value) => [
+                        value.toLowerCase(),
+                        value
+                      ]
+                    )
+                ).values()
+              ]
+            : [];
+
+        if (
+          !values.length
+        ) {
+          continue;
+        }
+
+        properties[
+          propertyId
+        ] = [
+          [
+            values.join(
+              ","
+            )
+          ]
+        ];
+
+        continue;
+      }
 
       if (
         propertyType ===

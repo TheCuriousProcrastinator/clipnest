@@ -2496,9 +2496,11 @@ function notionBuilderPresetFieldsForStore() {
         false;
 
       let defaultValue =
-        type === "checkbox"
-          ? false
-          : "";
+        type === "multi_select"
+          ? []
+          : type === "checkbox"
+            ? false
+            : "";
 
       if (
         type === "title"
@@ -4814,48 +4816,22 @@ function createNotionBuilderConfiguredFieldRow(
 function notionBuilderPropertyCanBeAdded(
   property
 ) {
-  const type =
+  return [
+    "url",
+    "multi_select",
+    "select",
+    "status",
+    "text",
+    "rich_text",
+    "checkbox",
+    "number",
+    "date"
+  ].includes(
     String(
       property?.type ||
       ""
-    );
-
-  if (
-    [
-      "select",
-      "status",
-      "text",
-      "rich_text",
-      "checkbox",
-      "number",
-      "date"
-    ].includes(
-      type
     )
-  ) {
-    return true;
-  }
-
-  if (
-    type === "url"
-  ) {
-    return true;
-  }
-
-  if (
-    type === "multi_select" &&
-    String(
-      property?.name ||
-      ""
-    )
-      .trim()
-      .toLowerCase() ===
-      "tags"
-  ) {
-    return true;
-  }
-
-  return false;
+  );
 }
 
 function notionBuilderDefaultMapping(
@@ -4882,7 +4858,15 @@ function notionBuilderDefaultMapping(
   if (
     type === "multi_select"
   ) {
-    return "Tags";
+    return String(
+      property?.name ||
+      ""
+    )
+      .trim()
+      .toLowerCase() ===
+      "tags"
+        ? "Tags"
+        : "Manual";
   }
 
   if (
@@ -5121,6 +5105,16 @@ function renderNotionBuilderAddFieldPicker(
       )
     );
 
+  const hiddenReadOnlyTypes =
+    new Set([
+      "created_by",
+      "created_time",
+      "last_edited_by",
+      "last_edited_time",
+      "rollup",
+      "unique_id"
+    ]);
+
   const normalizedQuery =
     String(
       query ||
@@ -5137,6 +5131,15 @@ function renderNotionBuilderAddFieldPicker(
         ? draft.properties
         : []
     )
+      .filter(
+        (property) =>
+          !hiddenReadOnlyTypes.has(
+            String(
+              property?.type ||
+              ""
+            )
+          )
+      )
       .filter(
         (property) =>
           !configuredIds.has(
@@ -7478,6 +7481,734 @@ function createNotionDateControl(
   return control;
 }
 
+function createNotionMultiSelectControl(
+  field,
+  propertyId
+) {
+  const memoryStorageKey =
+    "clipnestNotionFieldMemoryV1";
+
+  const memoryKey =
+    `${String(
+      notionOpenPresetId ||
+      ""
+    )}::${String(
+      propertyId ||
+      ""
+    )}`;
+
+  const control =
+    document.createElement(
+      "div"
+    );
+
+  control.className =
+    "notion-custom-multiselect";
+
+  const editor =
+    document.createElement(
+      "div"
+    );
+
+  editor.className =
+    "notion-custom-multiselect-editor";
+
+  const chips =
+    document.createElement(
+      "div"
+    );
+
+  chips.className =
+    "notion-custom-multiselect-chips";
+
+  const input =
+    document.createElement(
+      "input"
+    );
+
+  input.type =
+    "text";
+
+  input.autocomplete =
+    "off";
+
+  input.spellcheck =
+    false;
+
+  input.placeholder =
+    "Add values…";
+
+  input.className =
+    "notion-custom-multiselect-input";
+
+  const menu =
+    document.createElement(
+      "div"
+    );
+
+  menu.className =
+    "notion-custom-multiselect-menu hidden";
+
+  const list =
+    document.createElement(
+      "div"
+    );
+
+  list.className =
+    "notion-custom-multiselect-list";
+
+  menu.append(
+    list
+  );
+
+  editor.append(
+    chips,
+    input
+  );
+
+  control.append(
+    editor,
+    menu
+  );
+
+  const options =
+    (
+      Array.isArray(
+        field?.options
+      )
+        ? field.options
+        : []
+    )
+      .map(
+        (option) => ({
+          value:
+            notionPresetOptionLabel(
+              option
+            ),
+
+          color:
+            String(
+              option?.color ||
+              ""
+            ).trim()
+        })
+      )
+      .filter(
+        (option) =>
+          option.value
+      );
+
+  let selected =
+    Array.isArray(
+      field?.defaultValue
+    )
+      ? field.defaultValue
+          .map(
+            (value) =>
+              String(
+                value ||
+                ""
+              ).trim()
+          )
+          .filter(Boolean)
+      : [];
+
+  let touched =
+    false;
+
+  function normalize(
+    value
+  ) {
+    return String(
+      value ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+  }
+
+  function syncValue() {
+    notionDynamicFieldValues[
+      propertyId
+    ] =
+      [
+        ...selected
+      ];
+  }
+
+  function optionForValue(
+    value
+  ) {
+    return options.find(
+      (option) =>
+        normalize(
+          option.value
+        ) ===
+        normalize(
+          value
+        )
+    ) ||
+    null;
+  }
+
+  async function persistMemory() {
+    if (
+      !notionOpenPresetId ||
+      !propertyId
+    ) {
+      return;
+    }
+
+    try {
+      const stored =
+        await chrome.storage.local.get(
+          memoryStorageKey
+        );
+
+      const current =
+        stored[
+          memoryStorageKey
+        ] &&
+        typeof stored[
+          memoryStorageKey
+        ] === "object" &&
+        !Array.isArray(
+          stored[
+            memoryStorageKey
+          ]
+        )
+          ? stored[
+              memoryStorageKey
+            ]
+          : {};
+
+      await chrome.storage.local.set({
+        [memoryStorageKey]: {
+          ...current,
+
+          [memoryKey]:
+            [
+              ...selected
+            ]
+        }
+      });
+    } catch (error) {
+      console.warn(
+        "ClipNest could not remember Notion multi-select:",
+        error
+      );
+    }
+  }
+
+  async function restoreMemory() {
+    if (
+      !notionOpenPresetId ||
+      !propertyId
+    ) {
+      return;
+    }
+
+    try {
+      const stored =
+        await chrome.storage.local.get(
+          memoryStorageKey
+        );
+
+      const memory =
+        stored[
+          memoryStorageKey
+        ];
+
+      if (
+        touched ||
+        !memory ||
+        typeof memory !==
+          "object" ||
+        !Array.isArray(
+          memory[
+            memoryKey
+          ]
+        )
+      ) {
+        return;
+      }
+
+      selected =
+        [
+          ...new Map(
+            memory[
+              memoryKey
+            ]
+              .map(
+                (value) =>
+                  String(
+                    value ||
+                    ""
+                  ).trim()
+              )
+              .filter(Boolean)
+              .map(
+                (value) => [
+                  normalize(
+                    value
+                  ),
+                  value
+                ]
+              )
+          ).values()
+        ];
+
+      syncValue();
+      renderChips();
+      renderMenu();
+    } catch (error) {
+      console.warn(
+        "ClipNest could not restore Notion multi-select:",
+        error
+      );
+    }
+  }
+
+  function closeMenu() {
+    menu.classList.add(
+      "hidden"
+    );
+  }
+
+  function openMenu() {
+    renderMenu();
+
+    menu.classList.remove(
+      "hidden"
+    );
+  }
+
+  function addValue(
+    rawValue
+  ) {
+    const value =
+      String(
+        rawValue ||
+        ""
+      ).trim();
+
+    if (!value) {
+      return;
+    }
+
+    if (
+      selected.some(
+        (candidate) =>
+          normalize(
+            candidate
+          ) ===
+          normalize(
+            value
+          )
+      )
+    ) {
+      input.value =
+        "";
+
+      renderMenu();
+      return;
+    }
+
+    touched =
+      true;
+
+    selected.push(
+      value
+    );
+
+    input.value =
+      "";
+
+    syncValue();
+    renderChips();
+    renderMenu();
+
+    void persistMemory();
+
+    input.focus();
+  }
+
+  function removeValue(
+    value
+  ) {
+    touched =
+      true;
+
+    selected =
+      selected.filter(
+        (candidate) =>
+          normalize(
+            candidate
+          ) !==
+          normalize(
+            value
+          )
+      );
+
+    syncValue();
+    renderChips();
+    renderMenu();
+
+    void persistMemory();
+  }
+
+  function renderChips() {
+    chips.replaceChildren();
+
+    for (
+      const value of
+        selected
+    ) {
+      const option =
+        optionForValue(
+          value
+        );
+
+      const chip =
+        document.createElement(
+          "span"
+        );
+
+      chip.className =
+        "notion-custom-multiselect-chip";
+
+      if (
+        option?.color
+      ) {
+        chip.dataset.color =
+          option.color;
+      }
+
+      const copy =
+        document.createElement(
+          "span"
+        );
+
+      copy.textContent =
+        value;
+
+      const remove =
+        document.createElement(
+          "button"
+        );
+
+      remove.type =
+        "button";
+
+      remove.className =
+        "notion-custom-multiselect-remove";
+
+      remove.textContent =
+        "×";
+
+      remove.addEventListener(
+        "click",
+        (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          removeValue(
+            value
+          );
+
+          input.focus();
+        }
+      );
+
+      chip.append(
+        copy,
+        remove
+      );
+
+      chips.append(
+        chip
+      );
+    }
+
+    input.placeholder =
+      selected.length
+        ? ""
+        : "Add values…";
+  }
+
+  function renderMenu() {
+    list.replaceChildren();
+
+    const query =
+      input.value
+        .trim();
+
+    const normalizedQuery =
+      normalize(
+        query
+      );
+
+    const selectedKeys =
+      new Set(
+        selected.map(
+          normalize
+        )
+      );
+
+    const matching =
+      options.filter(
+        (option) =>
+          !selectedKeys.has(
+            normalize(
+              option.value
+            )
+          ) &&
+          (
+            !normalizedQuery ||
+            normalize(
+              option.value
+            ).includes(
+              normalizedQuery
+            )
+          )
+      );
+
+    for (
+      const option of
+        matching
+    ) {
+      const button =
+        document.createElement(
+          "button"
+        );
+
+      button.type =
+        "button";
+
+      button.className =
+        "notion-custom-multiselect-option";
+
+      if (
+        option.color
+      ) {
+        const dot =
+          document.createElement(
+            "span"
+          );
+
+        dot.className =
+          "notion-custom-select-dot";
+
+        dot.dataset.color =
+          option.color;
+
+        button.append(
+          dot
+        );
+      }
+
+      const copy =
+        document.createElement(
+          "span"
+        );
+
+      copy.textContent =
+        option.value;
+
+      button.append(
+        copy
+      );
+
+      button.addEventListener(
+        "click",
+        () => {
+          addValue(
+            option.value
+          );
+        }
+      );
+
+      list.append(
+        button
+      );
+    }
+
+    const exact =
+      options.some(
+        (option) =>
+          normalize(
+            option.value
+          ) ===
+          normalizedQuery
+      ) ||
+      selectedKeys.has(
+        normalizedQuery
+      );
+
+    if (
+      query &&
+      !exact
+    ) {
+      const create =
+        document.createElement(
+          "button"
+        );
+
+      create.type =
+        "button";
+
+      create.className =
+        "notion-custom-multiselect-option create";
+
+      create.textContent =
+        `+ Create "${query}"`;
+
+      create.addEventListener(
+        "click",
+        () => {
+          addValue(
+            query
+          );
+        }
+      );
+
+      list.append(
+        create
+      );
+    }
+
+    if (
+      !matching.length &&
+      (
+        !query ||
+        exact
+      )
+    ) {
+      const empty =
+        document.createElement(
+          "div"
+        );
+
+      empty.className =
+        "notion-custom-multiselect-empty";
+
+      empty.textContent =
+        selected.length
+          ? "No more options"
+          : "No options";
+
+      list.append(
+        empty
+      );
+    }
+  }
+
+  editor.addEventListener(
+    "click",
+    () => {
+      input.focus();
+      openMenu();
+    }
+  );
+
+  input.addEventListener(
+    "focus",
+    openMenu
+  );
+
+  input.addEventListener(
+    "input",
+    openMenu
+  );
+
+  input.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        event.key ===
+          "Escape"
+      ) {
+        closeMenu();
+        return;
+      }
+
+      if (
+        event.key ===
+          "Backspace" &&
+        !input.value &&
+        selected.length
+      ) {
+        removeValue(
+          selected[
+            selected.length - 1
+          ]
+        );
+
+        return;
+      }
+
+      if (
+        event.key !==
+          "Enter"
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const query =
+        input.value
+          .trim();
+
+      if (!query) {
+        return;
+      }
+
+      const exact =
+        options.find(
+          (option) =>
+            normalize(
+              option.value
+            ) ===
+            normalize(
+              query
+            )
+        );
+
+      addValue(
+        exact
+          ? exact.value
+          : query
+      );
+    }
+  );
+
+  control.addEventListener(
+    "focusout",
+    () => {
+      setTimeout(
+        () => {
+          if (
+            !control.contains(
+              document.activeElement
+            )
+          ) {
+            closeMenu();
+          }
+        },
+        0
+      );
+    }
+  );
+
+  syncValue();
+  renderChips();
+
+  void restoreMemory();
+
+  return control;
+}
+
 function createNotionCustomFieldNode(
   field
 ) {
@@ -7519,6 +8250,22 @@ function createNotionCustomFieldNode(
   wrapper.append(
     label
   );
+
+  if (
+    type === "multi_select"
+  ) {
+    const control =
+      createNotionMultiSelectControl(
+        field,
+        propertyId
+      );
+
+    wrapper.append(
+      control
+    );
+
+    return wrapper;
+  }
 
   if (
     type === "select"

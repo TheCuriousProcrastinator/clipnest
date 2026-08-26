@@ -2381,6 +2381,303 @@ async function ensureNotionSelectOptionsForSave(
   return fields;
 }
 
+async function ensureNotionMultiSelectOptionsForSave(
+  preset,
+  customFields
+) {
+  const fields =
+    Array.isArray(
+      customFields
+    )
+      ? customFields
+      : [];
+
+  const candidates =
+    fields.filter(
+      (field) =>
+        field?.propertyType ===
+          "multi_select" &&
+        Array.isArray(
+          field?.value
+        ) &&
+        field.value.length
+    );
+
+  if (
+    !candidates.length ||
+    preset?.destinationType !==
+      "collection"
+  ) {
+    return fields;
+  }
+
+  let parentPageId =
+    String(
+      preset.destinationParentId ||
+      ""
+    ).trim();
+
+  if (!parentPageId) {
+    const search =
+      await ClipNestNotionSession
+        .searchDestinations({
+          workspaceId:
+            preset.workspaceId,
+
+          userId:
+            preset.workspaceUserId,
+
+          query:
+            preset.destinationName ||
+            ""
+        });
+
+    const destination =
+      search.destinations.find(
+        (candidate) =>
+          candidate.type ===
+            "collection" &&
+          candidate.id ===
+            preset.destinationId
+      );
+
+    parentPageId =
+      destination?.parentId ||
+      "";
+  }
+
+  if (!parentPageId) {
+    throw new Error(
+      "ClipNest could not determine the Notion database parent."
+    );
+  }
+
+  const database =
+    await ClipNestNotionSession
+      .getDatabaseSchema({
+        workspaceId:
+          preset.workspaceId,
+
+        userId:
+          preset.workspaceUserId,
+
+        collectionId:
+          preset.destinationId,
+
+        parentPageId
+      });
+
+  const operations =
+    [];
+
+  const createdByProperty =
+    new Map();
+
+  function normalize(
+    value
+  ) {
+    return String(
+      value ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+  }
+
+  for (
+    const field of
+      candidates
+  ) {
+    const propertyId =
+      String(
+        field.propertyId ||
+        ""
+      ).trim();
+
+    const property =
+      database.properties.find(
+        (candidate) =>
+          candidate.id ===
+            propertyId &&
+          candidate.type ===
+            "multi_select"
+      );
+
+    if (!property) {
+      continue;
+    }
+
+    const existing =
+      Array.isArray(
+        property.options
+      )
+        ? [
+            ...property.options
+          ]
+        : [];
+
+    const known =
+      new Set(
+        existing.map(
+          (option) =>
+            normalize(
+              option?.value ??
+              option?.name
+            )
+        )
+      );
+
+    for (
+      const rawValue of
+        field.value
+    ) {
+      const value =
+        String(
+          rawValue ||
+          ""
+        ).trim();
+
+      if (
+        !value ||
+        known.has(
+          normalize(
+            value
+          )
+        )
+      ) {
+        continue;
+      }
+
+      const option = {
+        id:
+          createNotionTagOptionId(),
+
+        value,
+
+        color:
+          chooseNotionTagColor(
+            value
+          )
+      };
+
+      operations.push({
+        pointer: {
+          table:
+            "collection",
+
+          id:
+            preset.destinationId,
+
+          spaceId:
+            preset.workspaceId
+        },
+
+        command:
+          "keyedObjectListUpdate",
+
+        path: [
+          "schema",
+          propertyId,
+          "options"
+        ],
+
+        args: {
+          value:
+            option
+        }
+      });
+
+      known.add(
+        normalize(
+          value
+        )
+      );
+
+      if (
+        !createdByProperty.has(
+          propertyId
+        )
+      ) {
+        createdByProperty.set(
+          propertyId,
+          []
+        );
+      }
+
+      createdByProperty
+        .get(
+          propertyId
+        )
+        .push(
+          option
+        );
+    }
+  }
+
+  if (!operations.length) {
+    return fields;
+  }
+
+  await ClipNestNotionSession
+    .submitOperations({
+      workspaceId:
+        preset.workspaceId,
+
+      userId:
+        preset.workspaceUserId,
+
+      operations
+    });
+
+  const updatedFields =
+    (
+      Array.isArray(
+        preset.fields
+      )
+        ? preset.fields
+        : []
+    ).map(
+      (field) => {
+        const created =
+          createdByProperty.get(
+            String(
+              field.propertyId ||
+              ""
+            )
+          );
+
+        if (
+          !created?.length
+        ) {
+          return field;
+        }
+
+        return {
+          ...field,
+
+          options: [
+            ...(
+              Array.isArray(
+                field.options
+              )
+                ? field.options
+                : []
+            ),
+            ...created
+          ]
+        };
+      }
+    );
+
+  await ClipNestNotionStore
+    .updateActivePreset({
+      fields:
+        updatedFields
+    });
+
+  return fields;
+}
+
 async function saveToNotion(
   payload
 ) {
@@ -2476,6 +2773,7 @@ async function saveToNotion(
       .filter(
         (field) =>
           [
+            "multi_select",
             "select",
             "status",
             "text",
@@ -2523,7 +2821,7 @@ async function saveToNotion(
         })
       );
 
-  const preparedCustomFields =
+  const preparedSelectFields =
     preset.destinationType ===
       "collection"
       ? await ensureNotionSelectOptionsForSave(
@@ -2531,6 +2829,15 @@ async function saveToNotion(
           customFields
         )
       : customFields;
+
+  const preparedCustomFields =
+    preset.destinationType ===
+      "collection"
+      ? await ensureNotionMultiSelectOptionsForSave(
+          preset,
+          preparedSelectFields
+        )
+      : preparedSelectFields;
 
   let page =
     null;
