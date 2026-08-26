@@ -2317,3 +2317,15 @@ body[data-destination="notion"]
 .notion-builder-field-mapping-button {
   white-space: nowrap;
 }
+
+/* Existing preset editor */
+
+.notion-builder-save-location:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.notion-builder-save-location:disabled
+.notion-builder-save-location-arrow {
+  visibility: hidden;
+}

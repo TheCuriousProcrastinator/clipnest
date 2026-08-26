@@ -563,8 +563,7 @@ function createNotionClipHeader() {
   edit.addEventListener(
     "click",
     () => {
-      void openNotionPresetEditor(
-        "edit",
+      void openNotionPresetInBuilder(
         notionOpenPresetId
       );
     }
@@ -1970,6 +1969,12 @@ function renderNotionBuilderResults() {
               );
 
           notionPresetBuilderDraft = {
+            mode:
+              "create",
+
+            editingPresetId:
+              "",
+
             workspace:
               workspace ||
               null,
@@ -2351,6 +2356,16 @@ async function persistNotionPresetBuilderState(
                 notionPresetBuilderDraft
                   .presetName ||
                 nameInput?.value ||
+                "",
+
+              mode:
+                notionPresetBuilderDraft
+                  .mode ||
+                "create",
+
+              editingPresetId:
+                notionPresetBuilderDraft
+                  .editingPresetId ||
                 ""
             }
           : null
@@ -2382,7 +2397,44 @@ async function cancelNotionPresetBuilder() {
   await showNotionPresetChooser();
 }
 
-function returnNotionBuilderToDestinationPicker() {
+async function returnNotionBuilderToDestinationPicker() {
+  const draft =
+    notionPresetBuilderDraft;
+
+  if (
+    draft?.mode ===
+      "edit" &&
+    draft.editingPresetId
+  ) {
+    const preset =
+      await getNotionPresetById(
+        draft.editingPresetId
+      );
+
+    await clearNotionPresetBuilderState();
+
+    notionPresetBuilderDraft =
+      null;
+
+    document
+      .getElementById(
+        "notionPresetConfigScreen"
+      )
+      ?.classList.add(
+        "hidden"
+      );
+
+    if (preset) {
+      showNotionPresetClip(
+        preset
+      );
+    } else {
+      await showNotionPresetChooser();
+    }
+
+    return;
+  }
+
   document
     .getElementById(
       "notionPresetConfigScreen"
@@ -2399,7 +2451,7 @@ function returnNotionBuilderToDestinationPicker() {
       "hidden"
     );
 
-  void persistNotionPresetBuilderState(
+  await persistNotionPresetBuilderState(
     "destination"
   );
 }
@@ -2541,6 +2593,394 @@ function notionBuilderPresetFieldsForStore() {
   );
 }
 
+async function getNotionPresetById(
+  presetId
+) {
+  const result =
+    await ClipNestNotionStore
+      .listPresets();
+
+  const presets =
+    Array.isArray(
+      result
+    )
+      ? result
+      : Array.isArray(
+          result?.presets
+        )
+        ? result.presets
+        : [];
+
+  return presets.find(
+    (preset) =>
+      String(
+        preset.id ||
+        ""
+      ) ===
+      String(
+        presetId ||
+        ""
+      )
+  ) ||
+  null;
+}
+
+function notionBuilderFieldFromStoredField(
+  field,
+  schemaProperty =
+    null
+) {
+  const source =
+    String(
+      field?.source ||
+      ""
+    );
+
+  const role =
+    String(
+      field?.role ||
+      ""
+    );
+
+  let mapping =
+    "Manual";
+
+  if (
+    role === "title" ||
+    source ===
+      "page_title"
+  ) {
+    mapping =
+      "Page Title";
+  } else if (
+    role === "url" ||
+    source ===
+      "page_url"
+  ) {
+    mapping =
+      "Page URL";
+  } else if (
+    role === "tags"
+  ) {
+    mapping =
+      "Tags";
+  } else if (
+    source === "fixed"
+  ) {
+    mapping =
+      "Fixed value";
+  }
+
+  return {
+    propertyId:
+      field.propertyId ||
+      schemaProperty?.id ||
+      "",
+
+    propertyName:
+      field.propertyName ||
+      schemaProperty?.name ||
+      "Untitled property",
+
+    propertyType:
+      field.propertyType ||
+      schemaProperty?.type ||
+      "",
+
+    options:
+      Array.isArray(
+        schemaProperty?.options
+      )
+        ? schemaProperty.options
+        : Array.isArray(
+            field?.options
+          )
+          ? field.options
+          : [],
+
+    mapping,
+
+    fixedValue:
+      source === "fixed"
+        ? String(
+            field.defaultValue ||
+            ""
+          )
+        : ""
+  };
+}
+
+async function openNotionPresetInBuilder(
+  presetId
+) {
+  const preset =
+    await getNotionPresetById(
+      presetId
+    );
+
+  if (!preset) {
+    setStatus(
+      "That preset no longer exists.",
+      "error"
+    );
+
+    return;
+  }
+
+  const workspace = {
+    id:
+      preset.workspaceId,
+
+    name:
+      preset.workspaceName ||
+      "Notion",
+
+    spaceViewIds:
+      Array.isArray(
+        preset.workspaceSpaceViewIds
+      )
+        ? preset.workspaceSpaceViewIds
+        : []
+  };
+
+  const destination = {
+    id:
+      preset.destinationId,
+
+    name:
+      preset.destinationName ||
+      "Untitled",
+
+    type:
+      preset.destinationType,
+
+    icon:
+      preset.destinationIcon ||
+      "",
+
+    parents:
+      Array.isArray(
+        preset.destinationParents
+      )
+        ? preset.destinationParents
+        : [],
+
+    parentId:
+      preset.destinationParentId ||
+      "",
+
+    parentPageId:
+      preset.destinationParentId ||
+      "",
+
+    parentTable:
+      preset.destinationParentTable ||
+      "",
+
+    dataSourceId:
+      preset.dataSourceId ||
+      ""
+  };
+
+  notionPresetBuilderEditingFieldId =
+    "";
+
+  notionPresetBuilderDraggedFieldId =
+    "";
+
+  notionPresetBuilderDraft = {
+    mode:
+      "edit",
+
+    editingPresetId:
+      preset.id,
+
+    workspace,
+
+    userId:
+      preset.workspaceUserId,
+
+    destination,
+
+    properties:
+      [],
+
+    configuredFields:
+      [],
+
+    presetName:
+      preset.name ||
+      "Untitled preset"
+  };
+
+  if (
+    destination.type ===
+      "page"
+  ) {
+    const property = {
+      id:
+        "__clipnest_page_title__",
+
+      name:
+        "Title",
+
+      type:
+        "title",
+
+      options:
+        []
+    };
+
+    notionPresetBuilderDraft
+      .properties = [
+        property
+      ];
+
+    const stored =
+      Array.isArray(
+        preset.fields
+      )
+        ? preset.fields
+            .slice()
+            .sort(
+              (a, b) =>
+                Number(
+                  a?.order ||
+                  0
+                ) -
+                Number(
+                  b?.order ||
+                  0
+                )
+            )
+        : [];
+
+    notionPresetBuilderDraft
+      .configuredFields =
+      stored.length
+        ? stored.map(
+            (field) =>
+              notionBuilderFieldFromStoredField(
+                field,
+                property
+              )
+          )
+        : [
+            notionBuilderConfiguredField(
+              property,
+              "Page Title"
+            )
+          ];
+  } else {
+    const parentPageId =
+      String(
+        destination.parentId ||
+        ""
+      ).trim();
+
+    if (!parentPageId) {
+      setStatus(
+        "This preset is missing its database parent page.",
+        "error"
+      );
+
+      return;
+    }
+
+    try {
+      const schema =
+        await ClipNestNotionSession
+          .getDatabaseSchema({
+            workspaceId:
+              workspace.id,
+
+            userId:
+              preset.workspaceUserId,
+
+            collectionId:
+              destination.id,
+
+            parentPageId
+          });
+
+      const properties =
+        Array.isArray(
+          schema?.properties
+        )
+          ? schema.properties
+          : [];
+
+      notionPresetBuilderDraft
+        .schema =
+        schema;
+
+      notionPresetBuilderDraft
+        .properties =
+        properties;
+
+      const stored =
+        Array.isArray(
+          preset.fields
+        )
+          ? preset.fields
+              .slice()
+              .sort(
+                (a, b) =>
+                  Number(
+                    a?.order ||
+                    0
+                  ) -
+                  Number(
+                    b?.order ||
+                    0
+                  )
+              )
+          : [];
+
+      notionPresetBuilderDraft
+        .configuredFields =
+        stored.map(
+          (field) => {
+            const property =
+              properties.find(
+                (candidate) =>
+                  String(
+                    candidate.id ||
+                    ""
+                  ) ===
+                  String(
+                    field.propertyId ||
+                    ""
+                  )
+              );
+
+            return notionBuilderFieldFromStoredField(
+              field,
+              property
+            );
+          }
+        );
+    } catch (error) {
+      setStatus(
+        error?.message ||
+        String(error),
+        "error"
+      );
+
+      return;
+    }
+  }
+
+  await persistNotionPresetBuilderState(
+    "config"
+  );
+
+  renderNotionPresetConfigScreen({
+    restore:
+      true
+  });
+}
+
 async function createNotionPresetFromBuilder() {
   const draft =
     notionPresetBuilderDraft;
@@ -2567,6 +3007,13 @@ async function createNotionPresetFromBuilder() {
 
     return;
   }
+
+  const isEdit =
+    draft.mode ===
+      "edit" &&
+    Boolean(
+      draft.editingPresetId
+    );
 
   const name =
     String(
@@ -2624,7 +3071,9 @@ async function createNotionPresetFromBuilder() {
       true;
 
     button.textContent =
-      "Creating…";
+      isEdit
+        ? "Saving…"
+        : "Creating…";
   }
 
   try {
@@ -2635,127 +3084,137 @@ async function createNotionPresetFromBuilder() {
       destination.type ===
         "page";
 
+    const patch = {
+      name,
+
+      workspaceId:
+        draft.workspace.id,
+
+      workspaceName:
+        draft.workspace.name ||
+        "Notion",
+
+      workspaceUserId:
+        draft.userId,
+
+      workspaceSpaceViewIds:
+        Array.isArray(
+          draft.workspace
+            .spaceViewIds
+        )
+          ? draft.workspace
+              .spaceViewIds
+          : [],
+
+      dataSourceId:
+        destination.dataSourceId ||
+        "",
+
+      destinationType:
+        destination.type,
+
+      destinationId:
+        destination.id,
+
+      destinationName:
+        destination.name ||
+        "Untitled",
+
+      destinationIcon:
+        destination.icon ||
+        "",
+
+      destinationParents:
+        Array.isArray(
+          destination.parents
+        )
+          ? destination.parents
+          : [],
+
+      destinationParentId:
+        destination.parentId ||
+        destination.parentPageId ||
+        "",
+
+      destinationParentTable:
+        destination.parentTable ||
+        "",
+
+      fieldsConfigured:
+        true,
+
+      fields,
+
+      popupProperties:
+        fields
+          .filter(
+            (field) =>
+              field.visible !==
+                false
+          )
+          .map(
+            (field) =>
+              field.propertyId
+          ),
+
+      propertyIds: {
+        title:
+          isPage
+            ? ""
+            : title.propertyId,
+
+        url:
+          url?.propertyId ||
+          "",
+
+        tags:
+          tags?.propertyId ||
+          ""
+      },
+
+      titleProperty:
+        isPage
+          ? "Name"
+          : title.propertyName,
+
+      urlProperty:
+        url?.propertyName ||
+        "",
+
+      tagsProperty:
+        tags?.propertyName ||
+        "",
+
+      propertyMappings: {
+        title:
+          isPage
+            ? "Name"
+            : title.propertyName,
+
+        url:
+          url?.propertyName ||
+          "",
+
+        tags:
+          tags?.propertyName ||
+          ""
+      },
+
+      propertyDefaults:
+        {}
+    };
+
     const preset =
-      await ClipNestNotionStore
-        .createPreset({
-          name,
-
-          workspaceId:
-            draft.workspace.id,
-
-          workspaceName:
-            draft.workspace.name ||
-            "Notion",
-
-          workspaceUserId:
-            draft.userId,
-
-          workspaceSpaceViewIds:
-            Array.isArray(
-              draft.workspace
-                .spaceViewIds
+      isEdit
+        ? await ClipNestNotionStore
+            .updatePreset(
+              draft.editingPresetId,
+              patch
             )
-              ? draft.workspace
-                  .spaceViewIds
-              : [],
-
-          dataSourceId:
-            destination.dataSourceId ||
-            "",
-
-          destinationType:
-            destination.type,
-
-          destinationId:
-            destination.id,
-
-          destinationName:
-            destination.name ||
-            "Untitled",
-
-          destinationIcon:
-            destination.icon ||
-            "",
-
-          destinationParents:
-            Array.isArray(
-              destination.parents
-            )
-              ? destination.parents
-              : [],
-
-          destinationParentId:
-            destination.parentId ||
-            destination.parentPageId ||
-            "",
-
-          destinationParentTable:
-            destination.parentTable ||
-            "",
-
-          fieldsConfigured:
-            true,
-
-          fields,
-
-          popupProperties:
-            fields
-              .filter(
-                (field) =>
-                  field.visible !==
-                    false
-              )
-              .map(
-                (field) =>
-                  field.propertyId
-              ),
-
-          propertyIds: {
-            title:
-              isPage
-                ? ""
-                : title.propertyId,
-
-            url:
-              url?.propertyId ||
-              "",
-
-            tags:
-              tags?.propertyId ||
-              ""
-          },
-
-          titleProperty:
-            isPage
-              ? "Name"
-              : title.propertyName,
-
-          urlProperty:
-            url?.propertyName ||
-            "",
-
-          tagsProperty:
-            tags?.propertyName ||
-            "",
-
-          propertyMappings: {
-            title:
-              isPage
-                ? "Name"
-                : title.propertyName,
-
-            url:
-              url?.propertyName ||
-              "",
-
-            tags:
-              tags?.propertyName ||
-              ""
-          },
-
-          propertyDefaults:
-            {}
-        });
+        : await ClipNestNotionStore
+            .createPreset(
+              patch
+            );
 
     await ClipNestNotionStore
       .setActivePreset(
@@ -2771,6 +3230,12 @@ async function createNotionPresetFromBuilder() {
 
     notionPresetBuilderDraft =
       null;
+
+    notionPresetBuilderEditingFieldId =
+      "";
+
+    notionPresetBuilderDraggedFieldId =
+      "";
 
     await loadNotionPresetPicker();
 
@@ -2805,8 +3270,15 @@ async function createNotionPresetFromBuilder() {
     );
   } finally {
     if (button) {
+      const editing =
+        notionPresetBuilderDraft
+          ?.mode ===
+          "edit";
+
       button.textContent =
-        "Create preset";
+        editing
+          ? "Save changes"
+          : "Create preset";
 
       button.disabled =
         false;
@@ -2913,6 +3385,9 @@ function createNotionPresetConfigScreen() {
     document.createElement(
       "strong"
     );
+
+  title.id =
+    "notionBuilderConfigTitle";
 
   title.textContent =
     "Create preset";
@@ -4799,6 +5274,18 @@ function renderNotionPresetConfigScreen(
       "notionBuilderCreatePreset"
     );
 
+  const configTitle =
+    document.getElementById(
+      "notionBuilderConfigTitle"
+    );
+
+  const isEdit =
+    draft.mode ===
+      "edit" &&
+    Boolean(
+      draft.editingPresetId
+    );
+
   if (
     !nameInput ||
     !location ||
@@ -4807,6 +5294,21 @@ function renderNotionPresetConfigScreen(
   ) {
     return;
   }
+
+  if (configTitle) {
+    configTitle.textContent =
+      isEdit
+        ? "Edit preset"
+        : "Create preset";
+  }
+
+  create.textContent =
+    isEdit
+      ? "Save changes"
+      : "Create preset";
+
+  location.disabled =
+    isEdit;
 
   nameInput.value =
     draft.presetName ||
