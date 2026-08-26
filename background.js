@@ -2832,7 +2832,9 @@ async function saveToNotion(
             "rich_text",
             "checkbox",
             "number",
-            "date"
+            "date",
+            "file",
+            "files"
           ].includes(
             String(
               field?.propertyType ||
@@ -2869,7 +2871,11 @@ async function saveToNotion(
               ? dynamicValues[
                   field.propertyId
                 ]
-              : field.defaultValue
+              : field.source ===
+                  "page_image"
+                ? payload?.image ||
+                  ""
+                : field.defaultValue
         })
       );
 

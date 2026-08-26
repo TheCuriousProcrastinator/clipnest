@@ -2388,7 +2388,9 @@ function encodeDatabaseProperties({
           "rich_text",
           "checkbox",
           "number",
-          "date"
+          "date",
+          "file",
+          "files"
         ].includes(
           propertyType
         )
@@ -2454,6 +2456,121 @@ function encodeDatabaseProperties({
             )
           ]
         ];
+
+        continue;
+      }
+
+      if (
+        propertyType ===
+          "file" ||
+        propertyType ===
+          "files"
+      ) {
+        const rawUrls =
+          Array.isArray(
+            rawValue
+          )
+            ? rawValue
+            : [
+                rawValue
+              ];
+
+        const urls =
+          [
+            ...new Set(
+              rawUrls
+                .map(
+                  (value) =>
+                    String(
+                      value ||
+                      ""
+                    ).trim()
+                )
+                .filter(
+                  (value) =>
+                    /^https?:\/\//i.test(
+                      value
+                    )
+                )
+            )
+          ];
+
+        if (!urls.length) {
+          continue;
+        }
+
+        const fileList =
+          [];
+
+        for (
+          const value of
+            urls
+        ) {
+          let filename =
+            "image";
+
+          try {
+            const parsed =
+              new URL(
+                value
+              );
+
+            const last =
+              parsed.pathname
+                .split("/")
+                .filter(Boolean)
+                .pop() ||
+              "image";
+
+            try {
+              filename =
+                decodeURIComponent(
+                  last
+                );
+            } catch {
+              filename =
+                last;
+            }
+          } catch {
+            filename =
+              "image";
+          }
+
+          filename =
+            String(
+              filename ||
+              "image"
+            )
+              .trim()
+              .slice(
+                0,
+                180
+              ) ||
+            "image";
+
+          fileList.push(
+            [
+              filename,
+              [
+                [
+                  "a",
+                  value
+                ]
+              ]
+            ],
+            [
+              ","
+            ]
+          );
+        }
+
+        properties[
+          propertyId
+        ] =
+          fileList.slice(
+            0,
+            -1
+          );
 
         continue;
       }

@@ -3458,6 +3458,16 @@ function notionBuilderPresetFieldsForStore() {
         defaultValue =
           [];
       } else if (
+        (
+          type === "file" ||
+          type === "files"
+        ) &&
+        mapping ===
+          "Page image"
+      ) {
+        source =
+          "page_image";
+      } else if (
         notionBuilderFieldIsConfigurable(
           field
         ) &&
@@ -3603,6 +3613,12 @@ function notionBuilderFieldFromStoredField(
   ) {
     mapping =
       "Tags";
+  } else if (
+    source ===
+      "page_image"
+  ) {
+    mapping =
+      "Page image";
   } else if (
     source === "fixed"
   ) {
@@ -4793,7 +4809,9 @@ function notionBuilderSupportedProperty(
     "rich_text",
     "checkbox",
     "number",
-    "date"
+    "date",
+    "file",
+    "files"
   ].includes(
     String(
       property?.type ||
@@ -4834,7 +4852,13 @@ function notionBuilderPropertyTypeLabel(
       "Number",
 
     date:
-      "Date"
+      "Date",
+
+    file:
+      "Files & media",
+
+    files:
+      "Files & media"
   };
 
   return labels[
@@ -5829,7 +5853,9 @@ function notionBuilderPropertyCanBeAdded(
     "rich_text",
     "checkbox",
     "number",
-    "date"
+    "date",
+    "file",
+    "files"
   ].includes(
     String(
       property?.type ||
@@ -5871,6 +5897,13 @@ function notionBuilderDefaultMapping(
       "tags"
         ? "Tags"
         : "Manual";
+  }
+
+  if (
+    type === "file" ||
+    type === "files"
+  ) {
+    return "Page image";
   }
 
   if (
@@ -9166,6 +9199,59 @@ function createNotionCustomFieldNode(
 
     wrapper.append(
       control
+    );
+
+    return wrapper;
+  }
+
+  if (
+    type === "file" ||
+    type === "files"
+  ) {
+    const detected =
+      String(
+        state.capture?.image ||
+        ""
+      ).trim();
+
+    const stored =
+      String(
+        field?.defaultValue ??
+        ""
+      ).trim();
+
+    const initial =
+      field?.source ===
+        "page_image"
+        ? detected ||
+          stored
+        : stored;
+
+    const picker =
+      globalThis
+        .ClipNestNotionImagePicker
+        ?.create({
+          detectedImage:
+            detected,
+
+          initialValue:
+            initial,
+
+          onChange:
+            (value) => {
+              notionDynamicFieldValues[
+                propertyId
+              ] =
+                value;
+            }
+        });
+
+    if (!picker) {
+      return null;
+    }
+
+    wrapper.append(
+      picker
     );
 
     return wrapper;
