@@ -76,9 +76,18 @@ async function init() {
   els.contentModeInputs.forEach((input) =>
     input.addEventListener("change", updateContentModeUI)
   );
-  els.destinationButtons.forEach((button) => {
-    button.addEventListener("click", () => setDestination(button.dataset.destination));
-  });
+  els.destinationButtons.forEach(
+    (button) => {
+      button.addEventListener(
+        "click",
+        () => {
+          void choosePopupDestination(
+            button.dataset.destination
+          );
+        }
+      );
+    }
+  );
 
   els.notionPresetSelect?.addEventListener(
     "change",
@@ -128,7 +137,8 @@ async function init() {
     "obsidianDefaultTags",
     "obsidianDefaultTemplatePath",
     "obsidianSubfolder",
-    NOTION_PRESET_BUILDER_STATE_KEY
+    NOTION_PRESET_BUILDER_STATE_KEY,
+    LAST_POPUP_DESTINATION_KEY
   ]);
 
   const savedNotionBuilderState =
@@ -142,13 +152,29 @@ async function init() {
       savedNotionBuilderState
     );
 
+  const rememberedDestination =
+    settings[
+      LAST_POPUP_DESTINATION_KEY
+    ] ===
+      "notion"
+      ? "notion"
+      : settings[
+          LAST_POPUP_DESTINATION_KEY
+        ] ===
+          "obsidian"
+        ? "obsidian"
+        : "";
+
   const initialDestination =
     savedNotionBuilderState
       ? "notion"
-      : settings.defaultDestination ===
-          "notion"
-        ? "notion"
-        : "obsidian";
+      : rememberedDestination ||
+        (
+          settings.defaultDestination ===
+            "notion"
+            ? "notion"
+            : "obsidian"
+        );
 
   els.tagsInput.value =
     initialDestination ===
@@ -1193,6 +1219,9 @@ let notionPresetBuilderDraft =
 const NOTION_PRESET_BUILDER_STATE_KEY =
   "clipnestNotionPresetBuilderStateV1";
 
+const LAST_POPUP_DESTINATION_KEY =
+  "clipnestLastPopupDestination";
+
 let notionPresetBuilderResumePending =
   false;
 
@@ -1920,7 +1949,7 @@ function renderNotionBuilderResults() {
 
       button.addEventListener(
         "click",
-        () => {
+        async () => {
           const workspaceSelect =
             document.getElementById(
               "notionBuilderWorkspace"
@@ -1957,7 +1986,7 @@ function renderNotionBuilderResults() {
               "New preset"
           };
 
-          void persistNotionPresetBuilderState(
+          await persistNotionPresetBuilderState(
             "config"
           );
 
@@ -2711,6 +2740,11 @@ async function createNotionPresetFromBuilder() {
 
     await clearNotionPresetBuilderState();
 
+    await chrome.storage.local.set({
+      [LAST_POPUP_DESTINATION_KEY]:
+        "notion"
+    });
+
     notionPresetBuilderDraft =
       null;
 
@@ -2991,7 +3025,7 @@ function createNotionPresetConfigScreen() {
 
   nameInput.addEventListener(
     "input",
-    () => {
+    async () => {
       if (
         notionPresetBuilderDraft
       ) {
@@ -2999,7 +3033,7 @@ function createNotionPresetConfigScreen() {
           .presetName =
           nameInput.value;
 
-        void persistNotionPresetBuilderState(
+        await persistNotionPresetBuilderState(
           "config"
         );
       }
@@ -3693,7 +3727,7 @@ function renderNotionBuilderAddFieldPicker(
     if (supported) {
       button.addEventListener(
         "click",
-        () => {
+        async () => {
           if (
             !Array.isArray(
               draft.configuredFields
@@ -3707,6 +3741,10 @@ function renderNotionBuilderAddFieldPicker(
             notionBuilderConfiguredField(
               property
             )
+          );
+
+          await persistNotionPresetBuilderState(
+            "config"
           );
 
           renderNotionBuilderConfiguredFields();
@@ -4866,6 +4904,25 @@ function showNotionPresetClip(
   els.tagsInput?.blur();
 }
 
+async function choosePopupDestination(
+  destination
+) {
+  const normalized =
+    destination ===
+      "notion"
+      ? "notion"
+      : "obsidian";
+
+  await chrome.storage.local.set({
+    [LAST_POPUP_DESTINATION_KEY]:
+      normalized
+  });
+
+  setDestination(
+    normalized
+  );
+}
+
 function setDestination(destination) {
   state.destination =
     destination;
@@ -5562,21 +5619,45 @@ async function save() {
       getContentMode() === "article" &&
       !state.articleEnhancementDone
     ) {
+      setStatus(
+        "Preparing article…"
+      );
+
       state.articleEnhancementPromise =
         enhanceStructuredArticleCapture(
           state.articleEnhancementTab,
           state.capture
         );
 
-      await state.articleEnhancementPromise;
+      await Promise.race([
+        state.articleEnhancementPromise,
+        new Promise(
+          (resolve) =>
+            setTimeout(
+              resolve,
+              2500
+            )
+        )
+      ]);
 
-      state.articleEnhancementDone = true;
+      state.articleEnhancementDone =
+        true;
     }
 
     const payload = buildPayload();
 
     if (state.destination === "notion") {
-      const response = await chrome.runtime.sendMessage({ type: "notion.save", payload });
+      setStatus(
+        "Writing to Notion…"
+      );
+
+      const response =
+        await chrome.runtime.sendMessage({
+          type:
+            "notion.save",
+
+          payload
+        });
       if (!response?.ok) throw new Error(response?.error?.message || "Notion save failed.");
       setStatus("Saved to Notion.", "success");
     } else {
