@@ -36,6 +36,46 @@
         </select>
       </label>
     </section>
+
+    <section class="card">
+      <h2>Backup</h2>
+
+      <p class="help">
+        Export your portable ClipNest settings as a JSON backup.
+        Notion login and Obsidian vault access are never included.
+      </p>
+
+      <div class="vault-actions">
+        <button
+          id="exportSettings"
+          class="secondary"
+          type="button"
+        >
+          Export settings
+        </button>
+
+        <button
+          id="importSettings"
+          class="secondary"
+          type="button"
+        >
+          Import settings
+        </button>
+
+        <input
+          id="importSettingsFile"
+          type="file"
+          accept=".json,application/json"
+          hidden
+        />
+      </div>
+
+      <div
+        id="settingsBackupStatus"
+        class="status"
+      ></div>
+    </section>
+
     <section id="notionSettingsCard" class="card">
       <h2>Notion</h2>
 

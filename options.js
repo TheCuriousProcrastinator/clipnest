@@ -3,6 +3,15 @@ const els = {};
 const NOTION_OPTIONS_INTENT_KEY =
   "clipnestNotionOptionsIntent";
 
+const SETTINGS_EXPORT_FORMAT =
+  "clipnest-settings";
+
+const SETTINGS_EXPORT_VERSION =
+  1;
+
+const NOTION_FIELD_MEMORY_KEY =
+  "clipnestNotionFieldMemoryV1";
+
 let notionOptionsReady =
   false;
 
@@ -65,6 +74,10 @@ async function init() {
     "obsidianDefaultTags",
     "disconnectVault",
     "obsidianStatus",
+    "exportSettings",
+    "importSettings",
+    "importSettingsFile",
+    "settingsBackupStatus",
     "saveSettings",
     "saveStatus"
   ]) {
@@ -75,6 +88,30 @@ async function init() {
   els.saveSettings.addEventListener(
     "click",
     saveSettings
+  );
+
+  els.exportSettings.addEventListener(
+    "click",
+    () => {
+      void exportSettingsBackup();
+    }
+  );
+
+  els.importSettings.addEventListener(
+    "click",
+    () => {
+      els.importSettingsFile.value =
+        "";
+
+      els.importSettingsFile.click();
+    }
+  );
+
+  els.importSettingsFile.addEventListener(
+    "change",
+    () => {
+      void importSettingsBackup();
+    }
   );
 
   els.refreshNotionWorkspaces.addEventListener(
@@ -391,6 +428,515 @@ async function saveSettings() {
     "Saved.",
     "success"
   );
+}
+
+function portableObject(
+  value
+) {
+  return (
+    value &&
+    typeof value ===
+      "object" &&
+    !Array.isArray(
+      value
+    )
+  )
+    ? value
+    : {};
+}
+
+function sanitizeNotionFieldMemory(
+  presets,
+  memory
+) {
+  const source =
+    portableObject(
+      memory
+    );
+
+  const allowed =
+    new Set();
+
+  for (
+    const preset of
+      Array.isArray(
+        presets
+      )
+        ? presets
+        : []
+  ) {
+    const presetId =
+      String(
+        preset?.id ||
+        ""
+      ).trim();
+
+    if (!presetId) {
+      continue;
+    }
+
+    for (
+      const field of
+        Array.isArray(
+          preset?.fields
+        )
+          ? preset.fields
+          : []
+    ) {
+      const type =
+        String(
+          field?.propertyType ||
+          ""
+        );
+
+      if (
+        type !== "select" &&
+        type !== "status"
+      ) {
+        continue;
+      }
+
+      const propertyId =
+        String(
+          field?.propertyId ||
+          ""
+        );
+
+      if (!propertyId) {
+        continue;
+      }
+
+      allowed.add(
+        `${presetId}::${propertyId}`
+      );
+    }
+  }
+
+  const result =
+    {};
+
+  for (
+    const [
+      key,
+      value
+    ] of Object.entries(
+      source
+    )
+  ) {
+    if (
+      !allowed.has(
+        key
+      ) ||
+      typeof value !==
+        "string"
+    ) {
+      continue;
+    }
+
+    result[key] =
+      value;
+  }
+
+  return result;
+}
+
+async function exportSettingsBackup() {
+  try {
+    const notion =
+      await ClipNestNotionStore
+        .listPresets();
+
+    const local =
+      await chrome.storage.local.get([
+        "defaultDestination",
+        NOTION_FIELD_MEMORY_KEY
+      ]);
+
+    const backup = {
+      format:
+        SETTINGS_EXPORT_FORMAT,
+
+      version:
+        SETTINGS_EXPORT_VERSION,
+
+      exportedAt:
+        new Date().toISOString(),
+
+      settings: {
+        defaultDestination:
+          local.defaultDestination ===
+            "notion"
+            ? "notion"
+            : "obsidian",
+
+        notion: {
+          presets:
+            Array.isArray(
+              notion.presets
+            )
+              ? notion.presets
+              : [],
+
+          activePresetId:
+            String(
+              notion.activePresetId ||
+              ""
+            )
+        },
+
+        notionFieldMemory:
+          sanitizeNotionFieldMemory(
+            notion.presets,
+            local[
+              NOTION_FIELD_MEMORY_KEY
+            ]
+          )
+      }
+    };
+
+    const json =
+      JSON.stringify(
+        backup,
+        null,
+        2
+      ) +
+      "\n";
+
+    const blob =
+      new Blob(
+        [
+          json
+        ],
+        {
+          type:
+            "application/json"
+        }
+      );
+
+    const url =
+      URL.createObjectURL(
+        blob
+      );
+
+    const link =
+      document.createElement(
+        "a"
+      );
+
+    const date =
+      new Date()
+        .toISOString()
+        .slice(
+          0,
+          10
+        );
+
+    link.href =
+      url;
+
+    link.download =
+      `clipnest-settings-${date}.json`;
+
+    link.style.display =
+      "none";
+
+    document.body.append(
+      link
+    );
+
+    link.click();
+    link.remove();
+
+    setTimeout(
+      () => {
+        URL.revokeObjectURL(
+          url
+        );
+      },
+      1000
+    );
+
+    showStatus(
+      els.settingsBackupStatus,
+      "Settings exported.",
+      "success"
+    );
+  } catch (error) {
+    showStatus(
+      els.settingsBackupStatus,
+      error?.message ||
+        String(error),
+      "error"
+    );
+  }
+}
+
+function validateSettingsBackup(
+  raw
+) {
+  if (
+    !raw ||
+    typeof raw !==
+      "object" ||
+    Array.isArray(
+      raw
+    )
+  ) {
+    throw new Error(
+      "This is not a valid ClipNest settings file."
+    );
+  }
+
+  if (
+    raw.format !==
+      SETTINGS_EXPORT_FORMAT
+  ) {
+    throw new Error(
+      "This file is not a ClipNest settings backup."
+    );
+  }
+
+  if (
+    Number(
+      raw.version
+    ) !==
+      SETTINGS_EXPORT_VERSION
+  ) {
+    throw new Error(
+      "This ClipNest settings backup version is not supported."
+    );
+  }
+
+  const settings =
+    raw.settings;
+
+  if (
+    !settings ||
+    typeof settings !==
+      "object" ||
+    Array.isArray(
+      settings
+    )
+  ) {
+    throw new Error(
+      "The ClipNest settings backup is incomplete."
+    );
+  }
+
+  if (
+    ![
+      "obsidian",
+      "notion"
+    ].includes(
+      settings.defaultDestination
+    )
+  ) {
+    throw new Error(
+      "The backup has an invalid default destination."
+    );
+  }
+
+  const notion =
+    settings.notion;
+
+  if (
+    !notion ||
+    typeof notion !==
+      "object" ||
+    Array.isArray(
+      notion
+    ) ||
+    !Array.isArray(
+      notion.presets
+    )
+  ) {
+    throw new Error(
+      "The backup has invalid Notion preset data."
+    );
+  }
+
+  const ids =
+    new Set();
+
+  for (
+    const preset of
+      notion.presets
+  ) {
+    if (
+      !preset ||
+      typeof preset !==
+        "object" ||
+      Array.isArray(
+        preset
+      )
+    ) {
+      throw new Error(
+        "The backup contains an invalid Notion preset."
+      );
+    }
+
+    const id =
+      String(
+        preset.id ||
+        ""
+      ).trim();
+
+    if (!id) {
+      throw new Error(
+        "A Notion preset in the backup has no ID."
+      );
+    }
+
+    if (
+      ids.has(
+        id
+      )
+    ) {
+      throw new Error(
+        "The backup contains duplicate Notion preset IDs."
+      );
+    }
+
+    ids.add(
+      id
+    );
+  }
+
+  const activePresetId =
+    String(
+      notion.activePresetId ||
+      ""
+    ).trim();
+
+  if (
+    activePresetId &&
+    !ids.has(
+      activePresetId
+    )
+  ) {
+    throw new Error(
+      "The active Notion preset is missing from the backup."
+    );
+  }
+
+  const notionFieldMemory =
+    settings.notionFieldMemory ??
+    {};
+
+  if (
+    !notionFieldMemory ||
+    typeof notionFieldMemory !==
+      "object" ||
+    Array.isArray(
+      notionFieldMemory
+    )
+  ) {
+    throw new Error(
+      "The backup has invalid remembered Notion field values."
+    );
+  }
+
+  return {
+    defaultDestination:
+      settings.defaultDestination,
+
+    notion: {
+      presets:
+        notion.presets,
+
+      activePresetId
+    },
+
+    notionFieldMemory
+  };
+}
+
+async function importSettingsBackup() {
+  const input =
+    els.importSettingsFile;
+
+  const file =
+    input.files?.[
+      0
+    ];
+
+  if (!file) {
+    return;
+  }
+
+  try {
+    if (
+      file.size >
+      2 * 1024 * 1024
+    ) {
+      throw new Error(
+        "This settings file is unexpectedly large."
+      );
+    }
+
+    const raw =
+      JSON.parse(
+        await file.text()
+      );
+
+    const settings =
+      validateSettingsBackup(
+        raw
+      );
+
+    const confirmed =
+      window.confirm(
+        "Import this ClipNest backup?\n\n" +
+        "This will replace your current Notion presets and update Chrome Sync. " +
+        "Obsidian vaults and your Notion login will not be changed."
+      );
+
+    if (!confirmed) {
+      showStatus(
+        els.settingsBackupStatus,
+        "Import cancelled.",
+        ""
+      );
+
+      return;
+    }
+
+    await ClipNestNotionStore
+      .replacePresets(
+        settings.notion.presets,
+        settings.notion.activePresetId
+      );
+
+    await chrome.storage.local.set({
+      defaultDestination:
+        settings.defaultDestination,
+
+      [NOTION_FIELD_MEMORY_KEY]:
+        sanitizeNotionFieldMemory(
+          settings.notion.presets,
+          settings.notionFieldMemory
+        )
+    });
+
+    await refreshNotionPresetList();
+    await loadSettings();
+
+    showStatus(
+      els.settingsBackupStatus,
+      "Settings imported.",
+      "success"
+    );
+  } catch (error) {
+    showStatus(
+      els.settingsBackupStatus,
+      error?.message ||
+        String(error),
+      "error"
+    );
+  } finally {
+    input.value =
+      "";
+  }
 }
 
 let notionWorkspaceCache =

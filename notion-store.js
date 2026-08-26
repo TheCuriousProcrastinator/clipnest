@@ -1859,10 +1859,31 @@
     );
   }
 
+  async function replacePresets(
+    presets,
+    activePresetId = ""
+  ) {
+    if (
+      !Array.isArray(
+        presets
+      )
+    ) {
+      throw new Error(
+        "Imported Notion presets are invalid."
+      );
+    }
+
+    return writeState(
+      presets,
+      activePresetId
+    );
+  }
+
   globalThis.ClipNestNotionStore =
     Object.freeze({
       migrateLegacy,
       listPresets,
+      replacePresets,
       getActivePreset,
       setActivePreset,
       activatePreset:
