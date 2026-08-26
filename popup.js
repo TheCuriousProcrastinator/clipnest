@@ -6419,6 +6419,15 @@ function setDestination(destination) {
   document.body.dataset.destination =
     destination;
 
+  if (
+    destination === "notion" &&
+    getContentMode() !== "article"
+  ) {
+    setContentMode(
+      "article"
+    );
+  }
+
   els.destinationButtons?.forEach(
     (button) => {
       button.classList.toggle(
@@ -7209,7 +7218,10 @@ function buildPayload() {
   const title = els.titleInput.value.trim() || state.capture.title || "Untitled";
   const tags = getCurrentTags();
   const notes = els.notesInput.value.trim();
-  const contentMode = getContentMode();
+  const contentMode =
+    state.destination === "notion"
+      ? "article"
+      : getContentMode();
 
   const sections = [];
 

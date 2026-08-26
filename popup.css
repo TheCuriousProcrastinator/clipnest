@@ -2547,3 +2547,10 @@ body[data-destination="notion"]
   opacity: .5;
   cursor: default;
 }
+
+/* Notion clips always save the full article. */
+
+body[data-destination="notion"] .content-mode,
+body[data-destination="notion"] .clipper-ux-mode-segmented {
+  display: none !important;
+}
