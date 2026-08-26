@@ -6200,9 +6200,10 @@ function notionPresetOptionLabel(
   ).trim();
 }
 
-function createNotionSelectControl(
+function createNotionChoiceControl(
   field,
-  propertyId
+  propertyId,
+  allowCreate
 ) {
   const memoryStorageKey =
     "clipnestNotionFieldMemoryV1";
@@ -6287,7 +6288,9 @@ function createNotionSelectControl(
     false;
 
   search.placeholder =
-    "Search or create…";
+    allowCreate
+      ? "Search or create…"
+      : "Search statuses…";
 
   search.className =
     "notion-custom-select-search";
@@ -6392,7 +6395,7 @@ function createNotionSelectControl(
       });
     } catch (error) {
       console.warn(
-        "ClipNest could not remember Notion Select value:",
+        "ClipNest could not remember Notion field value:",
         error
       );
     }
@@ -6463,7 +6466,7 @@ function createNotionSelectControl(
       updateTrigger();
     } catch (error) {
       console.warn(
-        "ClipNest could not restore Notion Select value:",
+        "ClipNest could not restore Notion field value:",
         error
       );
     }
@@ -6644,6 +6647,7 @@ function createNotionSelectControl(
       );
 
     if (
+      allowCreate &&
       query &&
       !exact
     ) {
@@ -6655,6 +6659,30 @@ function createNotionSelectControl(
           create:
             true
         })
+      );
+    }
+
+    if (
+      normalized &&
+      !matching.length &&
+      (
+        !allowCreate ||
+        exact
+      )
+    ) {
+      const empty =
+        document.createElement(
+          "div"
+        );
+
+      empty.className =
+        "notion-custom-select-empty";
+
+      empty.textContent =
+        "No matches";
+
+      list.append(
+        empty
       );
     }
   }
@@ -6737,11 +6765,19 @@ function createNotionSelectControl(
             query.toLowerCase()
         );
 
-      chooseValue(
-        exact
-          ? exact.value
-          : query
-      );
+      if (exact) {
+        chooseValue(
+          exact.value
+        );
+
+        return;
+      }
+
+      if (allowCreate) {
+        chooseValue(
+          query
+        );
+      }
     }
   );
 
@@ -6773,6 +6809,28 @@ function createNotionSelectControl(
   void restoreRememberedValue();
 
   return control;
+}
+
+function createNotionSelectControl(
+  field,
+  propertyId
+) {
+  return createNotionChoiceControl(
+    field,
+    propertyId,
+    true
+  );
+}
+
+function createNotionStatusControl(
+  field,
+  propertyId
+) {
+  return createNotionChoiceControl(
+    field,
+    propertyId,
+    false
+  );
 }
 
 function createNotionDateControl(
@@ -7481,98 +7539,14 @@ function createNotionCustomFieldNode(
   if (
     type === "status"
   ) {
-    const select =
-      document.createElement(
-        "select"
+    const control =
+      createNotionStatusControl(
+        field,
+        propertyId
       );
-
-    const empty =
-      document.createElement(
-        "option"
-      );
-
-    empty.value =
-      "";
-
-    empty.textContent =
-      "None";
-
-    select.append(
-      empty
-    );
-
-    for (
-      const option of
-        (
-          Array.isArray(
-            field?.options
-          )
-            ? field.options
-            : []
-        )
-    ) {
-      const value =
-        notionPresetOptionLabel(
-          option
-        );
-
-      if (!value) {
-        continue;
-      }
-
-      const element =
-        document.createElement(
-          "option"
-        );
-
-      element.value =
-        value;
-
-      element.textContent =
-        value;
-
-      select.append(
-        element
-      );
-    }
-
-    const initial =
-      String(
-        field?.defaultValue ??
-        ""
-      );
-
-    if (
-      initial &&
-      [
-        ...select.options
-      ].some(
-        (option) =>
-          option.value ===
-          initial
-      )
-    ) {
-      select.value =
-        initial;
-    }
-
-    notionDynamicFieldValues[
-      propertyId
-    ] =
-      select.value;
-
-    select.addEventListener(
-      "change",
-      () => {
-        notionDynamicFieldValues[
-          propertyId
-        ] =
-          select.value;
-      }
-    );
 
     wrapper.append(
-      select
+      control
     );
 
     return wrapper;
