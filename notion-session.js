@@ -1493,6 +1493,9 @@
     const seen =
       new Set();
 
+    const resultOrder =
+      new Map();
+
     function getRecord(
       table,
       id
@@ -1503,7 +1506,10 @@
             null,
 
           value:
-            null
+            null,
+
+          role:
+            ""
         };
       }
 
@@ -1525,14 +1531,16 @@
           normalized.value,
 
         role:
-          normalized.role
+          normalized.role ||
+          wrapper?.role ||
+          ""
       };
     }
 
     function collectionIdFromBlock(
       block
     ) {
-      return (
+      return String(
         block?.collection_id ||
         block?.format
           ?.collection_pointer
@@ -1545,10 +1553,23 @@
       );
     }
 
+    /*
+     * Notion's results[] is useful for relevance,
+     * but it is NOT the complete set of records
+     * returned by search.
+     *
+     * Save to Notion reads destinations directly
+     * from recordMap. We do the same, while keeping
+     * results[] only as an ordering hint.
+     */
     for (
-      const result of
-        results
+      let index = 0;
+      index < results.length;
+      index += 1
     ) {
+      const result =
+        results[index];
+
       const resultId =
         String(
           result?.id ||
@@ -1559,117 +1580,99 @@
         continue;
       }
 
-      const blockRecord =
+      const block =
         getRecord(
           "block",
           resultId
-        );
+        ).value;
 
-      const directCollection =
+      const collection =
         getRecord(
           "collection",
           resultId
-        );
-
-      const sourceBlock =
-        blockRecord.value;
-
-      let type =
-        "";
-
-      let item =
-        null;
-
-      let wrapper =
-        null;
+        ).value;
 
       if (
-        sourceBlock?.type ===
+        block?.type ===
+          "page"
+      ) {
+        resultOrder.set(
+          `page:${String(
+            block.id ||
+            resultId
+          )}`,
+          index
+        );
+      }
+
+      if (
+        block?.type ===
           "collection_view" ||
-        sourceBlock?.type ===
+        block?.type ===
           "collection_view_page"
       ) {
         const collectionId =
           collectionIdFromBlock(
-            sourceBlock
+            block
           );
 
-        if (!collectionId) {
-          continue;
-        }
-
-        const collectionRecord =
-          getRecord(
-            "collection",
-            collectionId
+        if (collectionId) {
+          resultOrder.set(
+            `collection:${collectionId}`,
+            index
           );
-
-        if (!collectionRecord.value) {
-          continue;
         }
-
-        type =
-          "collection";
-
-        item =
-          collectionRecord.value;
-
-        wrapper =
-          collectionRecord.wrapper;
-      } else if (
-        sourceBlock?.type ===
-          "page"
-      ) {
-        type =
-          "page";
-
-        item =
-          sourceBlock;
-
-        wrapper =
-          blockRecord.wrapper;
-      } else if (
-        directCollection.value
-      ) {
-        type =
-          "collection";
-
-        item =
-          directCollection.value;
-
-        wrapper =
-          directCollection.wrapper;
-      } else {
-        continue;
       }
 
+      if (collection) {
+        resultOrder.set(
+          `collection:${String(
+            collection.id ||
+            resultId
+          )}`,
+          index
+        );
+      }
+    }
+
+    function pushPage(
+      recordId
+    ) {
+      const record =
+        getRecord(
+          "block",
+          recordId
+        );
+
+      const item =
+        record.value;
+
       if (
+        !item ||
+        item.type !==
+          "page" ||
         item.alive ===
           false ||
         item.is_template
       ) {
-        continue;
+        return;
       }
 
       const id =
         String(
           item.id ||
-          (
-            type ===
-              "collection"
-              ? collectionIdFromBlock(
-                  sourceBlock
-                )
-              : resultId
-          ) ||
-          resultId
+          recordId
         );
 
+      if (!id) {
+        return;
+      }
+
       const key =
-        `${type}:${id}`;
+        `page:${id}`;
 
       if (seen.has(key)) {
-        continue;
+        return;
       }
 
       seen.add(key);
@@ -1678,59 +1681,29 @@
         notionParentPath(
           recordMap,
           item.parent_id,
-          type ===
-            "collection"
-            ? "block"
-            : (
-                item.parent_table ||
-                "block"
-              )
+          item.parent_table ||
+            "block"
         );
-
-      const name =
-        type ===
-          "collection"
-          ? notionPlainText(
-              item.name,
-              notionPlainText(
-                item.title,
-                "Untitled database"
-              )
-            )
-          : notionPlainText(
-              item.properties
-                ?.title,
-              "Untitled"
-            );
-
-      const icon =
-        type ===
-          "collection"
-          ? (
-              item.icon ||
-              item.format
-                ?.page_icon ||
-              sourceBlock
-                ?.format
-                ?.page_icon ||
-              ""
-            )
-          : (
-              item.format
-                ?.page_icon ||
-              ""
-            );
 
       destinations.push({
         key,
 
         id,
 
-        type,
+        type:
+          "page",
 
-        name,
+        name:
+          notionPlainText(
+            item.properties
+              ?.title,
+            "Untitled"
+          ),
 
-        icon,
+        icon:
+          item.format
+            ?.page_icon ||
+          "",
 
         parents,
 
@@ -1750,34 +1723,206 @@
           "",
 
         parentTable:
-          type ===
-            "collection"
-            ? "block"
-            : (
-                item.parent_table ||
-                "block"
-              ),
+          item.parent_table ||
+          "block",
 
         role:
-          (
-            type ===
-              "collection"
-              ? getRecord(
-                  "collection",
-                  id
-                ).role
-              : getRecord(
-                  "block",
-                  id
-                ).role
-          ) ||
-          wrapper?.role ||
-          result?.role ||
-          ""
+          record.role ||
+          "",
+
+        _searchRank:
+          resultOrder.has(
+            key
+          )
+            ? resultOrder.get(
+                key
+              )
+            : Number.MAX_SAFE_INTEGER,
+
+        _lastEdited:
+          Number(
+            item.last_edited_time ||
+            0
+          )
       });
     }
 
-    return destinations;
+    function pushCollection(
+      recordId
+    ) {
+      const record =
+        getRecord(
+          "collection",
+          recordId
+        );
+
+      const item =
+        record.value;
+
+      if (
+        !item ||
+        item.alive ===
+          false ||
+        item.is_template
+      ) {
+        return;
+      }
+
+      const id =
+        String(
+          item.id ||
+          recordId
+        );
+
+      if (!id) {
+        return;
+      }
+
+      const key =
+        `collection:${id}`;
+
+      if (seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+
+      const parents =
+        notionParentPath(
+          recordMap,
+          item.parent_id,
+          "block"
+        );
+
+      destinations.push({
+        key,
+
+        id,
+
+        type:
+          "collection",
+
+        name:
+          notionPlainText(
+            item.name,
+            notionPlainText(
+              item.title,
+              "Untitled database"
+            )
+          ),
+
+        icon:
+          item.icon ||
+          item.format
+            ?.page_icon ||
+          "",
+
+        parents,
+
+        breadcrumb:
+          parents
+            .map(
+              (parent) =>
+                parent.name
+            )
+            .filter(Boolean)
+            .join(" / "),
+
+        workspaceId,
+
+        parentId:
+          item.parent_id ||
+          "",
+
+        parentTable:
+          "block",
+
+        role:
+          record.role ||
+          "",
+
+        _searchRank:
+          resultOrder.has(
+            key
+          )
+            ? resultOrder.get(
+                key
+              )
+            : Number.MAX_SAFE_INTEGER,
+
+        _lastEdited:
+          Number(
+            item.last_edited_time ||
+            0
+          )
+      });
+    }
+
+    /*
+     * This is the important parity fix.
+     *
+     * Do not restrict extraction to payload.results.
+     */
+    for (
+      const recordId of
+        Object.keys(
+          recordMap.block ||
+          {}
+        )
+    ) {
+      pushPage(
+        recordId
+      );
+    }
+
+    for (
+      const recordId of
+        Object.keys(
+          recordMap.collection ||
+          {}
+        )
+    ) {
+      pushCollection(
+        recordId
+      );
+    }
+
+    destinations.sort(
+      (a, b) => {
+        if (
+          a._searchRank !==
+          b._searchRank
+        ) {
+          return (
+            a._searchRank -
+            b._searchRank
+          );
+        }
+
+        if (
+          a._lastEdited !==
+          b._lastEdited
+        ) {
+          return (
+            b._lastEdited -
+            a._lastEdited
+          );
+        }
+
+        return a.name.localeCompare(
+          b.name
+        );
+      }
+    );
+
+    return destinations.map(
+      ({
+        _searchRank,
+        _lastEdited,
+        ...destination
+      }) =>
+        destination
+    );
   }
 
   async function getDatabaseSchema({
@@ -3806,6 +3951,11 @@ function encodeDatabaseProperties({
         NOTION_HOSTS
     ) {
       try {
+        /*
+         * Match Save to Notion:
+         * active-user header only for search.
+         * spaceId already lives in request body.
+         */
         const payload =
           await postNotion(
             host,
@@ -3813,23 +3963,67 @@ function encodeDatabaseProperties({
             request,
             {
               userId:
-                activeUserId,
-
-              spaceId
+                activeUserId
             }
           );
 
-        const destinations =
+        const allDestinations =
           normalizeDestinationSearch(
             payload,
             spaceId
           );
+
+        const normalizedQuery =
+          request.query
+            .trim()
+            .toLowerCase();
+
+        const destinations =
+          normalizedQuery
+            ? allDestinations.filter(
+                (destination) =>
+                  String(
+                    destination.name ||
+                    ""
+                  )
+                    .toLowerCase()
+                    .includes(
+                      normalizedQuery
+                    )
+              )
+            : allDestinations;
 
         attempts.push({
           host,
 
           status:
             "ok",
+
+          rawResultCount:
+            Array.isArray(
+              payload?.results
+            )
+              ? payload.results.length
+              : 0,
+
+          rawBlockCount:
+            Object.keys(
+              payload
+                ?.recordMap
+                ?.block ||
+              {}
+            ).length,
+
+          rawCollectionCount:
+            Object.keys(
+              payload
+                ?.recordMap
+                ?.collection ||
+              {}
+            ).length,
+
+          normalizedCount:
+            allDestinations.length,
 
           destinationCount:
             destinations.length
