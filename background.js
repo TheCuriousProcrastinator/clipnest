@@ -2038,6 +2038,349 @@ async function getNotionTagOptions() {
     );
 }
 
+function createNotionSelectOptionId() {
+  if (
+    globalThis.crypto
+      ?.randomUUID
+  ) {
+    return globalThis.crypto
+      .randomUUID();
+  }
+
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
+    .replace(
+      /[xy]/g,
+      (character) => {
+        const random =
+          Math.random() *
+          16 |
+          0;
+
+        const value =
+          character === "x"
+            ? random
+            : (
+                random &
+                0x3 |
+                0x8
+              );
+
+        return value
+          .toString(
+            16
+          );
+      }
+    );
+}
+
+function chooseNotionSelectOptionColor(
+  value
+) {
+  const colors = [
+    "gray",
+    "brown",
+    "orange",
+    "yellow",
+    "green",
+    "blue",
+    "purple",
+    "pink",
+    "red"
+  ];
+
+  let hash =
+    0;
+
+  for (
+    const character of
+      String(
+        value ||
+        ""
+      )
+  ) {
+    hash =
+      (
+        hash * 31 +
+        character.charCodeAt(
+          0
+        )
+      ) >>> 0;
+  }
+
+  return colors[
+    hash %
+    colors.length
+  ];
+}
+
+async function ensureNotionSelectOptionsForSave(
+  preset,
+  customFields
+) {
+  const fields =
+    Array.isArray(
+      customFields
+    )
+      ? customFields
+      : [];
+
+  const selectFields =
+    fields.filter(
+      (field) =>
+        field?.propertyType ===
+          "select" &&
+        String(
+          field?.value ??
+          ""
+        ).trim()
+    );
+
+  if (
+    !selectFields.length ||
+    preset?.destinationType !==
+      "collection"
+  ) {
+    return fields;
+  }
+
+  let parentPageId =
+    String(
+      preset.destinationParentId ||
+      ""
+    ).trim();
+
+  if (!parentPageId) {
+    const result =
+      await ClipNestNotionSession
+        .searchDestinations({
+          workspaceId:
+            preset.workspaceId,
+
+          userId:
+            preset.workspaceUserId,
+
+          query:
+            preset.destinationName ||
+            ""
+        });
+
+    const destination =
+      result.destinations.find(
+        (candidate) =>
+          candidate.type ===
+            "collection" &&
+          candidate.id ===
+            preset.destinationId
+      );
+
+    parentPageId =
+      destination?.parentId ||
+      "";
+  }
+
+  if (!parentPageId) {
+    throw new Error(
+      "ClipNest could not determine this Notion database's parent page."
+    );
+  }
+
+  const database =
+    await ClipNestNotionSession
+      .getDatabaseSchema({
+        workspaceId:
+          preset.workspaceId,
+
+        userId:
+          preset.workspaceUserId,
+
+        collectionId:
+          preset.destinationId,
+
+        parentPageId
+      });
+
+  const createdByProperty =
+    new Map();
+
+  for (
+    const field of
+      selectFields
+  ) {
+    const propertyId =
+      String(
+        field.propertyId ||
+        ""
+      ).trim();
+
+    const value =
+      String(
+        field.value ??
+        ""
+      ).trim();
+
+    const property =
+      database.properties.find(
+        (candidate) =>
+          candidate.id ===
+            propertyId &&
+          candidate.type ===
+            "select"
+      );
+
+    if (!property) {
+      continue;
+    }
+
+    const options =
+      Array.isArray(
+        property.options
+      )
+        ? property.options
+        : [];
+
+    const exists =
+      options.some(
+        (option) =>
+          String(
+            option?.value ??
+            option?.name ??
+            ""
+          )
+            .trim()
+            .toLowerCase() ===
+          value.toLowerCase()
+      );
+
+    if (exists) {
+      continue;
+    }
+
+    const option = {
+      id:
+        createNotionSelectOptionId(),
+
+      value,
+
+      color:
+        chooseNotionSelectOptionColor(
+          value
+        )
+    };
+
+    await ClipNestNotionSession
+      .submitOperations({
+        workspaceId:
+          preset.workspaceId,
+
+        userId:
+          preset.workspaceUserId,
+
+        operations: [
+          {
+            pointer: {
+              table:
+                "collection",
+
+              id:
+                preset.destinationId,
+
+              spaceId:
+                preset.workspaceId
+            },
+
+            command:
+              "keyedObjectListUpdate",
+
+            path: [
+              "schema",
+              propertyId,
+              "options"
+            ],
+
+            args: {
+              value:
+                option
+            }
+          }
+        ]
+      });
+
+    property.options = [
+      ...options,
+      option
+    ];
+
+    createdByProperty.set(
+      propertyId,
+      option
+    );
+
+    console.log(
+      "ClipNest created Notion select option:",
+      {
+        property:
+          property.name,
+
+        value,
+
+        color:
+          option.color
+      }
+    );
+  }
+
+  if (
+    createdByProperty.size
+  ) {
+    const updatedFields =
+      (
+        Array.isArray(
+          preset.fields
+        )
+          ? preset.fields
+          : []
+      ).map(
+        (field) => {
+          const option =
+            createdByProperty.get(
+              String(
+                field.propertyId ||
+                ""
+              )
+            );
+
+          if (!option) {
+            return field;
+          }
+
+          const existing =
+            Array.isArray(
+              field.options
+            )
+              ? field.options
+              : [];
+
+          return {
+            ...field,
+
+            options: [
+              ...existing,
+              option
+            ]
+          };
+        }
+      );
+
+    await ClipNestNotionStore
+      .updateActivePreset({
+        fields:
+          updatedFields
+      });
+  }
+
+  return fields;
+}
+
 async function saveToNotion(
   payload
 ) {
@@ -2180,6 +2523,15 @@ async function saveToNotion(
         })
       );
 
+  const preparedCustomFields =
+    preset.destinationType ===
+      "collection"
+      ? await ensureNotionSelectOptionsForSave(
+          preset,
+          customFields
+        )
+      : customFields;
+
   let page =
     null;
 
@@ -2229,7 +2581,8 @@ async function saveToNotion(
               ""
           },
 
-          customFields
+          customFields:
+            preparedCustomFields
         });
 
     page =

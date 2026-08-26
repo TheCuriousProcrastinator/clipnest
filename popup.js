@@ -6200,6 +6200,454 @@ function notionPresetOptionLabel(
   ).trim();
 }
 
+function createNotionSelectControl(
+  field,
+  propertyId
+) {
+  const control =
+    document.createElement(
+      "div"
+    );
+
+  control.className =
+    "notion-custom-select";
+
+  const trigger =
+    document.createElement(
+      "button"
+    );
+
+  trigger.type =
+    "button";
+
+  trigger.className =
+    "notion-custom-select-trigger";
+
+  trigger.setAttribute(
+    "aria-expanded",
+    "false"
+  );
+
+  const selectedLabel =
+    document.createElement(
+      "span"
+    );
+
+  selectedLabel.className =
+    "notion-custom-select-value";
+
+  const chevron =
+    document.createElement(
+      "span"
+    );
+
+  chevron.className =
+    "notion-custom-select-chevron";
+
+  chevron.textContent =
+    "⌄";
+
+  trigger.append(
+    selectedLabel,
+    chevron
+  );
+
+  const menu =
+    document.createElement(
+      "div"
+    );
+
+  menu.className =
+    "notion-custom-select-menu hidden";
+
+  const search =
+    document.createElement(
+      "input"
+    );
+
+  search.type =
+    "search";
+
+  search.autocomplete =
+    "off";
+
+  search.spellcheck =
+    false;
+
+  search.placeholder =
+    "Search or create…";
+
+  search.className =
+    "notion-custom-select-search";
+
+  const list =
+    document.createElement(
+      "div"
+    );
+
+  list.className =
+    "notion-custom-select-list";
+
+  menu.append(
+    search,
+    list
+  );
+
+  control.append(
+    trigger,
+    menu
+  );
+
+  const options =
+    (
+      Array.isArray(
+        field?.options
+      )
+        ? field.options
+        : []
+    )
+      .map(
+        (option) => ({
+          value:
+            notionPresetOptionLabel(
+              option
+            ),
+
+          color:
+            String(
+              option?.color ||
+              ""
+            ).trim()
+        })
+      )
+      .filter(
+        (option) =>
+          option.value
+      );
+
+  let selected =
+    String(
+      field?.defaultValue ??
+      ""
+    ).trim();
+
+  function closeMenu() {
+    menu.classList.add(
+      "hidden"
+    );
+
+    trigger.setAttribute(
+      "aria-expanded",
+      "false"
+    );
+  }
+
+  function updateTrigger() {
+    selectedLabel.textContent =
+      selected ||
+      "None";
+
+    trigger.classList.toggle(
+      "has-value",
+      Boolean(
+        selected
+      )
+    );
+  }
+
+  function chooseValue(
+    value
+  ) {
+    selected =
+      String(
+        value ||
+        ""
+      ).trim();
+
+    notionDynamicFieldValues[
+      propertyId
+    ] =
+      selected;
+
+    updateTrigger();
+    closeMenu();
+  }
+
+  function makeOptionButton({
+    value,
+    color = "",
+    create = false
+  }) {
+    const button =
+      document.createElement(
+        "button"
+      );
+
+    button.type =
+      "button";
+
+    button.className =
+      create
+        ? "notion-custom-select-option create"
+        : "notion-custom-select-option";
+
+    if (
+      !create &&
+      value === selected
+    ) {
+      button.classList.add(
+        "selected"
+      );
+    }
+
+    if (
+      !create &&
+      color
+    ) {
+      const dot =
+        document.createElement(
+          "span"
+        );
+
+      dot.className =
+        "notion-custom-select-dot";
+
+      dot.dataset.color =
+        color;
+
+      button.append(
+        dot
+      );
+    }
+
+    const copy =
+      document.createElement(
+        "span"
+      );
+
+    copy.textContent =
+      create
+        ? `+ Create "${value}"`
+        : (
+            value ||
+            "None"
+          );
+
+    button.append(
+      copy
+    );
+
+    button.addEventListener(
+      "click",
+      () => {
+        chooseValue(
+          value
+        );
+      }
+    );
+
+    return button;
+  }
+
+  function renderOptions() {
+    list.replaceChildren();
+
+    const query =
+      search.value
+        .trim();
+
+    const normalized =
+      query.toLowerCase();
+
+    if (!normalized) {
+      list.append(
+        makeOptionButton({
+          value:
+            ""
+        })
+      );
+    }
+
+    const matching =
+      options.filter(
+        (option) =>
+          !normalized ||
+          option.value
+            .toLowerCase()
+            .includes(
+              normalized
+            )
+      );
+
+    for (
+      const option of
+        matching
+    ) {
+      list.append(
+        makeOptionButton(
+          option
+        )
+      );
+    }
+
+    const exact =
+      options.some(
+        (option) =>
+          option.value
+            .toLowerCase() ===
+          normalized
+      );
+
+    if (
+      query &&
+      !exact
+    ) {
+      list.append(
+        makeOptionButton({
+          value:
+            query,
+
+          create:
+            true
+        })
+      );
+    }
+
+    if (
+      normalized &&
+      !matching.length &&
+      exact
+    ) {
+      const empty =
+        document.createElement(
+          "div"
+        );
+
+      empty.className =
+        "notion-custom-select-empty";
+
+      empty.textContent =
+        "No matches";
+
+      list.append(
+        empty
+      );
+    }
+  }
+
+  trigger.addEventListener(
+    "click",
+    () => {
+      const opening =
+        menu.classList.contains(
+          "hidden"
+        );
+
+      if (!opening) {
+        closeMenu();
+        return;
+      }
+
+      search.value =
+        "";
+
+      renderOptions();
+
+      menu.classList.remove(
+        "hidden"
+      );
+
+      trigger.setAttribute(
+        "aria-expanded",
+        "true"
+      );
+
+      search.focus();
+    }
+  );
+
+  search.addEventListener(
+    "input",
+    renderOptions
+  );
+
+  search.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        event.key ===
+          "Escape"
+      ) {
+        event.preventDefault();
+        closeMenu();
+        trigger.focus();
+        return;
+      }
+
+      if (
+        event.key !==
+          "Enter"
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const query =
+        search.value
+          .trim();
+
+      if (!query) {
+        chooseValue(
+          ""
+        );
+        return;
+      }
+
+      const exact =
+        options.find(
+          (option) =>
+            option.value
+              .toLowerCase() ===
+            query.toLowerCase()
+        );
+
+      chooseValue(
+        exact
+          ? exact.value
+          : query
+      );
+    }
+  );
+
+  control.addEventListener(
+    "focusout",
+    () => {
+      setTimeout(
+        () => {
+          if (
+            !control.contains(
+              document.activeElement
+            )
+          ) {
+            closeMenu();
+          }
+        },
+        0
+      );
+    }
+  );
+
+  notionDynamicFieldValues[
+    propertyId
+  ] =
+    selected;
+
+  updateTrigger();
+
+  return control;
+}
+
 function createNotionCustomFieldNode(
   field
 ) {
@@ -6217,7 +6665,7 @@ function createNotionCustomFieldNode(
 
   const wrapper =
     document.createElement(
-      "label"
+      "div"
     );
 
   wrapper.className =
@@ -6243,7 +6691,22 @@ function createNotionCustomFieldNode(
   );
 
   if (
-    type === "select" ||
+    type === "select"
+  ) {
+    const control =
+      createNotionSelectControl(
+        field,
+        propertyId
+      );
+
+    wrapper.append(
+      control
+    );
+
+    return wrapper;
+  }
+
+  if (
     type === "status"
   ) {
     const select =
