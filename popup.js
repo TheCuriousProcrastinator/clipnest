@@ -4343,6 +4343,25 @@ function createNotionBuilderConfiguredFieldRow(
     field.propertyType ||
     "";
 
+  const handle =
+    document.createElement(
+      "button"
+    );
+
+  handle.type =
+    "button";
+
+  handle.className =
+    "notion-builder-drag-handle";
+
+  handle.textContent =
+    "⠿";
+
+  handle.setAttribute(
+    "aria-label",
+    `Drag ${field.propertyName || "field"} to reorder`
+  );
+
   const copy =
     document.createElement(
       "div"
@@ -4400,9 +4419,9 @@ function createNotionBuilderConfiguredFieldRow(
       "notion-builder-field-mapping-button";
 
     mapping.textContent =
-      `→ ${notionBuilderFieldMappingLabel(
+      notionBuilderFieldMappingLabel(
         field
-      )}`;
+      );
 
     mapping.addEventListener(
       "click",
@@ -4427,42 +4446,17 @@ function createNotionBuilderConfiguredFieldRow(
       "notion-builder-field-mapping";
 
     mapping.textContent =
-      `→ ${notionBuilderFieldMappingLabel(
+      notionBuilderFieldMappingLabel(
         field
-      )}`;
+      );
 
     actions.append(
       mapping
     );
   }
 
-  const handle =
-    document.createElement(
-      "button"
-    );
-
-  handle.type =
-    "button";
-
-  handle.className =
-    "notion-builder-drag-handle";
-
-  handle.textContent =
-    "⠿";
-
-  handle.title =
-    "Drag to reorder";
-
-  handle.setAttribute(
-    "aria-label",
-    `Drag ${field.propertyName || "field"} to reorder`
-  );
-
-  actions.append(
-    handle
-  );
-
   row.append(
+    handle,
     copy,
     actions
   );

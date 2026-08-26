@@ -2329,3 +2329,154 @@ body[data-destination="notion"]
 .notion-builder-save-location-arrow {
   visibility: hidden;
 }
+
+/* Preset builder visual cleanup */
+
+.notion-preset-config-screen {
+  gap: 0;
+}
+
+.notion-builder-section-label {
+  margin-top: 24px;
+  margin-bottom: 10px;
+}
+
+.notion-builder-save-location {
+  min-height: 74px;
+}
+
+.notion-builder-save-location:disabled {
+  opacity: 1;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+}
+
+.notion-builder-save-location:disabled strong {
+  color: inherit;
+  opacity: 1;
+}
+
+.notion-builder-save-location:disabled small {
+  color: inherit;
+  opacity: .58;
+}
+
+.notion-builder-preset-fields {
+  border-radius: 14px;
+}
+
+.notion-builder-field-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 62px;
+  padding: 10px 14px 10px 10px;
+}
+
+.notion-builder-field-copy {
+  min-width: 0;
+}
+
+.notion-builder-field-copy strong {
+  display: block;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.notion-builder-field-copy small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.2;
+  opacity: .5;
+}
+
+.notion-builder-field-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.notion-builder-field-mapping,
+.notion-builder-field-mapping-button {
+  max-width: 210px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notion-builder-field-mapping {
+  background: transparent;
+  opacity: .72;
+}
+
+.notion-builder-field-mapping::before {
+  content: "→ ";
+}
+
+.notion-builder-field-mapping-button {
+  border: 0;
+  background: rgba(255, 255, 255, .055);
+  cursor: pointer;
+}
+
+.notion-builder-field-mapping-button::before {
+  content: "→ ";
+  opacity: .65;
+}
+
+.notion-builder-field-mapping-button:hover {
+  background: rgba(144, 39, 219, .16);
+}
+
+.notion-builder-drag-handle {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  opacity: .22;
+  cursor: grab;
+}
+
+.notion-builder-field-row:hover
+.notion-builder-drag-handle {
+  opacity: .55;
+}
+
+.notion-builder-drag-handle:hover {
+  background: rgba(255, 255, 255, .055);
+  opacity: .8;
+}
+
+.notion-builder-drag-handle:active {
+  cursor: grabbing;
+}
+
+.notion-builder-field-dragging {
+  opacity: .4;
+  background: rgba(144, 39, 219, .08);
+}
+
+.notion-builder-add-field {
+  min-height: 48px;
+  padding: 10px 14px 10px 46px;
+  font-size: 14px;
+}
+
+.notion-builder-field-config {
+  padding: 12px 14px 14px 46px;
+}
