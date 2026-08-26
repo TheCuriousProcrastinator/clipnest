@@ -43,5 +43,6 @@
   "optional_host_permissions": [
     "https://*.notion.so/*",
     "https://*.notion.com/*"
-  ]
+  ],
+  "key": "L1VzZXJzL2FsZXgvRGVza3RvcC9ub3Rpb24tb2JzaWRpYW4tY2xpcHBlcg=="
 }
