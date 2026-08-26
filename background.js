@@ -93,6 +93,41 @@ chrome.contextMenus.onClicked.addListener(
   }
 );
 
+async function getQuickClipNotionPreset(
+  settings
+) {
+  const presetId =
+    String(
+      settings?.quickClipNotionPresetId ||
+      ""
+    ).trim();
+
+  if (!presetId) {
+    throw new Error(
+      "Choose a Quick Clip Notion preset in Settings."
+    );
+  }
+
+  const info =
+    await ClipNestNotionStore
+      .listPresets();
+
+  const preset =
+    info.presets.find(
+      (candidate) =>
+        candidate.id ===
+        presetId
+    );
+
+  if (!preset) {
+    throw new Error(
+      "The Quick Clip Notion preset no longer exists. Choose another in Settings."
+    );
+  }
+
+  return preset;
+}
+
 async function quickClipSelectedText(
   info,
   tab
@@ -133,6 +168,7 @@ async function quickClipSelectedText(
     const settings =
       await chrome.storage.local.get([
         "defaultDestination",
+        "quickClipNotionPresetId",
         "obsidianDefaultTemplatePath",
         "obsidianSubfolder"
       ]);
@@ -236,8 +272,14 @@ async function quickClipSelectedText(
     let successMessage = "";
 
     if (destination === "notion") {
+      const quickClipPreset =
+        await getQuickClipNotionPreset(
+          settings
+        );
+
       await saveToNotion(
-        payload
+        payload,
+        quickClipPreset
       );
 
       successMessage =
@@ -934,6 +976,7 @@ async function quickClipArticle(
     const settings =
       await chrome.storage.local.get([
         "defaultDestination",
+        "quickClipNotionPresetId",
         "obsidianDefaultTemplatePath",
         "obsidianSubfolder"
       ]);
@@ -1015,8 +1058,14 @@ async function quickClipArticle(
     let successMessage = "";
 
     if (destination === "notion") {
+      const quickClipPreset =
+        await getQuickClipNotionPreset(
+          settings
+        );
+
       await saveToNotion(
-        payload
+        payload,
+        quickClipPreset
       );
 
       successMessage =
@@ -2680,12 +2729,14 @@ async function ensureNotionMultiSelectOptionsForSave(
 }
 
 async function saveToNotion(
-  payload
+  payload,
+  presetOverride = null
 ) {
   await ClipNestNotionStore
     .migrateLegacy();
 
   const preset =
+    presetOverride ||
     await ClipNestNotionStore
       .getActivePreset();
 

@@ -52,6 +52,8 @@ chrome.storage.onChanged.addListener(
 async function init() {
   for (const id of [
     "defaultDestination",
+    "quickClipNotionPresetField",
+    "quickClipNotionPresetId",
     "notionConnectionTitle",
     "notionConnectionStatus",
     "refreshNotionWorkspaces",
@@ -98,6 +100,7 @@ async function init() {
   for (
     const field of [
       els.defaultDestination,
+      els.quickClipNotionPresetId,
       els.notionPresetName
     ]
   ) {
@@ -111,6 +114,11 @@ async function init() {
       markSettingsDirty
     );
   }
+
+  els.defaultDestination.addEventListener(
+    "change",
+    updateQuickClipPresetVisibility
+  );
 
   els.exportSettings.addEventListener(
     "click",
@@ -295,15 +303,135 @@ async function init() {
   await handleNotionOptionsIntent();
 }
 
+function updateQuickClipPresetVisibility() {
+  els.quickClipNotionPresetField.hidden =
+    els.defaultDestination.value !==
+      "notion";
+}
+
+async function refreshQuickClipPresetList(
+  preferredId = ""
+) {
+  const info =
+    await ClipNestNotionStore
+      .listPresets();
+
+  const presets =
+    Array.isArray(
+      info.presets
+    )
+      ? info.presets
+      : [];
+
+  els.quickClipNotionPresetId
+    .replaceChildren();
+
+  if (!presets.length) {
+    const option =
+      document.createElement(
+        "option"
+      );
+
+    option.value =
+      "";
+
+    option.textContent =
+      "No presets configured";
+
+    els.quickClipNotionPresetId
+      .append(
+        option
+      );
+
+    els.quickClipNotionPresetId.disabled =
+      true;
+
+    return "";
+  }
+
+  els.quickClipNotionPresetId.disabled =
+    false;
+
+  for (const preset of presets) {
+    const option =
+      document.createElement(
+        "option"
+      );
+
+    option.value =
+      preset.id;
+
+    option.textContent =
+      preset.name ||
+      "Untitled preset";
+
+    els.quickClipNotionPresetId
+      .append(
+        option
+      );
+  }
+
+  const requestedId =
+    String(
+      preferredId || ""
+    ).trim();
+
+  let selectedId =
+    presets.some(
+      (preset) =>
+        preset.id ===
+        requestedId
+    )
+      ? requestedId
+      : "";
+
+  if (!selectedId) {
+    selectedId =
+      presets.some(
+        (preset) =>
+          preset.id ===
+          info.activePresetId
+      )
+        ? info.activePresetId
+        : presets[0].id;
+  }
+
+  els.quickClipNotionPresetId.value =
+    selectedId;
+
+  return selectedId;
+}
+
 async function loadSettings() {
   const settings =
     await chrome.storage.local.get([
-      "defaultDestination"
+      "defaultDestination",
+      "quickClipNotionPresetId"
     ]);
 
   els.defaultDestination.value =
     settings.defaultDestination ||
     "obsidian";
+
+  const quickClipPresetId =
+    await refreshQuickClipPresetList(
+      settings.quickClipNotionPresetId ||
+      ""
+    );
+
+  if (
+    quickClipPresetId !==
+      String(
+        settings.quickClipNotionPresetId ||
+        ""
+      )
+  ) {
+    await chrome.storage.local.set({
+      quickClipNotionPresetId
+    });
+  }
+
+  updateQuickClipPresetVisibility();
 
   const preset =
     await ClipNestNotionStore
@@ -401,7 +529,11 @@ async function loadSettings() {
 async function saveSettings() {
   await chrome.storage.local.set({
     defaultDestination:
-      els.defaultDestination.value
+      els.defaultDestination.value,
+
+    quickClipNotionPresetId:
+      els.quickClipNotionPresetId.value ||
+      ""
   });
 
   const preset =
@@ -645,6 +777,7 @@ async function exportSettingsBackup() {
     const local =
       await chrome.storage.local.get([
         "defaultDestination",
+        "quickClipNotionPresetId",
         NOTION_FIELD_MEMORY_KEY
       ]);
 
@@ -664,6 +797,12 @@ async function exportSettingsBackup() {
             "notion"
             ? "notion"
             : "obsidian",
+
+        quickClipNotionPresetId:
+          String(
+            local.quickClipNotionPresetId ||
+            ""
+          ),
 
         notion: {
           presets:
@@ -915,6 +1054,23 @@ function validateSettingsBackup(
     );
   }
 
+  const quickClipNotionPresetId =
+    String(
+      settings.quickClipNotionPresetId ||
+      ""
+    ).trim();
+
+  if (
+    quickClipNotionPresetId &&
+    !ids.has(
+      quickClipNotionPresetId
+    )
+  ) {
+    throw new Error(
+      "The Quick Clip Notion preset is missing from the backup."
+    );
+  }
+
   const notionFieldMemory =
     settings.notionFieldMemory ??
     {};
@@ -935,6 +1091,8 @@ function validateSettingsBackup(
   return {
     defaultDestination:
       settings.defaultDestination,
+
+    quickClipNotionPresetId,
 
     notion: {
       presets:
@@ -1006,6 +1164,9 @@ async function importSettingsBackup() {
     await chrome.storage.local.set({
       defaultDestination:
         settings.defaultDestination,
+
+      quickClipNotionPresetId:
+        settings.quickClipNotionPresetId,
 
       [NOTION_FIELD_MEMORY_KEY]:
         sanitizeNotionFieldMemory(

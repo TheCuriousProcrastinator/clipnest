@@ -27,13 +27,34 @@
     </header>
 
     <section class="card">
-      <h2>General</h2>
+      <h2>Quick Clip</h2>
+
+      <p class="help">
+        Choose where right-click clips are saved.
+      </p>
+
       <label class="field">
-        <span>Default destination</span>
+        <span>Destination</span>
         <select id="defaultDestination">
           <option value="obsidian">Obsidian</option>
           <option value="notion">Notion</option>
         </select>
+      </label>
+
+      <label
+        id="quickClipNotionPresetField"
+        class="field"
+        hidden
+      >
+        <span>Notion preset</span>
+
+        <select id="quickClipNotionPresetId">
+          <option value="">No presets configured</option>
+        </select>
+
+        <small>
+          Used only for right-click Quick Clip. Presets selected in the popup do not change this.
+        </small>
       </label>
     </section>
 
