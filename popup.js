@@ -1216,6 +1216,9 @@ let notionPresetBuilderSearchTimer =
 let notionPresetBuilderDraft =
   null;
 
+let notionPresetBuilderEditingFieldId =
+  "";
+
 const NOTION_PRESET_BUILDER_STATE_KEY =
   "clipnestNotionPresetBuilderStateV1";
 
@@ -2478,6 +2481,24 @@ function notionBuilderPresetFieldsForStore() {
 
         defaultValue =
           [];
+      } else if (
+        notionBuilderFieldIsConfigurable(
+          field
+        ) &&
+        mapping ===
+          "Fixed value"
+      ) {
+        source =
+          "fixed";
+
+        visible =
+          false;
+
+        defaultValue =
+          String(
+            field.fixedValue ||
+            ""
+          );
       }
 
       return {
@@ -3140,9 +3161,454 @@ function notionBuilderPropertyTypeLabel(
   );
 }
 
+function notionBuilderFieldIsConfigurable(
+  field
+) {
+  return [
+    "select",
+    "status",
+    "text",
+    "rich_text"
+  ].includes(
+    String(
+      field?.propertyType ||
+      ""
+    )
+  );
+}
+
+function notionBuilderFieldMappingLabel(
+  field
+) {
+  if (
+    field?.mapping ===
+      "Fixed value"
+  ) {
+    const value =
+      String(
+        field?.fixedValue ||
+        ""
+      ).trim();
+
+    return value
+      ? `Fixed: ${value}`
+      : "Fixed value";
+  }
+
+  return field?.mapping ||
+    notionBuilderDefaultMapping({
+      type:
+        field?.propertyType
+    });
+}
+
+function findNotionBuilderConfiguredField(
+  propertyId
+) {
+  const id =
+    String(
+      propertyId ||
+      ""
+    );
+
+  return (
+    Array.isArray(
+      notionPresetBuilderDraft
+        ?.configuredFields
+    )
+      ? notionPresetBuilderDraft
+          .configuredFields
+      : []
+  ).find(
+    (field) =>
+      String(
+        field.propertyId ||
+        ""
+      ) ===
+        id
+  ) ||
+  null;
+}
+
+async function removeNotionBuilderConfiguredField(
+  propertyId
+) {
+  const draft =
+    notionPresetBuilderDraft;
+
+  if (!draft) {
+    return;
+  }
+
+  draft.configuredFields =
+    (
+      Array.isArray(
+        draft.configuredFields
+      )
+        ? draft.configuredFields
+        : []
+    ).filter(
+      (field) =>
+        String(
+          field.propertyId ||
+          ""
+        ) !==
+        String(
+          propertyId ||
+          ""
+        )
+    );
+
+  notionPresetBuilderEditingFieldId =
+    "";
+
+  await persistNotionPresetBuilderState(
+    "config"
+  );
+
+  renderNotionBuilderConfiguredFields();
+}
+
+function renderNotionBuilderFieldConfiguration(
+  propertyId
+) {
+  const container =
+    document.getElementById(
+      "notionBuilderPresetFields"
+    );
+
+  const field =
+    findNotionBuilderConfiguredField(
+      propertyId
+    );
+
+  if (
+    !container ||
+    !field ||
+    !notionBuilderFieldIsConfigurable(
+      field
+    )
+  ) {
+    return;
+  }
+
+  const editor =
+    document.createElement(
+      "div"
+    );
+
+  editor.className =
+    "notion-builder-field-config";
+
+  editor.dataset.propertyId =
+    field.propertyId;
+
+  const heading =
+    document.createElement(
+      "div"
+    );
+
+  heading.className =
+    "notion-builder-field-config-header";
+
+  const title =
+    document.createElement(
+      "strong"
+    );
+
+  title.textContent =
+    field.propertyName;
+
+  const close =
+    document.createElement(
+      "button"
+    );
+
+  close.type =
+    "button";
+
+  close.className =
+    "notion-builder-field-config-close";
+
+  close.textContent =
+    "×";
+
+  close.addEventListener(
+    "click",
+    () => {
+      notionPresetBuilderEditingFieldId =
+        "";
+
+      renderNotionBuilderConfiguredFields();
+    }
+  );
+
+  heading.append(
+    title,
+    close
+  );
+
+  const modes =
+    document.createElement(
+      "div"
+    );
+
+  modes.className =
+    "notion-builder-field-config-modes";
+
+  for (
+    const mode of [
+      "Manual",
+      "Fixed value"
+    ]
+  ) {
+    const button =
+      document.createElement(
+        "button"
+      );
+
+    button.type =
+      "button";
+
+    button.className =
+      "notion-builder-field-mode";
+
+    button.classList.toggle(
+      "active",
+      field.mapping ===
+        mode
+    );
+
+    button.textContent =
+      mode;
+
+    button.addEventListener(
+      "click",
+      async () => {
+        field.mapping =
+          mode;
+
+        if (
+          mode ===
+            "Manual"
+        ) {
+          field.fixedValue =
+            "";
+        }
+
+        await persistNotionPresetBuilderState(
+          "config"
+        );
+
+        renderNotionBuilderConfiguredFields();
+      }
+    );
+
+    modes.append(
+      button
+    );
+  }
+
+  editor.append(
+    heading,
+    modes
+  );
+
+  if (
+    field.mapping ===
+      "Fixed value"
+  ) {
+    const fixed =
+      document.createElement(
+        "label"
+      );
+
+    fixed.className =
+      "notion-builder-fixed-value";
+
+    const label =
+      document.createElement(
+        "span"
+      );
+
+    label.textContent =
+      "Value";
+
+    fixed.append(
+      label
+    );
+
+    if (
+      field.propertyType ===
+        "select" ||
+      field.propertyType ===
+        "status"
+    ) {
+      const select =
+        document.createElement(
+          "select"
+        );
+
+      const empty =
+        document.createElement(
+          "option"
+        );
+
+      empty.value =
+        "";
+
+      empty.textContent =
+        "Choose value";
+
+      select.append(
+        empty
+      );
+
+      for (
+        const option of
+          (
+            Array.isArray(
+              field.options
+            )
+              ? field.options
+              : []
+          )
+      ) {
+        const value =
+          notionPresetOptionLabel(
+            option
+          );
+
+        if (!value) {
+          continue;
+        }
+
+        const item =
+          document.createElement(
+            "option"
+          );
+
+        item.value =
+          value;
+
+        item.textContent =
+          value;
+
+        select.append(
+          item
+        );
+      }
+
+      select.value =
+        String(
+          field.fixedValue ||
+          ""
+        );
+
+      select.addEventListener(
+        "change",
+        async () => {
+          field.fixedValue =
+            select.value;
+
+          await persistNotionPresetBuilderState(
+            "config"
+          );
+
+          renderNotionBuilderConfiguredFields();
+        }
+      );
+
+      fixed.append(
+        select
+      );
+    } else {
+      const input =
+        document.createElement(
+          "input"
+        );
+
+      input.type =
+        "text";
+
+      input.autocomplete =
+        "off";
+
+      input.value =
+        String(
+          field.fixedValue ||
+          ""
+        );
+
+      input.addEventListener(
+        "input",
+        () => {
+          field.fixedValue =
+            input.value;
+
+          void persistNotionPresetBuilderState(
+            "config"
+          );
+        }
+      );
+
+      fixed.append(
+        input
+      );
+    }
+
+    editor.append(
+      fixed
+    );
+  }
+
+  const remove =
+    document.createElement(
+      "button"
+    );
+
+  remove.type =
+    "button";
+
+  remove.className =
+    "notion-builder-remove-field";
+
+  remove.textContent =
+    "Remove field";
+
+  remove.addEventListener(
+    "click",
+    () => {
+      void removeNotionBuilderConfiguredField(
+        field.propertyId
+      );
+    }
+  );
+
+  editor.append(
+    remove
+  );
+
+  const row =
+    container.querySelector(
+      `.notion-builder-field-row[data-property-id="${CSS.escape(
+        field.propertyId
+      )}"]`
+    );
+
+  if (row) {
+    row.after(
+      editor
+    );
+  } else {
+    container.append(
+      editor
+    );
+  }
+}
+
 function createNotionBuilderConfiguredFieldRow(
-  property,
-  mapping
+  field
 ) {
   const row =
     document.createElement(
@@ -3153,11 +3619,11 @@ function createNotionBuilderConfiguredFieldRow(
     "notion-builder-field-row";
 
   row.dataset.propertyId =
-    property.id ||
+    field.propertyId ||
     "";
 
   row.dataset.propertyType =
-    property.type ||
+    field.propertyType ||
     "";
 
   const copy =
@@ -3171,7 +3637,7 @@ function createNotionBuilderConfiguredFieldRow(
     );
 
   name.textContent =
-    property.name ||
+    field.propertyName ||
     "Untitled property";
 
   const type =
@@ -3181,7 +3647,7 @@ function createNotionBuilderConfiguredFieldRow(
 
   type.textContent =
     notionBuilderPropertyTypeLabel(
-      property.type
+      field.propertyType
     );
 
   copy.append(
@@ -3189,21 +3655,60 @@ function createNotionBuilderConfiguredFieldRow(
     type
   );
 
-  const source =
-    document.createElement(
-      "span"
+  if (
+    notionBuilderFieldIsConfigurable(
+      field
+    )
+  ) {
+    const mapping =
+      document.createElement(
+        "button"
+      );
+
+    mapping.type =
+      "button";
+
+    mapping.className =
+      "notion-builder-field-mapping-button";
+
+    mapping.textContent =
+      `→ ${notionBuilderFieldMappingLabel(
+        field
+      )}`;
+
+    mapping.addEventListener(
+      "click",
+      () => {
+        notionPresetBuilderEditingFieldId =
+          field.propertyId;
+
+        renderNotionBuilderConfiguredFields();
+      }
     );
 
-  source.className =
-    "notion-builder-field-mapping";
+    row.append(
+      copy,
+      mapping
+    );
+  } else {
+    const mapping =
+      document.createElement(
+        "span"
+      );
 
-  source.textContent =
-    `→ ${mapping}`;
+    mapping.className =
+      "notion-builder-field-mapping";
 
-  row.append(
-    copy,
-    source
-  );
+    mapping.textContent =
+      `→ ${notionBuilderFieldMappingLabel(
+        field
+      )}`;
+
+    row.append(
+      copy,
+      mapping
+    );
+  }
 
   return row;
 }
@@ -3319,7 +3824,10 @@ function notionBuilderConfiguredField(
       mapping ||
       notionBuilderDefaultMapping(
         property
-      )
+      ),
+
+    fixedValue:
+      ""
   };
 }
 
@@ -3358,26 +3866,20 @@ function renderNotionBuilderConfiguredFields() {
     const field of
       configured
   ) {
-    const property = {
-      id:
-        field.propertyId,
-
-      name:
-        field.propertyName,
-
-      type:
-        field.propertyType,
-
-      options:
-        field.options
-    };
-
     container.append(
       createNotionBuilderConfiguredFieldRow(
-        property,
-        field.mapping
+        field
       )
     );
+
+    if (
+      notionPresetBuilderEditingFieldId ===
+        field.propertyId
+    ) {
+      renderNotionBuilderFieldConfiguration(
+        field.propertyId
+      );
+    }
   }
 
   const configuredIds =
@@ -3433,6 +3935,9 @@ function renderNotionBuilderConfiguredFields() {
     add.addEventListener(
       "click",
       () => {
+        notionPresetBuilderEditingFieldId =
+          "";
+
         renderNotionBuilderAddFieldPicker();
       }
     );

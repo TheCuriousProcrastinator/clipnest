@@ -2023,3 +2023,94 @@ body[data-destination="notion"]
   padding: 12px;
   opacity: .6;
 }
+
+/* Notion preset field mapping */
+
+.notion-builder-field-mapping-button {
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  font-weight: 650;
+  opacity: .82;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.notion-builder-field-mapping-button:hover {
+  background: rgba(144, 39, 219, .14);
+  opacity: 1;
+}
+
+.notion-builder-field-config {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-top: 1px solid var(--border, #444);
+  background: rgba(255, 255, 255, .025);
+}
+
+.notion-builder-field-config-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.notion-builder-field-config-close {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.notion-builder-field-config-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .06);
+}
+
+.notion-builder-field-mode {
+  padding: 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.notion-builder-field-mode.active {
+  background: #9027db;
+}
+
+.notion-builder-fixed-value {
+  display: grid;
+  gap: 6px;
+}
+
+.notion-builder-fixed-value > span {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: .7;
+}
+
+.notion-builder-fixed-value input,
+.notion-builder-fixed-value select {
+  width: 100%;
+}
+
+.notion-builder-remove-field {
+  justify-self: start;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: #db5b27;
+  font-weight: 650;
+  cursor: pointer;
+}
