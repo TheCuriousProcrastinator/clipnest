@@ -628,6 +628,359 @@ function setupNotionPresetNavigation() {
   );
 }
 
+const NOTION_PRESET_ICON_CHOICES = [
+  "📥",
+  "📚",
+  "📰",
+  "✍️",
+  "💡",
+  "✅",
+  "📌",
+  "🗂️",
+  "🧠",
+  "🔖",
+  "⭐",
+  "🚀",
+  "💼",
+  "👥",
+  "💬",
+  "📅",
+  "🧪",
+  "🔧",
+  "💰",
+  "🛒",
+  "🎯",
+  "🎬",
+  "🎵",
+  "🌐",
+  "🧭",
+  "🔥",
+  "❤️",
+  "⚡"
+];
+
+function renderNotionPresetDisplayIcon(
+  target,
+  preset
+) {
+  if (!target) {
+    return;
+  }
+
+  target.replaceChildren();
+
+  const custom =
+    String(
+      preset?.presetIcon ||
+      ""
+    ).trim();
+
+  if (custom) {
+    target.textContent =
+      custom;
+
+    return;
+  }
+
+  const rawIcon =
+    preset?.destinationIcon ??
+    preset?.destination?.icon ??
+    "";
+
+  let text =
+    "";
+
+  let url =
+    "";
+
+  if (
+    typeof rawIcon ===
+      "string"
+  ) {
+    const value =
+      rawIcon.trim();
+
+    if (
+      /^https?:\/\//i.test(
+        value
+      )
+    ) {
+      url =
+        value;
+    } else {
+      text =
+        value;
+    }
+  } else if (
+    rawIcon &&
+    typeof rawIcon ===
+      "object"
+  ) {
+    text =
+      String(
+        rawIcon.emoji ||
+        rawIcon.value ||
+        rawIcon.text ||
+        ""
+      ).trim();
+
+    url =
+      String(
+        rawIcon.url ||
+        rawIcon.src ||
+        ""
+      ).trim();
+  }
+
+  if (
+    !text &&
+    /^https?:\/\//i.test(
+      url
+    )
+  ) {
+    const image =
+      document.createElement(
+        "img"
+      );
+
+    image.src =
+      url;
+
+    image.alt =
+      "";
+
+    image.referrerPolicy =
+      "no-referrer";
+
+    target.append(
+      image
+    );
+
+    return;
+  }
+
+  target.textContent =
+    text ||
+    (
+      preset?.destinationType ===
+        "page" ||
+      preset?.destination?.type ===
+        "page"
+        ? "↗"
+        : "▣"
+    );
+}
+
+function updateNotionBuilderIconButton() {
+  const button =
+    document.getElementById(
+      "notionBuilderPresetIcon"
+    );
+
+  if (
+    !button ||
+    !notionPresetBuilderDraft
+  ) {
+    return;
+  }
+
+  const custom =
+    String(
+      notionPresetBuilderDraft
+        .presetIcon ||
+      ""
+    ).trim();
+
+  renderNotionPresetDisplayIcon(
+    button,
+    {
+      presetIcon:
+        custom,
+
+      destinationIcon:
+        notionPresetBuilderDraft
+          .destination
+          ?.icon ||
+        "",
+
+      destinationType:
+        notionPresetBuilderDraft
+          .destination
+          ?.type ||
+        ""
+    }
+  );
+
+  button.title =
+    custom
+      ? "Change preset icon"
+      : "Using Notion icon";
+
+  const picker =
+    document.getElementById(
+      "notionBuilderIconPicker"
+    );
+
+  picker
+    ?.querySelectorAll(
+      "[data-preset-icon]"
+    )
+    .forEach(
+      (option) => {
+        const selected =
+          String(
+            option.dataset
+              .presetIcon ||
+            ""
+          ) ===
+          custom;
+
+        option.classList.toggle(
+          "selected",
+          selected
+        );
+
+        option.setAttribute(
+          "aria-pressed",
+          String(
+            selected
+          )
+        );
+      }
+    );
+}
+
+function createNotionBuilderIconPicker() {
+  const picker =
+    document.createElement(
+      "div"
+    );
+
+  picker.id =
+    "notionBuilderIconPicker";
+
+  picker.className =
+    "notion-builder-icon-picker hidden";
+
+  const useNotion =
+    document.createElement(
+      "button"
+    );
+
+  useNotion.type =
+    "button";
+
+  useNotion.className =
+    "notion-builder-icon-default";
+
+  useNotion.dataset.presetIcon =
+    "";
+
+  useNotion.textContent =
+    "Use Notion icon";
+
+  const grid =
+    document.createElement(
+      "div"
+    );
+
+  grid.className =
+    "notion-builder-icon-grid";
+
+  const selectIcon =
+    async (
+      icon
+    ) => {
+      if (
+        !notionPresetBuilderDraft
+      ) {
+        return;
+      }
+
+      notionPresetBuilderDraft
+        .presetIcon =
+        String(
+          icon ||
+          ""
+        );
+
+      updateNotionBuilderIconButton();
+
+      picker.classList.add(
+        "hidden"
+      );
+
+      await persistNotionPresetBuilderState(
+        "config"
+      );
+    };
+
+  useNotion.addEventListener(
+    "click",
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      void selectIcon(
+        ""
+      );
+    }
+  );
+
+  for (
+    const emoji of
+      NOTION_PRESET_ICON_CHOICES
+  ) {
+    const option =
+      document.createElement(
+        "button"
+      );
+
+    option.type =
+      "button";
+
+    option.className =
+      "notion-builder-icon-option";
+
+    option.dataset.presetIcon =
+      emoji;
+
+    option.textContent =
+      emoji;
+
+    option.title =
+      `Use ${emoji}`;
+
+    option.setAttribute(
+      "aria-label",
+      `Use ${emoji} as preset icon`
+    );
+
+    option.addEventListener(
+      "click",
+      (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        void selectIcon(
+          emoji
+        );
+      }
+    );
+
+    grid.append(
+      option
+    );
+  }
+
+  picker.append(
+    useNotion,
+    grid
+  );
+
+  return picker;
+}
+
 async function renderNotionPresetChooser() {
   const list =
     document.getElementById(
@@ -686,11 +1039,10 @@ async function renderNotionPresetChooser() {
     icon.className =
       "notion-preset-card-icon";
 
-    icon.textContent =
-      preset.destinationType ===
-        "page"
-        ? "↗"
-        : "▣";
+    renderNotionPresetDisplayIcon(
+      icon,
+      preset
+    );
 
     const copy =
       document.createElement(
@@ -2003,7 +2355,10 @@ function renderNotionBuilderResults() {
 
             presetName:
               destination.name ||
-              "New preset"
+              "New preset",
+
+            presetIcon:
+              ""
           };
 
           await persistNotionPresetBuilderState(
@@ -2365,6 +2720,11 @@ async function persistNotionPresetBuilderState(
                 notionPresetBuilderDraft
                   .presetName ||
                 nameInput?.value ||
+                "",
+
+              presetIcon:
+                notionPresetBuilderDraft
+                  .presetIcon ||
                 "",
 
               mode:
@@ -2874,7 +3234,11 @@ async function openNotionPresetInBuilder(
 
     presetName:
       preset.name ||
-      "Untitled preset"
+      "Untitled preset",
+
+    presetIcon:
+      preset.presetIcon ||
+      ""
   };
 
   if (
@@ -3264,6 +3628,12 @@ async function createNotionPresetFromBuilder() {
     const patch = {
       name,
 
+      presetIcon:
+        String(
+          draft.presetIcon ||
+          ""
+        ).trim(),
+
       workspaceId:
         draft.workspace.id,
 
@@ -3620,9 +3990,86 @@ function createNotionPresetConfigScreen() {
   nameInput.autocomplete =
     "off";
 
+  const nameRow =
+    document.createElement(
+      "div"
+    );
+
+  nameRow.className =
+    "notion-builder-name-row";
+
+  const iconWrap =
+    document.createElement(
+      "div"
+    );
+
+  iconWrap.className =
+    "notion-builder-icon-wrap";
+
+  const iconButton =
+    document.createElement(
+      "button"
+    );
+
+  iconButton.id =
+    "notionBuilderPresetIcon";
+
+  iconButton.type =
+    "button";
+
+  iconButton.className =
+    "notion-builder-icon-button";
+
+  iconButton.setAttribute(
+    "aria-label",
+    "Choose preset icon"
+  );
+
+  const iconPicker =
+    createNotionBuilderIconPicker();
+
+  iconButton.addEventListener(
+    "click",
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      iconPicker.classList.toggle(
+        "hidden"
+      );
+
+      updateNotionBuilderIconButton();
+    }
+  );
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (
+        !iconWrap.contains(
+          event.target
+        )
+      ) {
+        iconPicker.classList.add(
+          "hidden"
+        );
+      }
+    }
+  );
+
+  iconWrap.append(
+    iconButton,
+    iconPicker
+  );
+
+  nameRow.append(
+    iconWrap,
+    nameInput
+  );
+
   nameField.append(
     nameLabel,
-    nameInput
+    nameRow
   );
 
   const locationLabel =
@@ -5718,6 +6165,14 @@ function renderNotionPresetConfigScreen(
 
   draft.presetName =
     nameInput.value;
+
+  draft.presetIcon =
+    String(
+      draft.presetIcon ||
+      ""
+    ).trim();
+
+  updateNotionBuilderIconButton();
 
   location.replaceChildren();
 

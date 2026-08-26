@@ -3502,3 +3502,210 @@ body[data-destination="notion"]
   font-size: 12px !important;
   opacity: .58 !important;
 }
+
+
+/* NOTION PRESET ICON PICKER - V1.4.0 */
+
+.notion-builder-name-row {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.notion-builder-icon-wrap {
+  position: relative;
+}
+
+.notion-builder-icon-button {
+  width: 38px !important;
+  min-width: 38px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 !important;
+
+  display: grid !important;
+  place-items: center;
+
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      CanvasText 18%,
+      transparent
+    ) !important;
+
+  border-radius: 8px !important;
+
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 5%,
+      Canvas
+    ) !important;
+
+  color: inherit !important;
+
+  font-size: 19px !important;
+  line-height: 1 !important;
+
+  cursor: pointer;
+}
+
+.notion-builder-icon-button:hover {
+  border-color:
+    color-mix(
+      in srgb,
+      CanvasText 30%,
+      transparent
+    ) !important;
+
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 8%,
+      Canvas
+    ) !important;
+}
+
+.notion-builder-icon-button:focus-visible {
+  outline: 2px solid #9027db;
+  outline-offset: 1px;
+}
+
+.notion-builder-icon-button img,
+.notion-preset-card-icon img {
+  display: block;
+  width: 23px;
+  height: 23px;
+  object-fit: contain;
+  border-radius: 5px;
+}
+
+.notion-builder-icon-picker {
+  position: absolute;
+  z-index: 1500;
+
+  top: calc(100% + 7px);
+  left: 0;
+
+  width: 264px;
+  padding: 8px;
+
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      CanvasText 18%,
+      transparent
+    );
+
+  border-radius: 11px;
+
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 4%,
+      Canvas
+    );
+
+  box-shadow:
+    0 16px 42px
+    rgba(0, 0, 0, .34);
+}
+
+.notion-builder-icon-picker.hidden {
+  display: none;
+}
+
+.notion-builder-icon-default {
+  width: 100%;
+  min-height: 34px !important;
+  height: 34px !important;
+
+  margin: 0 0 7px;
+  padding: 0 10px !important;
+
+  border: 0;
+  border-radius: 7px;
+
+  background: transparent;
+  color: inherit;
+
+  text-align: left;
+
+  font-size: 12px;
+  font-weight: 650;
+
+  cursor: pointer;
+}
+
+.notion-builder-icon-default:hover,
+.notion-builder-icon-default.selected {
+  background:
+    color-mix(
+      in srgb,
+      #9027db 14%,
+      transparent
+    );
+}
+
+.notion-builder-icon-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(7, 1fr);
+  gap: 3px;
+}
+
+.notion-builder-icon-option {
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+
+  padding: 0 !important;
+
+  display: grid !important;
+  place-items: center;
+
+  border: 1px solid transparent;
+  border-radius: 7px;
+
+  background: transparent;
+  color: inherit;
+
+  font-size: 18px;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.notion-builder-icon-option:hover {
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 8%,
+      transparent
+    );
+}
+
+.notion-builder-icon-option.selected {
+  border-color:
+    color-mix(
+      in srgb,
+      #9027db 68%,
+      transparent
+    );
+
+  background:
+    color-mix(
+      in srgb,
+      #9027db 16%,
+      transparent
+    );
+}
+
+.notion-preset-card-icon {
+  font-size: 18px;
+  line-height: 1;
+}

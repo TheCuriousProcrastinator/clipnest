@@ -448,6 +448,11 @@
         ) ||
         `Notion preset ${index + 1}`,
 
+      presetIcon:
+        cleanText(
+          raw.presetIcon
+        ),
+
       workspaceId:
         cleanText(
           raw.workspaceId
