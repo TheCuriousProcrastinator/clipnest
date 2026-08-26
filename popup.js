@@ -6204,6 +6204,18 @@ function createNotionSelectControl(
   field,
   propertyId
 ) {
+  const memoryStorageKey =
+    "clipnestNotionFieldMemoryV1";
+
+  const memoryKey =
+    `${String(
+      notionOpenPresetId ||
+      ""
+    )}::${String(
+      propertyId ||
+      ""
+    )}`;
+
   const control =
     document.createElement(
       "div"
@@ -6331,6 +6343,132 @@ function createNotionSelectControl(
       ""
     ).trim();
 
+  let touched =
+    false;
+
+  async function persistRememberedValue(
+    value
+  ) {
+    if (
+      !notionOpenPresetId ||
+      !propertyId
+    ) {
+      return;
+    }
+
+    try {
+      const stored =
+        await chrome.storage.local.get(
+          memoryStorageKey
+        );
+
+      const current =
+        stored[
+          memoryStorageKey
+        ] &&
+        typeof stored[
+          memoryStorageKey
+        ] === "object" &&
+        !Array.isArray(
+          stored[
+            memoryStorageKey
+          ]
+        )
+          ? stored[
+              memoryStorageKey
+            ]
+          : {};
+
+      await chrome.storage.local.set({
+        [memoryStorageKey]: {
+          ...current,
+
+          [memoryKey]:
+            String(
+              value ??
+              ""
+            )
+        }
+      });
+    } catch (error) {
+      console.warn(
+        "ClipNest could not remember Notion Select value:",
+        error
+      );
+    }
+  }
+
+  async function restoreRememberedValue() {
+    if (
+      !notionOpenPresetId ||
+      !propertyId
+    ) {
+      return;
+    }
+
+    try {
+      const stored =
+        await chrome.storage.local.get(
+          memoryStorageKey
+        );
+
+      const memory =
+        stored[
+          memoryStorageKey
+        ];
+
+      if (
+        touched ||
+        !memory ||
+        typeof memory !==
+          "object" ||
+        !Object.prototype
+          .hasOwnProperty.call(
+            memory,
+            memoryKey
+          )
+      ) {
+        return;
+      }
+
+      const remembered =
+        String(
+          memory[
+            memoryKey
+          ] ??
+          ""
+        ).trim();
+
+      const valid =
+        !remembered ||
+        options.some(
+          (option) =>
+            option.value
+              .toLowerCase() ===
+            remembered.toLowerCase()
+        );
+
+      if (!valid) {
+        return;
+      }
+
+      selected =
+        remembered;
+
+      notionDynamicFieldValues[
+        propertyId
+      ] =
+        selected;
+
+      updateTrigger();
+    } catch (error) {
+      console.warn(
+        "ClipNest could not restore Notion Select value:",
+        error
+      );
+    }
+  }
+
   function closeMenu() {
     menu.classList.add(
       "hidden"
@@ -6358,6 +6496,9 @@ function createNotionSelectControl(
   function chooseValue(
     value
   ) {
+    touched =
+      true;
+
     selected =
       String(
         value ||
@@ -6371,6 +6512,10 @@ function createNotionSelectControl(
 
     updateTrigger();
     closeMenu();
+
+    void persistRememberedValue(
+      selected
+    );
   }
 
   function makeOptionButton({
@@ -6512,27 +6657,6 @@ function createNotionSelectControl(
         })
       );
     }
-
-    if (
-      normalized &&
-      !matching.length &&
-      exact
-    ) {
-      const empty =
-        document.createElement(
-          "div"
-        );
-
-      empty.className =
-        "notion-custom-select-empty";
-
-      empty.textContent =
-        "No matches";
-
-      list.append(
-        empty
-      );
-    }
   }
 
   trigger.addEventListener(
@@ -6601,6 +6725,7 @@ function createNotionSelectControl(
         chooseValue(
           ""
         );
+
         return;
       }
 
@@ -6617,6 +6742,653 @@ function createNotionSelectControl(
           ? exact.value
           : query
       );
+    }
+  );
+
+  control.addEventListener(
+    "focusout",
+    () => {
+      setTimeout(
+        () => {
+          if (
+            !control.contains(
+              document.activeElement
+            )
+          ) {
+            closeMenu();
+          }
+        },
+        0
+      );
+    }
+  );
+
+  notionDynamicFieldValues[
+    propertyId
+  ] =
+    selected;
+
+  updateTrigger();
+
+  void restoreRememberedValue();
+
+  return control;
+}
+
+function createNotionDateControl(
+  field,
+  propertyId
+) {
+  const control =
+    document.createElement(
+      "div"
+    );
+
+  control.className =
+    "notion-custom-date";
+
+  const trigger =
+    document.createElement(
+      "button"
+    );
+
+  trigger.type =
+    "button";
+
+  trigger.className =
+    "notion-custom-date-trigger";
+
+  trigger.setAttribute(
+    "aria-expanded",
+    "false"
+  );
+
+  const valueLabel =
+    document.createElement(
+      "span"
+    );
+
+  valueLabel.className =
+    "notion-custom-date-value";
+
+  const icon =
+    document.createElement(
+      "span"
+    );
+
+  icon.className =
+    "notion-custom-date-icon";
+
+  trigger.append(
+    valueLabel,
+    icon
+  );
+
+  const menu =
+    document.createElement(
+      "div"
+    );
+
+  menu.className =
+    "notion-custom-date-menu hidden";
+
+  const header =
+    document.createElement(
+      "div"
+    );
+
+  header.className =
+    "notion-custom-date-header";
+
+  const previous =
+    document.createElement(
+      "button"
+    );
+
+  previous.type =
+    "button";
+
+  previous.className =
+    "notion-custom-date-nav";
+
+  previous.textContent =
+    "‹";
+
+  const monthLabel =
+    document.createElement(
+      "strong"
+    );
+
+  monthLabel.className =
+    "notion-custom-date-month";
+
+  const next =
+    document.createElement(
+      "button"
+    );
+
+  next.type =
+    "button";
+
+  next.className =
+    "notion-custom-date-nav";
+
+  next.textContent =
+    "›";
+
+  header.append(
+    previous,
+    monthLabel,
+    next
+  );
+
+  const weekdays =
+    document.createElement(
+      "div"
+    );
+
+  weekdays.className =
+    "notion-custom-date-weekdays";
+
+  for (
+    const day of [
+      "S",
+      "M",
+      "T",
+      "W",
+      "T",
+      "F",
+      "S"
+    ]
+  ) {
+    const item =
+      document.createElement(
+        "span"
+      );
+
+    item.textContent =
+      day;
+
+    weekdays.append(
+      item
+    );
+  }
+
+  const grid =
+    document.createElement(
+      "div"
+    );
+
+  grid.className =
+    "notion-custom-date-grid";
+
+  const footer =
+    document.createElement(
+      "div"
+    );
+
+  footer.className =
+    "notion-custom-date-footer";
+
+  const clear =
+    document.createElement(
+      "button"
+    );
+
+  clear.type =
+    "button";
+
+  clear.className =
+    "notion-custom-date-footer-button clear";
+
+  clear.textContent =
+    "Clear";
+
+  const today =
+    document.createElement(
+      "button"
+    );
+
+  today.type =
+    "button";
+
+  today.className =
+    "notion-custom-date-footer-button today";
+
+  today.textContent =
+    "Today";
+
+  footer.append(
+    clear,
+    today
+  );
+
+  menu.append(
+    header,
+    weekdays,
+    grid,
+    footer
+  );
+
+  control.append(
+    trigger,
+    menu
+  );
+
+  function pad(
+    value
+  ) {
+    return String(
+      value
+    ).padStart(
+      2,
+      "0"
+    );
+  }
+
+  function formatIso(
+    date
+  ) {
+    return (
+      `${date.getFullYear()}-` +
+      `${pad(
+        date.getMonth() +
+        1
+      )}-` +
+      `${pad(
+        date.getDate()
+      )}`
+    );
+  }
+
+  function parseIso(
+    value
+  ) {
+    const match =
+      String(
+        value ||
+        ""
+      ).match(
+        /^(\d{4})-(\d{2})-(\d{2})$/
+      );
+
+    if (!match) {
+      return null;
+    }
+
+    const year =
+      Number(
+        match[1]
+      );
+
+    const month =
+      Number(
+        match[2]
+      ) - 1;
+
+    const day =
+      Number(
+        match[3]
+      );
+
+    const date =
+      new Date(
+        year,
+        month,
+        day
+      );
+
+    if (
+      date.getFullYear() !==
+        year ||
+      date.getMonth() !==
+        month ||
+      date.getDate() !==
+        day
+    ) {
+      return null;
+    }
+
+    return date;
+  }
+
+  function displayDate(
+    value
+  ) {
+    const date =
+      parseIso(
+        value
+      );
+
+    if (!date) {
+      return "mm/dd/yyyy";
+    }
+
+    return (
+      `${pad(
+        date.getMonth() +
+        1
+      )}/` +
+      `${pad(
+        date.getDate()
+      )}/` +
+      `${date.getFullYear()}`
+    );
+  }
+
+  let selected =
+    /^\d{4}-\d{2}-\d{2}$/
+      .test(
+        String(
+          field?.defaultValue ??
+          ""
+        )
+      )
+        ? String(
+            field.defaultValue
+          )
+        : "";
+
+  const initialDate =
+    parseIso(
+      selected
+    ) ||
+    new Date();
+
+  let viewYear =
+    initialDate.getFullYear();
+
+  let viewMonth =
+    initialDate.getMonth();
+
+  function updateTrigger() {
+    valueLabel.textContent =
+      displayDate(
+        selected
+      );
+
+    trigger.classList.toggle(
+      "has-value",
+      Boolean(
+        selected
+      )
+    );
+  }
+
+  function closeMenu() {
+    menu.classList.add(
+      "hidden"
+    );
+
+    control.classList.remove(
+      "open-up"
+    );
+
+    trigger.setAttribute(
+      "aria-expanded",
+      "false"
+    );
+  }
+
+  function renderCalendar() {
+    monthLabel.textContent =
+      new Date(
+        viewYear,
+        viewMonth,
+        1
+      ).toLocaleDateString(
+        undefined,
+        {
+          month:
+            "long",
+
+          year:
+            "numeric"
+        }
+      );
+
+    grid.replaceChildren();
+
+    const firstDay =
+      new Date(
+        viewYear,
+        viewMonth,
+        1
+      ).getDay();
+
+    const gridStart =
+      new Date(
+        viewYear,
+        viewMonth,
+        1 - firstDay
+      );
+
+    const todayIso =
+      formatIso(
+        new Date()
+      );
+
+    for (
+      let index = 0;
+      index < 42;
+      index += 1
+    ) {
+      const date =
+        new Date(
+          gridStart.getFullYear(),
+          gridStart.getMonth(),
+          gridStart.getDate() +
+            index
+        );
+
+      const iso =
+        formatIso(
+          date
+        );
+
+      const button =
+        document.createElement(
+          "button"
+        );
+
+      button.type =
+        "button";
+
+      button.className =
+        "notion-custom-date-day";
+
+      button.textContent =
+        String(
+          date.getDate()
+        );
+
+      button.classList.toggle(
+        "outside",
+        date.getMonth() !==
+          viewMonth
+      );
+
+      button.classList.toggle(
+        "today",
+        iso ===
+          todayIso
+      );
+
+      button.classList.toggle(
+        "selected",
+        iso ===
+          selected
+      );
+
+      button.addEventListener(
+        "click",
+        () => {
+          selected =
+            iso;
+
+          notionDynamicFieldValues[
+            propertyId
+          ] =
+            selected;
+
+          updateTrigger();
+          closeMenu();
+          trigger.focus();
+        }
+      );
+
+      grid.append(
+        button
+      );
+    }
+  }
+
+  function openMenu() {
+    renderCalendar();
+
+    control.classList.remove(
+      "open-up"
+    );
+
+    menu.classList.remove(
+      "hidden"
+    );
+
+    trigger.setAttribute(
+      "aria-expanded",
+      "true"
+    );
+
+    const rect =
+      trigger.getBoundingClientRect();
+
+    if (
+      rect.bottom +
+        330 >
+      window.innerHeight &&
+      rect.top >
+        330
+    ) {
+      control.classList.add(
+        "open-up"
+      );
+    }
+  }
+
+  trigger.addEventListener(
+    "click",
+    () => {
+      if (
+        menu.classList.contains(
+          "hidden"
+        )
+      ) {
+        openMenu();
+      } else {
+        closeMenu();
+      }
+    }
+  );
+
+  previous.addEventListener(
+    "click",
+    () => {
+      viewMonth -=
+        1;
+
+      if (
+        viewMonth <
+          0
+      ) {
+        viewMonth =
+          11;
+
+        viewYear -=
+          1;
+      }
+
+      renderCalendar();
+    }
+  );
+
+  next.addEventListener(
+    "click",
+    () => {
+      viewMonth +=
+        1;
+
+      if (
+        viewMonth >
+          11
+      ) {
+        viewMonth =
+          0;
+
+        viewYear +=
+          1;
+      }
+
+      renderCalendar();
+    }
+  );
+
+  clear.addEventListener(
+    "click",
+    () => {
+      selected =
+        "";
+
+      notionDynamicFieldValues[
+        propertyId
+      ] =
+        "";
+
+      updateTrigger();
+      closeMenu();
+      trigger.focus();
+    }
+  );
+
+  today.addEventListener(
+    "click",
+    () => {
+      selected =
+        formatIso(
+          new Date()
+        );
+
+      notionDynamicFieldValues[
+        propertyId
+      ] =
+        selected;
+
+      const current =
+        parseIso(
+          selected
+        );
+
+      viewYear =
+        current.getFullYear();
+
+      viewMonth =
+        current.getMonth();
+
+      updateTrigger();
+      closeMenu();
+      trigger.focus();
+    }
+  );
+
+  control.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        event.key ===
+          "Escape"
+      ) {
+        closeMenu();
+        trigger.focus();
+      }
     }
   );
 
@@ -6929,45 +7701,14 @@ function createNotionCustomFieldNode(
   if (
     type === "date"
   ) {
-    const input =
-      document.createElement(
-        "input"
+    const control =
+      createNotionDateControl(
+        field,
+        propertyId
       );
-
-    input.type =
-      "date";
-
-    const initial =
-      String(
-        field?.defaultValue ??
-        ""
-      );
-
-    input.value =
-      /^\d{4}-\d{2}-\d{2}$/
-        .test(
-          initial
-        )
-          ? initial
-          : "";
-
-    notionDynamicFieldValues[
-      propertyId
-    ] =
-      input.value;
-
-    input.addEventListener(
-      "input",
-      () => {
-        notionDynamicFieldValues[
-          propertyId
-        ] =
-          input.value;
-      }
-    );
 
     wrapper.append(
-      input
+      control
     );
 
     return wrapper;

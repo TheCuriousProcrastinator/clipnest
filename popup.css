@@ -2960,3 +2960,200 @@ body[data-destination="notion"] .notion-custom-field input[type="date"]::-webkit
   color: rgba(255, 255, 255, .48);
   font-size: 12px;
 }
+
+/* =================================
+   NOTION CUSTOM CALENDAR
+   ================================= */
+
+.notion-custom-date {
+  position: relative;
+  width: 100%;
+}
+
+.notion-custom-date-trigger {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 40px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 9px;
+  background: #171717;
+  color: rgba(255, 255, 255, .48);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notion-custom-date-trigger:hover {
+  border-color: rgba(255, 255, 255, .26);
+}
+
+.notion-custom-date-trigger[aria-expanded="true"] {
+  border-color: #9027db;
+  box-shadow: 0 0 0 1px #9027db;
+}
+
+.notion-custom-date-trigger.has-value {
+  color: rgba(255, 255, 255, .94);
+}
+
+.notion-custom-date-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.notion-custom-date-icon {
+  position: relative;
+  width: 15px;
+  height: 14px;
+  border: 1.5px solid rgba(255, 255, 255, .6);
+  border-radius: 3px;
+}
+
+.notion-custom-date-icon::before {
+  content: "";
+  position: absolute;
+  left: -1.5px;
+  right: -1.5px;
+  top: 3px;
+  border-top: 1.5px solid rgba(255, 255, 255, .6);
+}
+
+.notion-custom-date-menu {
+  position: absolute;
+  z-index: 120;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 286px;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 11px;
+  background: #1b1b1b;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, .5);
+}
+
+.notion-custom-date.open-up .notion-custom-date-menu {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.notion-custom-date-menu.hidden {
+  display: none;
+}
+
+.notion-custom-date-header {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 7px;
+}
+
+.notion-custom-date-month {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.notion-custom-date-nav {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(255, 255, 255, .75);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.notion-custom-date-nav:hover {
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+}
+
+.notion-custom-date-weekdays,
+.notion-custom-date-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.notion-custom-date-weekdays {
+  margin-bottom: 4px;
+}
+
+.notion-custom-date-weekdays span {
+  display: grid;
+  place-items: center;
+  height: 24px;
+  color: rgba(255, 255, 255, .38);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.notion-custom-date-day {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(255, 255, 255, .88);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.notion-custom-date-day:hover {
+  background: rgba(255, 255, 255, .08);
+}
+
+.notion-custom-date-day.outside {
+  color: rgba(255, 255, 255, .25);
+}
+
+.notion-custom-date-day.today {
+  border-color: #db5b27;
+  color: #ef8b65;
+}
+
+.notion-custom-date-day.selected {
+  border-color: #9027db;
+  background: #9027db;
+  color: #fff;
+  font-weight: 750;
+}
+
+.notion-custom-date-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.notion-custom-date-footer-button {
+  padding: 5px 4px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.notion-custom-date-footer-button.clear {
+  color: #db5b27;
+}
+
+.notion-custom-date-footer-button.today {
+  color: #c982ff;
+}
