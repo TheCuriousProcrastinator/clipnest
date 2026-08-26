@@ -7485,18 +7485,6 @@ function createNotionMultiSelectControl(
   field,
   propertyId
 ) {
-  const memoryStorageKey =
-    "clipnestNotionFieldMemoryV1";
-
-  const memoryKey =
-    `${String(
-      notionOpenPresetId ||
-      ""
-    )}::${String(
-      propertyId ||
-      ""
-    )}`;
-
   const control =
     document.createElement(
       "div"
@@ -7613,9 +7601,6 @@ function createNotionMultiSelectControl(
           .filter(Boolean)
       : [];
 
-  let touched =
-    false;
-
   function normalize(
     value
   ) {
@@ -7649,124 +7634,6 @@ function createNotionMultiSelectControl(
         )
     ) ||
     null;
-  }
-
-  async function persistMemory() {
-    if (
-      !notionOpenPresetId ||
-      !propertyId
-    ) {
-      return;
-    }
-
-    try {
-      const stored =
-        await chrome.storage.local.get(
-          memoryStorageKey
-        );
-
-      const current =
-        stored[
-          memoryStorageKey
-        ] &&
-        typeof stored[
-          memoryStorageKey
-        ] === "object" &&
-        !Array.isArray(
-          stored[
-            memoryStorageKey
-          ]
-        )
-          ? stored[
-              memoryStorageKey
-            ]
-          : {};
-
-      await chrome.storage.local.set({
-        [memoryStorageKey]: {
-          ...current,
-
-          [memoryKey]:
-            [
-              ...selected
-            ]
-        }
-      });
-    } catch (error) {
-      console.warn(
-        "ClipNest could not remember Notion multi-select:",
-        error
-      );
-    }
-  }
-
-  async function restoreMemory() {
-    if (
-      !notionOpenPresetId ||
-      !propertyId
-    ) {
-      return;
-    }
-
-    try {
-      const stored =
-        await chrome.storage.local.get(
-          memoryStorageKey
-        );
-
-      const memory =
-        stored[
-          memoryStorageKey
-        ];
-
-      if (
-        touched ||
-        !memory ||
-        typeof memory !==
-          "object" ||
-        !Array.isArray(
-          memory[
-            memoryKey
-          ]
-        )
-      ) {
-        return;
-      }
-
-      selected =
-        [
-          ...new Map(
-            memory[
-              memoryKey
-            ]
-              .map(
-                (value) =>
-                  String(
-                    value ||
-                    ""
-                  ).trim()
-              )
-              .filter(Boolean)
-              .map(
-                (value) => [
-                  normalize(
-                    value
-                  ),
-                  value
-                ]
-              )
-          ).values()
-        ];
-
-      syncValue();
-      renderChips();
-      renderMenu();
-    } catch (error) {
-      console.warn(
-        "ClipNest could not restore Notion multi-select:",
-        error
-      );
-    }
   }
 
   function closeMenu() {
@@ -7814,8 +7681,6 @@ function createNotionMultiSelectControl(
       return;
     }
 
-    touched =
-      true;
 
     selected.push(
       value
@@ -7828,7 +7693,6 @@ function createNotionMultiSelectControl(
     renderChips();
     renderMenu();
 
-    void persistMemory();
 
     input.focus();
   }
@@ -7836,8 +7700,6 @@ function createNotionMultiSelectControl(
   function removeValue(
     value
   ) {
-    touched =
-      true;
 
     selected =
       selected.filter(
@@ -7854,7 +7716,6 @@ function createNotionMultiSelectControl(
     renderChips();
     renderMenu();
 
-    void persistMemory();
   }
 
   function renderChips() {
@@ -8204,7 +8065,6 @@ function createNotionMultiSelectControl(
   syncValue();
   renderChips();
 
-  void restoreMemory();
 
   return control;
 }
