@@ -381,6 +381,22 @@ function hideNotionNavigationViews() {
   notionClipHeaderEl?.classList.add(
     "hidden"
   );
+
+  document
+    .getElementById(
+      "notionDestinationPicker"
+    )
+    ?.classList.add(
+      "hidden"
+    );
+
+  document
+    .getElementById(
+      "notionPresetConfigScreen"
+    )
+    ?.classList.add(
+      "hidden"
+    );
 }
 
 async function openNotionPresetEditor(
@@ -8548,6 +8564,45 @@ async function choosePopupDestination(
       ? "notion"
       : "obsidian";
 
+  if (
+    normalized ===
+      "obsidian" &&
+    state.destination ===
+      "notion"
+  ) {
+    const configScreen =
+      document.getElementById(
+        "notionPresetConfigScreen"
+      );
+
+    const destinationPicker =
+      document.getElementById(
+        "notionDestinationPicker"
+      );
+
+    if (
+      configScreen &&
+      !configScreen.classList
+        .contains(
+          "hidden"
+        )
+    ) {
+      await persistNotionPresetBuilderState(
+        "config"
+      );
+    } else if (
+      destinationPicker &&
+      !destinationPicker.classList
+        .contains(
+          "hidden"
+        )
+    ) {
+      await persistNotionPresetBuilderState(
+        "destination"
+      );
+    }
+  }
+
   await chrome.storage.local.set({
     [LAST_POPUP_DESTINATION_KEY]:
       normalized
@@ -8613,7 +8668,16 @@ function setDestination(destination) {
     if (
       !notionPresetBuilderResumePending
     ) {
-      void showNotionPresetChooser();
+      void (
+        async () => {
+          const restored =
+            await restoreNotionPresetBuilderState();
+
+          if (!restored) {
+            await showNotionPresetChooser();
+          }
+        }
+      )();
     }
 
     return;
