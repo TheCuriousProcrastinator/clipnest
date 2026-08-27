@@ -11,6 +11,12 @@ document.addEventListener("DOMContentLoaded", init);
 let notionPresetChooserEl =
   null;
 
+let notionConnectionGateEl =
+  null;
+
+let notionConnectionVerified =
+  false;
+
 let notionClipHeaderEl =
   null;
 
@@ -386,6 +392,10 @@ function setNotionClipRangeHidden(
 }
 
 function hideNotionNavigationViews() {
+  notionConnectionGateEl?.classList.add(
+    "hidden"
+  );
+
   notionPresetChooserEl?.classList.add(
     "hidden"
   );
@@ -439,6 +449,409 @@ async function openNotionPresetEditor(
 
   await chrome.runtime
     .openOptionsPage();
+}
+
+function createNotionConnectionGate() {
+  const section =
+    document.createElement(
+      "section"
+    );
+
+  section.id =
+    "notionConnectionGate";
+
+  section.className =
+    "notion-connection-gate hidden";
+
+  section.innerHTML = `
+    <div class="notion-connection-icon">N</div>
+
+    <h2 id="notionConnectionGateTitle">
+      Connect Notion
+    </h2>
+
+    <p id="notionConnectionGateMessage">
+      ClipNest uses the Notion account already signed in to this browser.
+    </p>
+
+    <div class="notion-connection-actions">
+      <button
+        id="notionConnectButton"
+        class="notion-connection-primary"
+        type="button"
+      >
+        Connect Notion
+      </button>
+
+      <button
+        id="notionRetryButton"
+        class="notion-connection-primary hidden"
+        type="button"
+      >
+        Try again
+      </button>
+
+      <button
+        id="notionOpenButton"
+        class="notion-connection-secondary hidden"
+        type="button"
+      >
+        Open Notion
+      </button>
+    </div>
+
+    <div
+      id="notionConnectionGateNote"
+      class="notion-connection-note"
+    >
+      No API key or integration required.
+    </div>
+
+    <div
+      id="notionConnectionGateDetail"
+      class="notion-connection-detail hidden"
+    ></div>
+  `;
+
+  section
+    .querySelector(
+      "#notionConnectButton"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+        void connectNotionFromPopup();
+      }
+    );
+
+  section
+    .querySelector(
+      "#notionRetryButton"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+        void retryNotionConnectionFromPopup();
+      }
+    );
+
+  section
+    .querySelector(
+      "#notionOpenButton"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+        void chrome.tabs.create({
+          url:
+            "https://www.notion.so/"
+        });
+      }
+    );
+
+  return section;
+}
+
+function showNotionConnectionGate(
+  mode,
+  detail = ""
+) {
+  if (!notionConnectionGateEl) {
+    return;
+  }
+
+  hideNotionNavigationViews();
+
+  setNotionClipRangeHidden(
+    true
+  );
+
+  notionConnectionGateEl
+    .classList.remove(
+      "hidden"
+    );
+
+  const title =
+    notionConnectionGateEl
+      .querySelector(
+        "#notionConnectionGateTitle"
+      );
+
+  const message =
+    notionConnectionGateEl
+      .querySelector(
+        "#notionConnectionGateMessage"
+      );
+
+  const note =
+    notionConnectionGateEl
+      .querySelector(
+        "#notionConnectionGateNote"
+      );
+
+  const detailEl =
+    notionConnectionGateEl
+      .querySelector(
+        "#notionConnectionGateDetail"
+      );
+
+  const connect =
+    notionConnectionGateEl
+      .querySelector(
+        "#notionConnectButton"
+      );
+
+  const retry =
+    notionConnectionGateEl
+      .querySelector(
+        "#notionRetryButton"
+      );
+
+  const open =
+    notionConnectionGateEl
+      .querySelector(
+        "#notionOpenButton"
+      );
+
+  connect?.classList.add(
+    "hidden"
+  );
+
+  retry?.classList.add(
+    "hidden"
+  );
+
+  open?.classList.add(
+    "hidden"
+  );
+
+  if (mode === "permission") {
+    title.textContent =
+      "Connect Notion";
+
+    message.textContent =
+      "ClipNest uses the Notion account already signed in to this browser.";
+
+    note.textContent =
+      "No API key or integration required.";
+
+    connect?.classList.remove(
+      "hidden"
+    );
+  } else if (
+    mode === "checking"
+  ) {
+    title.textContent =
+      "Checking Notion";
+
+    message.textContent =
+      "Looking for the Notion account signed in to this browser.";
+
+    note.textContent =
+      "This should only take a moment.";
+  } else {
+    title.textContent =
+      "Sign in to Notion";
+
+    message.textContent =
+      "Open Notion in this browser, sign in, then try again.";
+
+    note.textContent =
+      "";
+
+    retry?.classList.remove(
+      "hidden"
+    );
+
+    open?.classList.remove(
+      "hidden"
+    );
+  }
+
+  const normalizedDetail =
+    String(
+      detail || ""
+    ).trim();
+
+  detailEl.textContent =
+    normalizedDetail;
+
+  detailEl.classList.toggle(
+    "hidden",
+    !normalizedDetail
+  );
+}
+
+async function withNotionConnectionTimeout(
+  promise,
+  timeoutMs = 8000
+) {
+  let timer =
+    null;
+
+  try {
+    return await Promise.race([
+      promise,
+
+      new Promise(
+        (
+          resolve,
+          reject
+        ) => {
+          timer =
+            setTimeout(
+              () => {
+                reject(
+                  new Error(
+                    "Notion did not respond in time."
+                  )
+                );
+              },
+              timeoutMs
+            );
+        }
+      )
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(
+        timer
+      );
+    }
+  }
+}
+
+async function ensureNotionConnectionForPopup() {
+  if (
+    state.destination !==
+      "notion"
+  ) {
+    return false;
+  }
+
+  if (notionConnectionVerified) {
+    return true;
+  }
+
+  if (
+    !globalThis
+      .ClipNestNotionSession
+  ) {
+    showNotionConnectionGate(
+      "unavailable",
+      "Notion session module did not load."
+    );
+
+    return false;
+  }
+
+  try {
+    const hasPermission =
+      await ClipNestNotionSession
+        .hasPermission();
+
+    if (!hasPermission) {
+      showNotionConnectionGate(
+        "permission"
+      );
+
+      return false;
+    }
+
+    showNotionConnectionGate(
+      "checking"
+    );
+
+    const result =
+      await withNotionConnectionTimeout(
+        ClipNestNotionSession
+          .getWorkspaces({
+            requestPermission:
+              false
+          })
+      );
+
+    const workspaces =
+      Array.isArray(
+        result?.workspaces
+      )
+        ? result.workspaces
+        : [];
+
+    if (!workspaces.length) {
+      showNotionConnectionGate(
+        "unavailable",
+        "No Notion workspaces were found."
+      );
+
+      return false;
+    }
+
+    notionConnectionVerified =
+      true;
+
+    notionConnectionGateEl
+      ?.classList.add(
+        "hidden"
+      );
+
+    return true;
+  } catch (error) {
+    showNotionConnectionGate(
+      "unavailable",
+      error?.message ||
+        String(error)
+    );
+
+    return false;
+  }
+}
+
+async function connectNotionFromPopup() {
+  showNotionConnectionGate(
+    "checking"
+  );
+
+  try {
+    const granted =
+      await ClipNestNotionSession
+        .requestPermission();
+
+    if (!granted) {
+      showNotionConnectionGate(
+        "permission",
+        "Notion access was not granted."
+      );
+
+      return;
+    }
+
+    notionConnectionVerified =
+      false;
+
+    if (
+      await ensureNotionConnectionForPopup()
+    ) {
+      await showNotionPresetChooser();
+    }
+  } catch (error) {
+    showNotionConnectionGate(
+      "unavailable",
+      error?.message ||
+        String(error)
+    );
+  }
+}
+
+async function retryNotionConnectionFromPopup() {
+  notionConnectionVerified =
+    false;
+
+  if (
+    await ensureNotionConnectionForPopup()
+  ) {
+    await showNotionPresetChooser();
+  }
 }
 
 function createNotionPresetChooser() {
@@ -630,11 +1043,19 @@ function setupNotionPresetNavigation() {
     return;
   }
 
+  notionConnectionGateEl =
+    createNotionConnectionGate();
+
   notionPresetChooserEl =
     createNotionPresetChooser();
 
   notionClipHeaderEl =
     createNotionClipHeader();
+
+  parent.insertBefore(
+    notionConnectionGateEl,
+    first
+  );
 
   parent.insertBefore(
     notionPresetChooserEl,
@@ -4458,6 +4879,12 @@ async function restoreNotionPresetBuilderState() {
     return false;
   }
 
+  if (
+    !(await ensureNotionConnectionForPopup())
+  ) {
+    return false;
+  }
+
   const stored =
     await chrome.storage.local.get(
       NOTION_PRESET_BUILDER_STATE_KEY
@@ -7118,6 +7545,12 @@ async function showNotionPresetChooser() {
   if (
     state.destination !==
       "notion"
+  ) {
+    return;
+  }
+
+  if (
+    !(await ensureNotionConnectionForPopup())
   ) {
     return;
   }
