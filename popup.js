@@ -13677,7 +13677,7 @@ function ensureUxModeSegmented() {
       kind === "article"
         ? "Article"
         : kind === "text"
-          ? "Text"
+          ? "Selection"
           : "Area";
 
     button.addEventListener(
@@ -13811,7 +13811,7 @@ function updateUxSaveButtonLabel() {
   if (kind === "article") {
     label = "Save article";
   } else if (kind === "text") {
-    label = "Save selected text";
+    label = "Save selection";
   } else if (kind === "area") {
     label = "Save area";
   }
