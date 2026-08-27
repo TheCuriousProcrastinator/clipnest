@@ -29,6 +29,9 @@ let notionPresetFieldRoot =
 let notionOpenPresetId =
   "";
 
+let notionPresetChooserRenderToken =
+  0;
+
 let notionDynamicFieldsHost =
   null;
 
@@ -392,6 +395,10 @@ function setNotionClipRangeHidden(
 }
 
 function hideNotionNavigationViews() {
+  document.body.classList.remove(
+    "notion-preset-open"
+  );
+
   notionConnectionGateEl?.classList.add(
     "hidden"
   );
@@ -1987,11 +1994,21 @@ async function renderNotionPresetChooser() {
     return;
   }
 
-  list.replaceChildren();
+  const renderToken =
+    ++notionPresetChooserRenderToken;
 
   const info =
     await ClipNestNotionStore
       .listPresets();
+
+  if (
+    renderToken !==
+      notionPresetChooserRenderToken
+  ) {
+    return;
+  }
+
+  list.replaceChildren();
 
   if (!info.presets.length) {
     const empty =
@@ -10217,6 +10234,10 @@ function showNotionPresetClip(
       preset?.id ||
       ""
     ).trim();
+
+  document.body.classList.add(
+    "notion-preset-open"
+  );
 
   notionPresetChooserEl?.classList.add(
     "hidden"

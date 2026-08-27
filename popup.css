@@ -4431,7 +4431,7 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* NOTION PRESET USE UX - V1.6.6 */
+/* NOTION PRESET USE UX - V1.6.7 */
 
 /*
  * Only applies while an actual Notion preset
@@ -4439,9 +4439,7 @@ body {
  * intentionally unaffected.
  */
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-clip-header {
+body[data-destination="notion"].notion-preset-open .notion-clip-header {
   grid-template-columns:
     32px minmax(0, 1fr) 32px;
   gap: 7px;
@@ -4449,12 +4447,8 @@ body:has(
   margin: 0 0 9px;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-clip-back,
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-clip-edit {
+body[data-destination="notion"].notion-preset-open .notion-clip-back,
+body[data-destination="notion"].notion-preset-open .notion-clip-edit {
   box-sizing: border-box;
   width: 30px !important;
   min-width: 30px !important;
@@ -4466,65 +4460,43 @@ body:has(
   background: transparent;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-clip-back {
+body[data-destination="notion"].notion-preset-open .notion-clip-back {
   font-size: 24px !important;
   line-height: 1 !important;
   padding-bottom: 2px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-clip-edit {
+body[data-destination="notion"].notion-preset-open .notion-clip-edit {
   font-size: 15px !important;
   line-height: 1 !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-clip-preset-name {
+body[data-destination="notion"].notion-preset-open .notion-clip-preset-name {
   font-size: 16px;
   line-height: 1.2;
   font-weight: 700;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) #notionDynamicFields {
+body[data-destination="notion"].notion-preset-open #notionDynamicFields {
   gap: 9px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .field,
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-field {
+body[data-destination="notion"].notion-preset-open .field,
+body[data-destination="notion"].notion-preset-open .notion-custom-field {
   margin-bottom: 9px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .field > span,
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-field > span {
+body[data-destination="notion"].notion-preset-open .field > span,
+body[data-destination="notion"].notion-preset-open .notion-custom-field > span {
   margin-bottom: 4px !important;
   font-size: 12px !important;
   line-height: 15px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) #titleInput,
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-field
+body[data-destination="notion"].notion-preset-open #titleInput,
+body[data-destination="notion"].notion-preset-open .notion-custom-field
   input:not([type="checkbox"]),
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-field select {
+body[data-destination="notion"].notion-preset-open .notion-custom-field select {
   height: 38px !important;
   min-height: 38px !important;
   padding-top: 0 !important;
@@ -4533,12 +4505,8 @@ body:has(
   font-size: 13px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-select-trigger,
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-date-trigger {
+body[data-destination="notion"].notion-preset-open .notion-custom-select-trigger,
+body[data-destination="notion"].notion-preset-open .notion-custom-date-trigger {
   box-sizing: border-box;
   width: 100%;
   height: 38px !important;
@@ -4548,14 +4516,10 @@ body:has(
   font-size: 13px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-select-trigger[
+body[data-destination="notion"].notion-preset-open .notion-custom-select-trigger[
   aria-expanded="true"
 ],
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-date-trigger[
+body[data-destination="notion"].notion-preset-open .notion-custom-date-trigger[
   aria-expanded="true"
 ] {
   border-color: #9027db !important;
@@ -4563,9 +4527,7 @@ body:has(
     0 0 0 1px #9027db !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-select-menu {
+body[data-destination="notion"].notion-preset-open .notion-custom-select-menu {
   top: calc(100% + 4px);
   width: 100% !important;
   max-width: none !important;
@@ -4573,9 +4535,7 @@ body:has(
   border-radius: 9px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-select-search {
+body[data-destination="notion"].notion-preset-open .notion-custom-select-search {
   height: 32px !important;
   min-height: 32px !important;
   margin-bottom: 4px !important;
@@ -4583,9 +4543,7 @@ body:has(
   font-size: 12px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-select-menu:not(
+body[data-destination="notion"].notion-preset-open .notion-custom-select-menu:not(
   :has(
     .notion-custom-select-option:nth-child(7)
   )
@@ -4593,25 +4551,19 @@ body:has(
   display: none !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-select-list {
+body[data-destination="notion"].notion-preset-open .notion-custom-select-list {
   max-height: 180px !important;
   gap: 1px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-select-option {
+body[data-destination="notion"].notion-preset-open .notion-custom-select-option {
   min-height: 32px !important;
   padding: 5px 8px !important;
   border-radius: 6px !important;
   font-size: 12px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-multiselect-editor {
+body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-editor {
   box-sizing: border-box;
   min-height: 38px !important;
   padding: 5px 8px !important;
@@ -4619,76 +4571,58 @@ body:has(
   border-radius: 8px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-multiselect:focus-within
+body[data-destination="notion"].notion-preset-open .notion-custom-multiselect:focus-within
   .notion-custom-multiselect-editor {
   border-color: #9027db !important;
   box-shadow:
     0 0 0 1px #9027db !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-multiselect-chip {
+body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-chip {
   min-height: 22px !important;
   padding: 2px 6px !important;
   border-radius: 5px !important;
   font-size: 11px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-multiselect-input {
+body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-input {
   height: 24px !important;
   min-height: 24px !important;
   padding: 0 2px !important;
   font-size: 12px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-multiselect-menu {
+body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-menu {
   top: calc(100% + 4px) !important;
   width: 100% !important;
   padding: 5px !important;
   border-radius: 9px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-multiselect-list {
+body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-list {
   max-height: 180px !important;
   gap: 1px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notion-custom-multiselect-option {
+body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-option {
   min-height: 32px !important;
   padding: 5px 8px !important;
   border-radius: 6px !important;
   font-size: 12px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notes-compact {
+body[data-destination="notion"].notion-preset-open .notes-compact {
   margin-top: 2px !important;
   margin-bottom: 4px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .notes-toggle {
+body[data-destination="notion"].notion-preset-open .notes-toggle {
   min-height: 30px !important;
   padding-top: 3px !important;
   padding-bottom: 3px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .actions {
+body[data-destination="notion"].notion-preset-open .actions {
   position: sticky;
   z-index: 50;
   bottom: 0;
@@ -4704,18 +4638,14 @@ body:has(
     );
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) #saveButton {
+body[data-destination="notion"].notion-preset-open #saveButton {
   height: 40px !important;
   min-height: 40px !important;
   margin-top: 0 !important;
   border-radius: 8px !important;
 }
 
-body:has(
-  .notion-clip-header:not(.hidden)
-) .status:empty {
+body[data-destination="notion"].notion-preset-open .status:empty {
   min-height: 0 !important;
   margin-top: 0 !important;
 }
