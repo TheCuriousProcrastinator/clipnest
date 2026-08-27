@@ -6333,16 +6333,13 @@ function createNotionBuilderConfiguredFieldRow(
     remove.className =
       "notion-builder-field-remove-button";
 
-    remove.textContent =
-      "×";
+    remove.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
     remove.setAttribute(
       "aria-label",
       `Remove ${field.propertyName || "field"} from preset`
     );
-
-    remove.title =
-      "Remove from preset";
 
     remove.addEventListener(
       "click",

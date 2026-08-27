@@ -2488,33 +2488,54 @@ body[data-destination="notion"]
   min-width: 0;
 }
 
+.notion-builder-field-row {
+  position: relative;
+}
+
+.notion-builder-field-row:has(
+  .notion-builder-field-remove-button
+) {
+  padding-right: 50px !important;
+}
+
 .notion-builder-field-remove-button {
-  display: inline-grid;
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: grid;
   place-items: center;
-  flex: 0 0 auto;
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
-  min-height: 28px;
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  min-height: 26px;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: 6px;
   background: transparent;
   color: rgba(255, 255, 255, .42);
-  font: inherit;
-  font-size: 19px;
-  line-height: 1;
+  transform: translateY(-50%);
   cursor: pointer;
+  transition:
+    background 100ms ease,
+    color 100ms ease,
+    opacity 100ms ease;
+}
+
+.notion-builder-field-remove-button svg {
+  display: block;
+  width: 15px;
+  height: 15px;
 }
 
 .notion-builder-field-remove-button:hover {
-  background: rgba(219, 91, 39, .12);
-  color: #db5b27;
+  background: rgba(255, 255, 255, .07);
+  color: rgba(255, 255, 255, .92);
 }
 
 .notion-builder-field-remove-button:focus-visible {
-  outline: 2px solid #db5b27;
+  outline: 2px solid #9027db;
   outline-offset: 1px;
+  color: rgba(255, 255, 255, .92);
 }
 
 .notion-builder-field-mapping,
