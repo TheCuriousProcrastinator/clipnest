@@ -7873,104 +7873,6 @@ function notionPresetOptionLabel(
   ).trim();
 }
 
-function positionNotionPopupMenu(
-  control,
-  anchor,
-  menu
-) {
-  const list =
-    menu.querySelector(
-      ".notion-custom-select-list, " +
-      ".notion-custom-multiselect-list"
-    );
-
-  if (!list) {
-    return;
-  }
-
-  const gap =
-    4;
-
-  const edgePadding =
-    8;
-
-  const maxListHeight =
-    116;
-
-  control.classList.remove(
-    "open-up"
-  );
-
-  list.style.removeProperty(
-    "max-height"
-  );
-
-  const rect =
-    anchor.getBoundingClientRect();
-
-  const spaceBelow =
-    Math.max(
-      0,
-      window.innerHeight -
-        rect.bottom -
-        gap -
-        edgePadding
-    );
-
-  const spaceAbove =
-    Math.max(
-      0,
-      rect.top -
-        gap -
-        edgePadding
-    );
-
-  const menuChromeHeight =
-    Math.max(
-      0,
-      menu.offsetHeight -
-        list.offsetHeight
-    );
-
-  const naturalListHeight =
-    Math.min(
-      list.scrollHeight ||
-        maxListHeight,
-      maxListHeight
-    );
-
-  const openUp =
-    spaceAbove >
-      spaceBelow;
-
-  control.classList.toggle(
-    "open-up",
-    openUp
-  );
-
-  const availableHeight =
-    openUp
-      ? spaceAbove
-      : spaceBelow;
-
-  const availableListHeight =
-    Math.max(
-      0,
-      Math.min(
-        naturalListHeight,
-        maxListHeight,
-        availableHeight -
-          menuChromeHeight
-      )
-    );
-
-  list.style.setProperty(
-    "max-height",
-    `${availableListHeight}px`,
-    "important"
-  );
-}
-
 function createNotionChoiceControl(
   field,
   propertyId,
@@ -8484,11 +8386,6 @@ function createNotionChoiceControl(
         "hidden"
       );
 
-      positionNotionPopupMenu(
-        control,
-        trigger,
-        menu
-      );
 
       trigger.setAttribute(
         "aria-expanded",
@@ -9431,11 +9328,6 @@ function createNotionMultiSelectControl(
       "hidden"
     );
 
-    positionNotionPopupMenu(
-      control,
-      editor,
-      menu
-    );
   }
 
   function addValue(

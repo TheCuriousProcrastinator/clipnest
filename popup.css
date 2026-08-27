@@ -4719,3 +4719,69 @@ body[data-destination="notion"].notion-preset-open
 .notion-custom-multiselect-list {
   background-color: #1b1b1b !important;
 }
+
+/* NOTION DROPDOWNS IN DOCUMENT FLOW - V1.6.12 */
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select,
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect {
+  position: static !important;
+  z-index: auto !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-menu,
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-menu {
+  position: static !important;
+
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+
+  z-index: auto !important;
+
+  box-sizing: border-box;
+
+  width: 220px !important;
+  max-width: 100% !important;
+
+  margin: 4px 0 2px !important;
+  padding: 5px !important;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, .15) !important;
+
+  border-radius: 9px !important;
+
+  background: #1b1b1b !important;
+  opacity: 1 !important;
+
+  overflow: hidden !important;
+
+  box-shadow:
+    0 8px 20px
+    rgba(0, 0, 0, .32) !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-list,
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-list {
+  max-height: 168px !important;
+  overflow-y: auto !important;
+
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+body[data-destination="notion"].notion-preset-open
+.actions {
+  position: static !important;
+  z-index: auto !important;
+  bottom: auto !important;
+  background: transparent !important;
+}
