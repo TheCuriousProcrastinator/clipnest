@@ -253,7 +253,8 @@
       await chrome.storage.local.get([
         "obsidianSubfolder",
         "obsidianDefaultTags",
-        "obsidianDefaultTemplatePath"
+        "obsidianDefaultTemplatePath",
+        "obsidianOpenAfterSave"
       ]);
 
     return {
@@ -273,7 +274,11 @@
         String(
           data.obsidianDefaultTemplatePath ||
           ""
-        )
+        ),
+
+      openAfterSave:
+        data.obsidianOpenAfterSave ===
+        true
     };
   }
 
@@ -298,7 +303,11 @@
         String(
           value.defaultTemplatePath ||
           ""
-        )
+        ),
+
+      obsidianOpenAfterSave:
+        value.openAfterSave ===
+        true
     });
   }
 
@@ -633,7 +642,8 @@
       [id]: {
         subfolder: "",
         defaultTags: "",
-        defaultTemplatePath: ""
+        defaultTemplatePath: "",
+        openAfterSave: false
       }
     };
 

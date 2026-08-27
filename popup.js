@@ -10564,7 +10564,13 @@ async function save() {
       if (!response?.ok) throw new Error(response?.error?.message || "Notion save failed.");
       setStatus("Saved to Notion.", "success");
     } else {
-      const filename = await saveToObsidian(payload);
+      const obsidianResult =
+        await saveToObsidian(
+          payload
+        );
+
+      const filename =
+        obsidianResult.filename;
 
       try {
         const tagResponse =
@@ -10581,7 +10587,10 @@ async function save() {
         // Tag-cache update is non-critical.
       }
 
-      setStatus(`Saved to Obsidian as ${filename}.`, "success");
+      setStatus(
+        `Saved to Obsidian as ${filename}.`,
+        "success"
+      );
     }
 
     if (payload.contentMode === "selection") {
@@ -12825,27 +12834,200 @@ function parseTags(value) {
 }
 
 async function saveToObsidian(payload) {
-  const handle = await getVaultHandle();
+  const handle =
+    await getVaultHandle();
+
   if (!handle) {
-    throw new Error("No Obsidian vault is connected. Open Settings and choose your vault folder.");
+    throw new Error(
+      "No Obsidian vault is connected. Open Settings and choose your vault folder."
+    );
   }
 
-  const permission = await ensureWritePermission(handle);
+  const permission =
+    await ensureWritePermission(
+      handle
+    );
+
   if (!permission) {
-    throw new Error("Chrome no longer has permission to write to the vault. Reconnect it in Settings.");
+    throw new Error(
+      "Chrome no longer has permission to write to the vault. Reconnect it in Settings."
+    );
   }
 
-  const settings = await chrome.storage.local.get(["obsidianSubfolder"]);
-  const directory = await getSubfolder(handle, settings.obsidianSubfolder || "");
-  const baseName = sanitizeFilename(payload.title) || "Untitled";
-  const filename = await findAvailableFilename(directory, baseName, ".md");
-  const fileHandle = await directory.getFileHandle(filename, { create: true });
-  const writable = await fileHandle.createWritable();
+  const settings =
+    await chrome.storage.local.get([
+      "obsidianSubfolder",
+      "obsidianOpenAfterSave"
+    ]);
+
+  const subfolder =
+    normalizeObsidianSubfolder(
+      settings.obsidianSubfolder ||
+      ""
+    );
+
+  const directory =
+    await getSubfolder(
+      handle,
+      subfolder
+    );
+
+  const baseName =
+    sanitizeFilename(
+      payload.title
+    ) ||
+    "Untitled";
+
+  const filename =
+    await findAvailableFilename(
+      directory,
+      baseName,
+      ".md"
+    );
+
+  const fileHandle =
+    await directory.getFileHandle(
+      filename,
+      {
+        create: true
+      }
+    );
+
+  const writable =
+    await fileHandle.createWritable();
+
   await writable.write(
-    buildObsidianMarkdown(payload)
+    buildObsidianMarkdown(
+      payload
+    )
   );
+
   await writable.close();
-  return filename;
+
+  const filePath = [
+    subfolder,
+    filename
+  ]
+    .filter(Boolean)
+    .join("/");
+
+  if (
+    settings.obsidianOpenAfterSave ===
+    true
+  ) {
+    try {
+      await openSavedObsidianNote(
+        handle.name ||
+          "",
+        filePath
+      );
+    } catch (error) {
+      console.warn(
+        "ClipNest saved the note but could not open it in Obsidian:",
+        error
+      );
+    }
+  }
+
+  return {
+    filename,
+    filePath
+  };
+}
+
+function normalizeObsidianSubfolder(
+  rawPath
+) {
+  return String(
+    rawPath ||
+    ""
+  )
+    .split("/")
+    .map(
+      (part) =>
+        part.trim()
+    )
+    .filter(Boolean)
+    .filter(
+      (part) =>
+        part !== "." &&
+        part !== ".."
+    )
+    .join("/");
+}
+
+function buildObsidianOpenUri(
+  vaultName,
+  filePath
+) {
+  const vault =
+    String(
+      vaultName ||
+      ""
+    ).trim();
+
+  const file =
+    String(
+      filePath ||
+      ""
+    ).trim();
+
+  if (!vault) {
+    throw new Error(
+      "The connected Obsidian vault has no name."
+    );
+  }
+
+  if (!file) {
+    throw new Error(
+      "The saved Obsidian note has no file path."
+    );
+  }
+
+  return (
+    "obsidian://open?vault=" +
+    encodeURIComponent(
+      vault
+    ) +
+    "&file=" +
+    encodeURIComponent(
+      file
+    )
+  );
+}
+
+async function openSavedObsidianNote(
+  vaultName,
+  filePath
+) {
+  const uri =
+    buildObsidianOpenUri(
+      vaultName,
+      filePath
+    );
+
+  const [tab] =
+    await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+
+  if (
+    !Number.isInteger(
+      tab?.id
+    )
+  ) {
+    throw new Error(
+      "No active Chrome tab is available."
+    );
+  }
+
+  await chrome.tabs.update(
+    tab.id,
+    {
+      url: uri
+    }
+  );
 }
 
 async function ensureWritePermission(handle) {
