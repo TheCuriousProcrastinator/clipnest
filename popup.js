@@ -10345,9 +10345,12 @@ async function captureCurrentPage() {
       !hasTextSelection
     );
 
-    if (hasTextSelection) {
-      setContentMode("text");
-    }
+    /*
+     * A webpage selection makes Text mode available,
+     * but must never silently replace the user's
+     * Article mode.
+     */
+    refreshUxPass1();
 
     await restoreQuickClipDraft(tab, capture);
     await restoreAreaSelection(tab, capture);
