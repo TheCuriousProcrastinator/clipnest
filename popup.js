@@ -7878,41 +7878,105 @@ function positionNotionPopupMenu(
   anchor,
   menu
 ) {
+  const list =
+    menu.querySelector(
+      ".notion-custom-select-list, " +
+      ".notion-custom-multiselect-list"
+    );
+
+  if (!list) {
+    return;
+  }
+
+  const gap =
+    4;
+
+  const edgePadding =
+    8;
+
+  const maxListHeight =
+    156;
+
+  const minListHeight =
+    64;
+
   control.classList.remove(
     "open-up"
+  );
+
+  list.style.removeProperty(
+    "max-height"
   );
 
   const rect =
     anchor.getBoundingClientRect();
 
-  const menuRect =
-    menu.getBoundingClientRect();
-
-  const menuHeight =
-    Math.min(
-      menuRect.height ||
-        menu.scrollHeight ||
-        180,
-      190
-    );
-
   const spaceBelow =
-    window.innerHeight -
-    rect.bottom;
+    Math.max(
+      0,
+      window.innerHeight -
+        rect.bottom -
+        gap -
+        edgePadding
+    );
 
   const spaceAbove =
-    rect.top;
-
-  if (
-    spaceBelow <
-      menuHeight + 6 &&
-    spaceAbove >
-      spaceBelow
-  ) {
-    control.classList.add(
-      "open-up"
+    Math.max(
+      0,
+      rect.top -
+        gap -
+        edgePadding
     );
-  }
+
+  const menuChromeHeight =
+    Math.max(
+      0,
+      menu.offsetHeight -
+        list.offsetHeight
+    );
+
+  const naturalListHeight =
+    Math.min(
+      list.scrollHeight ||
+        maxListHeight,
+      maxListHeight
+    );
+
+  const desiredMenuHeight =
+    menuChromeHeight +
+    naturalListHeight;
+
+  const openUp =
+    spaceBelow <
+      desiredMenuHeight &&
+    spaceAbove >
+      spaceBelow;
+
+  control.classList.toggle(
+    "open-up",
+    openUp
+  );
+
+  const availableHeight =
+    openUp
+      ? spaceAbove
+      : spaceBelow;
+
+  const availableListHeight =
+    Math.max(
+      minListHeight,
+      Math.min(
+        maxListHeight,
+        availableHeight -
+          menuChromeHeight
+      )
+    );
+
+  list.style.setProperty(
+    "max-height",
+    `${availableListHeight}px`,
+    "important"
+  );
 }
 
 function createNotionChoiceControl(

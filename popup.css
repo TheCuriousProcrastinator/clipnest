@@ -4439,7 +4439,7 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* NOTION PRESET USE UX - V1.6.8 */
+/* NOTION PRESET USE UX - V1.6.9 */
 
 /*
  * Only applies while an actual Notion preset
@@ -4537,8 +4537,10 @@ body[data-destination="notion"].notion-preset-open .notion-custom-date-trigger[
 
 body[data-destination="notion"].notion-preset-open .notion-custom-select-menu {
   top: calc(100% + 4px);
-  width: 100% !important;
-  max-width: none !important;
+  left: 0 !important;
+  right: auto !important;
+  width: 220px !important;
+  max-width: calc(100vw - 24px) !important;
   padding: 5px !important;
   border-radius: 9px !important;
 }
@@ -4560,7 +4562,7 @@ body[data-destination="notion"].notion-preset-open .notion-custom-select-menu:no
 }
 
 body[data-destination="notion"].notion-preset-open .notion-custom-select-list {
-  max-height: 180px !important;
+  max-height: 156px !important;
   gap: 1px !important;
 }
 
@@ -4582,8 +4584,7 @@ body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-ed
 body[data-destination="notion"].notion-preset-open .notion-custom-multiselect:focus-within
   .notion-custom-multiselect-editor {
   border-color: #9027db !important;
-  box-shadow:
-    0 0 0 1px #9027db !important;
+  box-shadow: none !important;
 }
 
 body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-chip {
@@ -4602,13 +4603,16 @@ body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-in
 
 body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-menu {
   top: calc(100% + 4px) !important;
-  width: 100% !important;
+  left: 0 !important;
+  right: auto !important;
+  width: 220px !important;
+  max-width: calc(100vw - 24px) !important;
   padding: 5px !important;
   border-radius: 9px !important;
 }
 
 body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-list {
-  max-height: 180px !important;
+  max-height: 156px !important;
   gap: 1px !important;
 }
 
@@ -4656,4 +4660,31 @@ body[data-destination="notion"].notion-preset-open #saveButton {
 body[data-destination="notion"].notion-preset-open .status:empty {
   min-height: 0 !important;
   margin-top: 0 !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-trigger[aria-expanded="true"] {
+  border-color: #9027db !important;
+  box-shadow: none !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect:not(
+  :has(.notion-custom-multiselect-chip)
+)
+.notion-custom-multiselect-editor {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 9px !important;
+  flex-wrap: nowrap;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-option > span:last-child,
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-option > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
