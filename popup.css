@@ -89,11 +89,17 @@ body[data-destination="obsidian"]
 .popup-toggle-row {
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  margin: -2px 0 12px;
-  padding: 7px 0;
+  gap: 12px;
+  margin: 2px 0 8px;
+  padding: 4px 0;
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 72%,
+      transparent
+    );
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -101,7 +107,7 @@ body[data-destination="obsidian"]
   appearance: none;
   position: relative;
   flex: 0 0 auto;
-  width: 36px;
+  width: 34px;
   height: 20px;
   margin: 0;
   border: 1px solid

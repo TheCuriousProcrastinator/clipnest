@@ -28,6 +28,11 @@
       </select>
     </label>
 
+    <label class="field">
+      <span>Title</span>
+      <input id="titleInput" type="text" autocomplete="off" />
+    </label>
+
     <label id="vaultField" class="field hidden">
       <span>Vault</span>
       <select id="vaultSelect">
@@ -42,24 +47,6 @@
       </select>
     </label>
 
-    <label
-      id="obsidianOpenAfterSaveField"
-      class="popup-toggle-row"
-    >
-      <span>Open in Obsidian after saving</span>
-
-      <input
-        id="obsidianOpenAfterSave"
-        type="checkbox"
-        aria-label="Open in Obsidian after saving"
-      />
-    </label>
-
-    <label class="field">
-      <span>Title</span>
-      <input id="titleInput" type="text" autocomplete="off" />
-    </label>
-
     <label id="tagsField" class="field">
       <span>Tags</span>
       <input id="tagsInput" type="text" autocomplete="off" placeholder="reading, ai, research" />
@@ -72,15 +59,6 @@
       </select>
       <small id="templateMeta">Detected from Obsidian</small>
     </label>
-
-    <div id="notesCompact" class="notes-compact">
-      <button id="toggleNotes" class="notes-toggle" type="button">+ Add note</button>
-
-      <label id="notesField" class="field hidden">
-        <span>Notes</span>
-        <textarea id="notesInput" rows="3" placeholder="Optional note…"></textarea>
-      </label>
-    </div>
 
     <fieldset class="content-mode">
       <legend>Content</legend>
@@ -105,7 +83,27 @@
       </button>
     </fieldset>
 
+    <div id="notesCompact" class="notes-compact">
+      <button id="toggleNotes" class="notes-toggle" type="button">+ Add note</button>
 
+      <label id="notesField" class="field hidden">
+        <span>Notes</span>
+        <textarea id="notesInput" rows="3" placeholder="Optional note…"></textarea>
+      </label>
+    </div>
+
+    <label
+      id="obsidianOpenAfterSaveField"
+      class="popup-toggle-row"
+    >
+      <span>Open after saving</span>
+
+      <input
+        id="obsidianOpenAfterSave"
+        type="checkbox"
+        aria-label="Open in Obsidian after saving"
+      />
+    </label>
 
     <div class="actions">
       <button id="saveButton" class="primary" type="button" disabled>Save</button>
