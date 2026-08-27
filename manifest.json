@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ClipNest",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "description": "Web Clipper for Obsidian & Notion",
   "minimum_chrome_version": "122",
   "permissions": [
@@ -44,5 +44,5 @@
     "https://*.notion.so/*",
     "https://*.notion.com/*"
   ],
-  "key": "L1VzZXJzL2FsZXgvRGVza3RvcC9ub3Rpb24tb2JzaWRpYW4tY2xpcHBlcg=="
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA84SS/Pb0MspUIhGvVGdgqtjemR/pKc9IG60QXqV9DtvyhK1CJkN3Kpvj2mzL/ZMvRUqrEkEB5x2l325AKh94xj0SYX76dzCnA5ROWtmeVuLEhVrndMupVOXSqGgQGIQ5OpuSXpqpV62oSOh6J7tbFdybkmBjEno/SMiyhRgMNlhHx5y2daI3hlGaXYRcdZjfqvNjZxr3+P5smqFiiK38mfZgjy1bu6jYprbqFg9oM79OkZdpC2gxuVYEZeOzUyHEolCaIK6LujjqHUr5xBHJ5CWP9A1NiGAnY+OUjLFHSAmAUdbldCw80SPfPI/CFb9mkdfWqEjHRz6piLpp51GDcQIDAQAB"
 }
