@@ -5260,6 +5260,19 @@ function createNotionPresetConfigScreen() {
     }
   );
 
+  const footer =
+    document.createElement(
+      "div"
+    );
+
+  footer.className =
+    "notion-builder-footer-actions";
+
+  footer.append(
+    create,
+    remove
+  );
+
   section.append(
     header,
     nameField,
@@ -5267,8 +5280,32 @@ function createNotionPresetConfigScreen() {
     location,
     fieldsLabel,
     fields,
-    create,
-    remove
+    footer
+  );
+
+  const layoutObserver =
+    new MutationObserver(
+      () => {
+        fitNotionPresetBuilderToPopup();
+      }
+    );
+
+  layoutObserver.observe(
+    section,
+    {
+      childList:
+        true,
+
+      subtree:
+        true,
+
+      attributes:
+        true,
+
+      attributeFilter: [
+        "class"
+      ]
+    }
   );
 
   return section;
@@ -8002,6 +8039,106 @@ function fitNotionFieldMenuToPopup(
         );
 
       list.style.setProperty(
+        "max-height",
+        `${fittedHeight}px`,
+        "important"
+      );
+    }
+  );
+}
+
+const NOTION_BUILDER_SAFE_BOTTOM =
+  590;
+
+const NOTION_BUILDER_MIN_FIELDS_HEIGHT =
+  72;
+
+function fitNotionPresetBuilderToPopup() {
+  const screen =
+    document.getElementById(
+      "notionPresetConfigScreen"
+    );
+
+  const fields =
+    document.getElementById(
+      "notionBuilderPresetFields"
+    );
+
+  const create =
+    document.getElementById(
+      "notionBuilderCreatePreset"
+    );
+
+  const remove =
+    document.getElementById(
+      "notionBuilderDeletePreset"
+    );
+
+  if (
+    !screen ||
+    screen.classList.contains(
+      "hidden"
+    ) ||
+    !fields ||
+    !create
+  ) {
+    return;
+  }
+
+  fields.style.removeProperty(
+    "max-height"
+  );
+
+  requestAnimationFrame(
+    () => {
+      if (
+        screen.classList.contains(
+          "hidden"
+        )
+      ) {
+        return;
+      }
+
+      const lastAction =
+        remove &&
+        !remove.classList.contains(
+          "hidden"
+        )
+          ? remove
+          : create;
+
+      const actionBottom =
+        lastAction
+          .getBoundingClientRect()
+          .bottom;
+
+      const overflow =
+        Math.max(
+          0,
+          actionBottom -
+            NOTION_BUILDER_SAFE_BOTTOM
+        );
+
+      if (!overflow) {
+        return;
+      }
+
+      const currentHeight =
+        fields
+          .getBoundingClientRect()
+          .height;
+
+      const fittedHeight =
+        Math.max(
+          NOTION_BUILDER_MIN_FIELDS_HEIGHT,
+          Math.floor(
+            currentHeight -
+              overflow -
+              10
+          )
+        );
+
+      fields.style.setProperty(
         "max-height",
         `${fittedHeight}px`,
         "important"
