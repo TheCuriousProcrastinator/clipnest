@@ -7873,6 +7873,48 @@ function notionPresetOptionLabel(
   ).trim();
 }
 
+function positionNotionPopupMenu(
+  control,
+  anchor,
+  menu
+) {
+  control.classList.remove(
+    "open-up"
+  );
+
+  const rect =
+    anchor.getBoundingClientRect();
+
+  const menuRect =
+    menu.getBoundingClientRect();
+
+  const menuHeight =
+    Math.min(
+      menuRect.height ||
+        menu.scrollHeight ||
+        180,
+      190
+    );
+
+  const spaceBelow =
+    window.innerHeight -
+    rect.bottom;
+
+  const spaceAbove =
+    rect.top;
+
+  if (
+    spaceBelow <
+      menuHeight + 6 &&
+    spaceAbove >
+      spaceBelow
+  ) {
+    control.classList.add(
+      "open-up"
+    );
+  }
+}
+
 function createNotionChoiceControl(
   field,
   propertyId,
@@ -8150,6 +8192,10 @@ function createNotionChoiceControl(
       "hidden"
     );
 
+    control.classList.remove(
+      "open-up"
+    );
+
     trigger.setAttribute(
       "aria-expanded",
       "false"
@@ -8380,6 +8426,12 @@ function createNotionChoiceControl(
 
       menu.classList.remove(
         "hidden"
+      );
+
+      positionNotionPopupMenu(
+        control,
+        trigger,
+        menu
       );
 
       trigger.setAttribute(
@@ -9310,6 +9362,10 @@ function createNotionMultiSelectControl(
     menu.classList.add(
       "hidden"
     );
+
+    control.classList.remove(
+      "open-up"
+    );
   }
 
   function openMenu() {
@@ -9317,6 +9373,12 @@ function createNotionMultiSelectControl(
 
     menu.classList.remove(
       "hidden"
+    );
+
+    positionNotionPopupMenu(
+      control,
+      editor,
+      menu
     );
   }
 

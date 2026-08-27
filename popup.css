@@ -2757,7 +2757,7 @@ body[data-destination="notion"] .notion-custom-field > span {
 
 /* shared control appearance */
 
-body[data-destination="notion"] .notion-custom-field input:not([type="checkbox"]),
+body[data-destination="notion"] .notion-custom-field input:not([type="checkbox"]):not(.notion-custom-multiselect-input),
 body[data-destination="notion"] .notion-custom-field select {
   box-sizing: border-box;
   width: 100%;
@@ -2776,12 +2776,12 @@ body[data-destination="notion"] .notion-custom-field select {
   color-scheme: dark;
 }
 
-body[data-destination="notion"] .notion-custom-field input:not([type="checkbox"]):hover,
+body[data-destination="notion"] .notion-custom-field input:not([type="checkbox"]):not(.notion-custom-multiselect-input):hover,
 body[data-destination="notion"] .notion-custom-field select:hover {
   border-color: rgba(255, 255, 255, .26) !important;
 }
 
-body[data-destination="notion"] .notion-custom-field input:not([type="checkbox"]):focus,
+body[data-destination="notion"] .notion-custom-field input:not([type="checkbox"]):not(.notion-custom-multiselect-input):focus,
 body[data-destination="notion"] .notion-custom-field select:focus {
   border-color: #9027db !important;
   box-shadow: 0 0 0 1px #9027db !important;
@@ -3405,6 +3405,14 @@ body[data-destination="notion"]
 
 .notion-custom-multiselect-menu.hidden {
   display: none;
+}
+
+.notion-custom-select.open-up
+.notion-custom-select-menu,
+.notion-custom-multiselect.open-up
+.notion-custom-multiselect-menu {
+  top: auto !important;
+  bottom: calc(100% + 4px) !important;
 }
 
 .notion-custom-multiselect-list {
@@ -4431,7 +4439,7 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* NOTION PRESET USE UX - V1.6.7 */
+/* NOTION PRESET USE UX - V1.6.8 */
 
 /*
  * Only applies while an actual Notion preset
