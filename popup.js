@@ -3424,19 +3424,21 @@ async function searchNotionBuilderDestinations() {
 
   try {
     const response =
-      await ClipNestNotionSession
-        .searchDestinations({
-          workspaceId:
-            workspace.id,
+      await withNotionConnectionTimeout(
+        ClipNestNotionSession
+          .searchDestinations({
+            workspaceId:
+              workspace.id,
 
-          userId,
+            userId,
 
-          query:
-            String(
-              search?.value ||
-              ""
-            ).trim()
-        });
+            query:
+              String(
+                search?.value ||
+                ""
+              ).trim()
+          })
+      );
 
     notionPresetBuilderDestinations =
       Array.isArray(
@@ -3502,11 +3504,13 @@ async function loadNotionDestinationPicker(
     }
 
     const response =
-      await ClipNestNotionSession
-        .getWorkspaces({
-          requestPermission:
-            false
-        });
+      await withNotionConnectionTimeout(
+        ClipNestNotionSession
+          .getWorkspaces({
+            requestPermission:
+              false
+          })
+      );
 
     notionPresetBuilderWorkspaces =
       Array.isArray(
@@ -3800,21 +3804,21 @@ async function returnNotionBuilderToDestinationPicker() {
     return;
   }
 
-  document
-    .getElementById(
-      "notionPresetConfigScreen"
-    )
-    ?.classList.add(
-      "hidden"
-    );
+  const destinationsLoaded =
+    notionPresetBuilderWorkspaces
+      .length > 0;
 
-  document
-    .getElementById(
-      "notionDestinationPicker"
-    )
-    ?.classList.remove(
-      "hidden"
-    );
+  showNotionDestinationPicker(
+    {
+      workspaceId:
+        draft?.workspace?.id ||
+        ""
+    },
+    {
+      reload:
+        !destinationsLoaded
+    }
+  );
 
   await persistNotionPresetBuilderState(
     "destination"
@@ -7502,7 +7506,10 @@ function ensureNotionDestinationPicker() {
 
 function showNotionDestinationPicker(
   savedState =
-    null
+    null,
+  {
+    reload = true
+  } = {}
 ) {
   if (
     state.destination !==
@@ -7542,9 +7549,11 @@ function showNotionDestinationPicker(
     "hidden"
   );
 
-  void loadNotionDestinationPicker(
-    savedState
-  );
+  if (reload) {
+    void loadNotionDestinationPicker(
+      savedState
+    );
+  }
 }
 
 async function showNotionPresetChooser() {
