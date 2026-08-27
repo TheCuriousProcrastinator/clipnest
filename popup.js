@@ -5891,6 +5891,49 @@ function createNotionBuilderConfiguredFieldRow(
     );
   }
 
+  if (
+    field.propertyType !==
+      "title"
+  ) {
+    const remove =
+      document.createElement(
+        "button"
+      );
+
+    remove.type =
+      "button";
+
+    remove.className =
+      "notion-builder-field-remove-button";
+
+    remove.textContent =
+      "×";
+
+    remove.setAttribute(
+      "aria-label",
+      `Remove ${field.propertyName || "field"} from preset`
+    );
+
+    remove.title =
+      "Remove from preset";
+
+    remove.addEventListener(
+      "click",
+      (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        void removeNotionBuilderConfiguredField(
+          field.propertyId
+        );
+      }
+    );
+
+    actions.append(
+      remove
+    );
+  }
+
   row.append(
     handle,
     copy,
