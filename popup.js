@@ -7873,6 +7873,143 @@ function notionPresetOptionLabel(
   ).trim();
 }
 
+const NOTION_FIELD_MENU_MAX_HEIGHT =
+  168;
+
+const NOTION_POPUP_SAFE_BOTTOM =
+  592;
+
+function closeOtherNotionFieldMenus(
+  activeControl
+) {
+  const controls =
+    document.querySelectorAll(
+      ".notion-custom-select, " +
+      ".notion-custom-multiselect"
+    );
+
+  for (
+    const control of
+      controls
+  ) {
+    if (
+      control ===
+        activeControl
+    ) {
+      continue;
+    }
+
+    const menu =
+      control.querySelector(
+        ".notion-custom-select-menu, " +
+        ".notion-custom-multiselect-menu"
+      );
+
+    if (
+      !menu ||
+      menu.classList.contains(
+        "hidden"
+      )
+    ) {
+      continue;
+    }
+
+    menu.classList.add(
+      "hidden"
+    );
+
+    control.classList.remove(
+      "open-up"
+    );
+
+    control
+      .querySelector(
+        ".notion-custom-select-trigger"
+      )
+      ?.setAttribute(
+        "aria-expanded",
+        "false"
+      );
+  }
+}
+
+function fitNotionFieldMenuToPopup(
+  menu
+) {
+  const list =
+    menu.querySelector(
+      ".notion-custom-select-list, " +
+      ".notion-custom-multiselect-list"
+    );
+
+  const saveButton =
+    document.getElementById(
+      "saveButton"
+    );
+
+  if (
+    !list ||
+    !saveButton
+  ) {
+    return;
+  }
+
+  list.style.setProperty(
+    "max-height",
+    `${NOTION_FIELD_MENU_MAX_HEIGHT}px`,
+    "important"
+  );
+
+  requestAnimationFrame(
+    () => {
+      if (
+        menu.classList.contains(
+          "hidden"
+        )
+      ) {
+        return;
+      }
+
+      const saveBottom =
+        saveButton
+          .getBoundingClientRect()
+          .bottom;
+
+      const overflow =
+        Math.max(
+          0,
+          saveBottom -
+            NOTION_POPUP_SAFE_BOTTOM
+        );
+
+      if (!overflow) {
+        return;
+      }
+
+      const currentHeight =
+        list
+          .getBoundingClientRect()
+          .height;
+
+      const fittedHeight =
+        Math.max(
+          32,
+          Math.floor(
+            currentHeight -
+              overflow -
+              8
+          )
+        );
+
+      list.style.setProperty(
+        "max-height",
+        `${fittedHeight}px`,
+        "important"
+      );
+    }
+  );
+}
+
 function createNotionChoiceControl(
   field,
   propertyId,
@@ -8380,12 +8517,19 @@ function createNotionChoiceControl(
       search.value =
         "";
 
+      closeOtherNotionFieldMenus(
+        control
+      );
+
       renderOptions();
 
       menu.classList.remove(
         "hidden"
       );
 
+      fitNotionFieldMenuToPopup(
+        menu
+      );
 
       trigger.setAttribute(
         "aria-expanded",
@@ -8472,7 +8616,7 @@ function createNotionChoiceControl(
             closeMenu();
           }
         },
-        0
+        120
       );
     }
   );
@@ -9322,12 +9466,19 @@ function createNotionMultiSelectControl(
   }
 
   function openMenu() {
+    closeOtherNotionFieldMenus(
+      control
+    );
+
     renderMenu();
 
     menu.classList.remove(
       "hidden"
     );
 
+    fitNotionFieldMenuToPopup(
+      menu
+    );
   }
 
   function addValue(
@@ -9737,7 +9888,7 @@ function createNotionMultiSelectControl(
             closeMenu();
           }
         },
-        0
+        120
       );
     }
   );
