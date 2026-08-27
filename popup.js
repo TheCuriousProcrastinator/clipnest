@@ -7895,10 +7895,7 @@ function positionNotionPopupMenu(
     8;
 
   const maxListHeight =
-    156;
-
-  const minListHeight =
-    64;
+    116;
 
   control.classList.remove(
     "open-up"
@@ -7942,13 +7939,7 @@ function positionNotionPopupMenu(
       maxListHeight
     );
 
-  const desiredMenuHeight =
-    menuChromeHeight +
-    naturalListHeight;
-
   const openUp =
-    spaceBelow <
-      desiredMenuHeight &&
     spaceAbove >
       spaceBelow;
 
@@ -7964,8 +7955,9 @@ function positionNotionPopupMenu(
 
   const availableListHeight =
     Math.max(
-      minListHeight,
+      0,
       Math.min(
+        naturalListHeight,
         maxListHeight,
         availableHeight -
           menuChromeHeight

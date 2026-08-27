@@ -4439,7 +4439,7 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* NOTION PRESET USE UX - V1.6.9 */
+/* NOTION PRESET USE UX - V1.6.10 */
 
 /*
  * Only applies while an actual Notion preset
@@ -4503,7 +4503,7 @@ body[data-destination="notion"].notion-preset-open .notion-custom-field > span {
 
 body[data-destination="notion"].notion-preset-open #titleInput,
 body[data-destination="notion"].notion-preset-open .notion-custom-field
-  input:not([type="checkbox"]),
+  input:not([type="checkbox"]):not(.notion-custom-multiselect-input),
 body[data-destination="notion"].notion-preset-open .notion-custom-field select {
   height: 38px !important;
   min-height: 38px !important;
@@ -4539,10 +4539,15 @@ body[data-destination="notion"].notion-preset-open .notion-custom-select-menu {
   top: calc(100% + 4px);
   left: 0 !important;
   right: auto !important;
+  z-index: 300 !important;
   width: 220px !important;
   max-width: calc(100vw - 24px) !important;
   padding: 5px !important;
   border-radius: 9px !important;
+  background: #1b1b1b !important;
+  opacity: 1 !important;
+  isolation: isolate;
+  overflow: hidden;
 }
 
 body[data-destination="notion"].notion-preset-open .notion-custom-select-search {
@@ -4562,8 +4567,9 @@ body[data-destination="notion"].notion-preset-open .notion-custom-select-menu:no
 }
 
 body[data-destination="notion"].notion-preset-open .notion-custom-select-list {
-  max-height: 156px !important;
+  max-height: 116px !important;
   gap: 1px !important;
+  overflow-y: auto !important;
 }
 
 body[data-destination="notion"].notion-preset-open .notion-custom-select-option {
@@ -4605,15 +4611,21 @@ body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-me
   top: calc(100% + 4px) !important;
   left: 0 !important;
   right: auto !important;
+  z-index: 300 !important;
   width: 220px !important;
   max-width: calc(100vw - 24px) !important;
   padding: 5px !important;
   border-radius: 9px !important;
+  background: #1b1b1b !important;
+  opacity: 1 !important;
+  isolation: isolate;
+  overflow: hidden;
 }
 
 body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-list {
-  max-height: 156px !important;
+  max-height: 116px !important;
   gap: 1px !important;
+  overflow-y: auto !important;
 }
 
 body[data-destination="notion"].notion-preset-open .notion-custom-multiselect-option {
@@ -4687,4 +4699,23 @@ body[data-destination="notion"].notion-preset-open
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field:has(
+  .notion-custom-select-menu:not(.hidden)
+),
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field:has(
+  .notion-custom-multiselect-menu:not(.hidden)
+) {
+  position: relative;
+  z-index: 250;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-menu,
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-list {
+  background-color: #1b1b1b !important;
 }
