@@ -2454,11 +2454,11 @@ body[data-destination="notion"]
 
 .notion-builder-field-row {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 10px;
   align-items: center;
-  min-height: 62px;
-  padding: 10px 14px 10px 10px;
+  min-height: 52px;
+  padding: 6px 12px 6px 8px;
 }
 
 .notion-builder-field-copy {
@@ -2468,15 +2468,15 @@ body[data-destination="notion"]
 .notion-builder-field-copy strong {
   display: block;
   margin: 0;
-  font-size: 15px;
-  line-height: 1.25;
+  font-size: 14px;
+  line-height: 1.2;
 }
 
 .notion-builder-field-copy small {
   display: block;
-  margin-top: 2px;
-  font-size: 12px;
-  line-height: 1.2;
+  margin-top: 1px;
+  font-size: 11px;
+  line-height: 1.15;
   opacity: .5;
 }
 
@@ -2495,13 +2495,13 @@ body[data-destination="notion"]
 .notion-builder-field-row:has(
   .notion-builder-field-remove-button
 ) {
-  padding-right: 50px !important;
+  padding-right: 46px !important;
 }
 
 .notion-builder-field-remove-button {
   position: absolute;
   top: 50%;
-  right: 12px;
+  right: 10px;
   display: grid;
   place-items: center;
   width: 26px;
@@ -2541,9 +2541,9 @@ body[data-destination="notion"]
 .notion-builder-field-mapping,
 .notion-builder-field-mapping-button {
   max-width: 210px;
-  padding: 7px 10px;
-  border-radius: 8px;
-  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: 12px;
   font-weight: 650;
   line-height: 1.15;
   white-space: nowrap;

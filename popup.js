@@ -5400,11 +5400,17 @@ function notionBuilderFieldMappingLabel(
       : "Fixed value";
   }
 
-  return field?.mapping ||
+  const mapping =
+    field?.mapping ||
     notionBuilderDefaultMapping({
       type:
         field?.propertyType
     });
+
+  return mapping ===
+    "Manual"
+      ? "Ask each time"
+      : mapping;
 }
 
 function findNotionBuilderConfiguredField(
@@ -5596,7 +5602,10 @@ function renderNotionBuilderFieldConfiguration(
     );
 
     button.textContent =
-      mode;
+      mode ===
+        "Manual"
+        ? "Ask each time"
+        : mode;
 
     button.addEventListener(
       "click",
