@@ -8298,9 +8298,52 @@ function createNotionChoiceControl(
   }
 
   function updateTrigger() {
-    selectedLabel.textContent =
-      selected ||
-      "None";
+    selectedLabel.replaceChildren();
+
+    if (selected) {
+      const option =
+        options.find(
+          (candidate) =>
+            candidate.value
+              .toLowerCase() ===
+            selected
+              .toLowerCase()
+        );
+
+      const chip =
+        document.createElement(
+          "span"
+        );
+
+      chip.className =
+        "notion-custom-select-chip";
+
+      if (
+        option?.color
+      ) {
+        chip.dataset.color =
+          option.color;
+      }
+
+      const copy =
+        document.createElement(
+          "span"
+        );
+
+      copy.textContent =
+        selected;
+
+      chip.append(
+        copy
+      );
+
+      selectedLabel.append(
+        chip
+      );
+    } else {
+      selectedLabel.textContent =
+        "Select value…";
+    }
 
     trigger.classList.toggle(
       "has-value",
@@ -9925,6 +9968,9 @@ function createNotionCustomFieldNode(
 
   wrapper.dataset.propertyId =
     propertyId;
+
+  wrapper.dataset.propertyType =
+    type;
 
   const label =
     document.createElement(

@@ -4785,3 +4785,191 @@ body[data-destination="notion"].notion-preset-open
   bottom: auto !important;
   background: transparent !important;
 }
+
+/* UNIFIED NOTION PROPERTY VISUALS - V1.6.14 */
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-select-trigger,
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-date-trigger,
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-multiselect-editor,
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+input:not(
+  [type="checkbox"]
+):not(
+  .notion-custom-multiselect-input
+) {
+  box-sizing: border-box;
+  min-height: 38px !important;
+  border:
+    1px solid
+    rgba(255, 255, 255, .15) !important;
+  border-radius: 8px !important;
+  background: #171717 !important;
+  box-shadow: none !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  height: 38px !important;
+  padding: 5px 8px !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-value {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1 1 auto;
+  color: rgba(255, 255, 255, .46);
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-trigger.has-value
+.notion-custom-select-value {
+  color: inherit;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-chevron {
+  display: none !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-chip,
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 240px;
+  min-height: 22px !important;
+  padding: 2px 7px !important;
+  border-radius: 5px !important;
+  background:
+    rgba(144, 39, 219, .20);
+  color: #d8a6fa;
+  font-size: 11px !important;
+  font-weight: 650;
+  line-height: 16px;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-chip > span,
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-chip > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-chip[data-color="gray"],
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-chip[data-color="gray"] {
+  background: rgba(155, 154, 151, .22);
+  color: #d0cfcd;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-chip[data-color="brown"],
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-chip[data-color="brown"] {
+  background: rgba(100, 71, 58, .48);
+  color: #d7b6a7;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-chip[data-color="orange"],
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-chip[data-color="orange"] {
+  background: rgba(217, 115, 13, .28);
+  color: #f3ae61;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-chip[data-color="yellow"],
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-chip[data-color="yellow"] {
+  background: rgba(223, 171, 1, .25);
+  color: #efd46b;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-chip[data-color="green"],
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-chip[data-color="green"] {
+  background: rgba(15, 123, 108, .35);
+  color: #75c9ba;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-chip[data-color="blue"],
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-chip[data-color="blue"] {
+  background: rgba(11, 110, 153, .36);
+  color: #78bee0;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-chip[data-color="purple"],
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-chip[data-color="purple"] {
+  background: rgba(105, 64, 165, .42);
+  color: #cfadf3;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-chip[data-color="pink"],
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-chip[data-color="pink"] {
+  background: rgba(173, 26, 114, .35);
+  color: #ed9acb;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-chip[data-color="red"],
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-chip[data-color="red"] {
+  background: rgba(224, 62, 62, .30);
+  color: #f49a9a;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-select-trigger:hover,
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-date-trigger:hover,
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-multiselect-editor:hover {
+  border-color:
+    rgba(255, 255, 255, .26) !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-select-trigger[
+  aria-expanded="true"
+],
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-date-trigger[
+  aria-expanded="true"
+],
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-multiselect:focus-within
+.notion-custom-multiselect-editor {
+  border-color: #9027db !important;
+}
