@@ -79,7 +79,6 @@ async function init() {
     "vaultSelect",
     "vaultName",
     "disconnectVault",
-    "obsidianOpenAfterSave",
     "obsidianStatus",
     "exportSettings",
     "importSettings",
@@ -102,8 +101,7 @@ async function init() {
     const field of [
       els.defaultDestination,
       els.quickClipNotionPresetId,
-      els.notionPresetName,
-      els.obsidianOpenAfterSave
+      els.notionPresetName
     ]
   ) {
     field.addEventListener(
@@ -408,17 +406,13 @@ async function loadSettings() {
   const settings =
     await chrome.storage.local.get([
       "defaultDestination",
-      "quickClipNotionPresetId",
-      "obsidianOpenAfterSave"
+      "quickClipNotionPresetId"
     ]);
 
   els.defaultDestination.value =
     settings.defaultDestination ||
     "obsidian";
 
-  els.obsidianOpenAfterSave.checked =
-    settings.obsidianOpenAfterSave ===
-    true;
 
   const quickClipPresetId =
     await refreshQuickClipPresetList(
@@ -540,17 +534,8 @@ async function saveSettings() {
 
     quickClipNotionPresetId:
       els.quickClipNotionPresetId.value ||
-      "",
-
-    obsidianOpenAfterSave:
-      els.obsidianOpenAfterSave.checked
+      ""
   });
-
-  await ClipNestVaultStore
-    .updateActiveConfig({
-      openAfterSave:
-        els.obsidianOpenAfterSave.checked
-    });
 
   const preset =
     await ClipNestNotionStore

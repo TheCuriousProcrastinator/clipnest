@@ -56,6 +56,10 @@ async function init() {
   els.vaultSelect = document.getElementById("vaultSelect");
   els.folderField = document.getElementById("folderField");
   els.folderSelect = document.getElementById("folderSelect");
+  els.obsidianOpenAfterSave =
+    document.getElementById(
+      "obsidianOpenAfterSave"
+    );
   els.notesField = document.getElementById("notesField");
   els.toggleNotes = document.getElementById("toggleNotes");
   els.notesInput = document.getElementById("notesInput");
@@ -113,6 +117,14 @@ async function init() {
     }
   );
 
+  els.obsidianOpenAfterSave
+    ?.addEventListener(
+      "change",
+      () => {
+        void saveObsidianOpenAfterSave();
+      }
+    );
+
   els.toggleNotes?.addEventListener(
     "click",
     () => {
@@ -136,6 +148,7 @@ async function init() {
     "defaultDestination",
     "obsidianDefaultTemplatePath",
     "obsidianSubfolder",
+    "obsidianOpenAfterSave",
     NOTION_PRESET_BUILDER_STATE_KEY,
     LAST_POPUP_DESTINATION_KEY
   ]);
@@ -177,6 +190,12 @@ async function init() {
 
   els.tagsInput.value =
     "";
+
+  if (els.obsidianOpenAfterSave) {
+    els.obsidianOpenAfterSave.checked =
+      settings.obsidianOpenAfterSave ===
+      true;
+  }
 
   setDestination(
     initialDestination
@@ -10175,14 +10194,53 @@ async function connectVaultFromPopup() {
   }
 }
 
+async function saveObsidianOpenAfterSave() {
+  if (!els.obsidianOpenAfterSave) {
+    return;
+  }
+
+  const enabled =
+    els.obsidianOpenAfterSave.checked ===
+    true;
+
+  try {
+    await chrome.storage.local.set({
+      obsidianOpenAfterSave:
+        enabled
+    });
+
+    await ClipNestVaultStore
+      .updateActiveConfig({
+        openAfterSave:
+          enabled
+      });
+  } catch (error) {
+    els.obsidianOpenAfterSave.checked =
+      !enabled;
+
+    setStatus(
+      error.message ||
+        String(error),
+      "error"
+    );
+  }
+}
+
 async function refreshPopupVaultContext() {
   await loadVaultPicker();
 
   const settings =
     await chrome.storage.local.get([
       "obsidianDefaultTemplatePath",
-      "obsidianSubfolder"
+      "obsidianSubfolder",
+      "obsidianOpenAfterSave"
     ]);
+
+  if (els.obsidianOpenAfterSave) {
+    els.obsidianOpenAfterSave.checked =
+      settings.obsidianOpenAfterSave ===
+      true;
+  }
 
   els.tagsInput.value =
     "";
