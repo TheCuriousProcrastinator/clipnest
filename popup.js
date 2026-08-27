@@ -8048,7 +8048,7 @@ function fitNotionFieldMenuToPopup(
 }
 
 const NOTION_BUILDER_SAFE_BOTTOM =
-  590;
+  596;
 
 const NOTION_BUILDER_MIN_FIELDS_HEIGHT =
   72;
@@ -8064,14 +8064,9 @@ function fitNotionPresetBuilderToPopup() {
       "notionBuilderPresetFields"
     );
 
-  const create =
-    document.getElementById(
-      "notionBuilderCreatePreset"
-    );
-
-  const remove =
-    document.getElementById(
-      "notionBuilderDeletePreset"
+  const footer =
+    screen?.querySelector(
+      ".notion-builder-footer-actions"
     );
 
   if (
@@ -8080,7 +8075,7 @@ function fitNotionPresetBuilderToPopup() {
       "hidden"
     ) ||
     !fields ||
-    !create
+    !footer
   ) {
     return;
   }
@@ -8099,48 +8094,40 @@ function fitNotionPresetBuilderToPopup() {
         return;
       }
 
-      const lastAction =
-        remove &&
-        !remove.classList.contains(
-          "hidden"
-        )
-          ? remove
-          : create;
-
-      const actionBottom =
-        lastAction
-          .getBoundingClientRect()
-          .bottom;
-
-      const overflow =
-        Math.max(
-          0,
-          actionBottom -
-            NOTION_BUILDER_SAFE_BOTTOM
-        );
-
-      if (!overflow) {
-        return;
-      }
-
-      const currentHeight =
+      const fieldsTop =
         fields
+          .getBoundingClientRect()
+          .top;
+
+      const footerHeight =
+        footer
           .getBoundingClientRect()
           .height;
 
-      const fittedHeight =
+      const availableHeight =
         Math.max(
           NOTION_BUILDER_MIN_FIELDS_HEIGHT,
-          Math.floor(
-            currentHeight -
-              overflow -
-              10
-          )
+          NOTION_BUILDER_SAFE_BOTTOM -
+            fieldsTop -
+            footerHeight -
+            10
         );
+
+      const naturalHeight =
+        fields.scrollHeight;
+
+      if (
+        naturalHeight <=
+          availableHeight
+      ) {
+        return;
+      }
 
       fields.style.setProperty(
         "max-height",
-        `${fittedHeight}px`,
+        `${Math.floor(
+          availableHeight
+        )}px`,
         "important"
       );
     }

@@ -5028,3 +5028,191 @@ body[data-destination="notion"]
 .notion-builder-delete-preset {
   min-height: 40px;
 }
+
+/* ROOMIER NOTION PRESET EDITOR - V1.6.16 */
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-header {
+  min-height: 30px !important;
+  margin-bottom: 5px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-field {
+  gap: 3px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+#notionBuilderPresetName {
+  height: 36px !important;
+  min-height: 36px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-section-label {
+  margin-top: 8px !important;
+  margin-bottom: 4px !important;
+  font-size: 11px !important;
+  line-height: 14px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-save-location {
+  grid-template-columns:
+    30px minmax(0, 1fr) auto !important;
+  gap: 8px !important;
+  min-height: 48px !important;
+  padding: 5px 9px !important;
+  border-radius: 9px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-save-location-copy {
+  gap: 1px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-save-location-copy strong {
+  font-size: 12px !important;
+  line-height: 15px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-save-location-copy small {
+  font-size: 10px !important;
+  line-height: 13px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-preset-fields {
+  border-radius: 10px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-field-row {
+  grid-template-columns:
+    18px minmax(0, 1fr) auto !important;
+  gap: 7px !important;
+  min-height: 44px !important;
+  padding: 4px 9px 4px 6px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-field-row:has(
+  .notion-builder-field-remove-button
+) {
+  padding-right: 37px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-field-copy strong {
+  font-size: 13px !important;
+  line-height: 15px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-field-copy small {
+  margin-top: 0 !important;
+  font-size: 10px !important;
+  line-height: 12px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-drag-handle {
+  width: 20px !important;
+  height: 32px !important;
+  font-size: 17px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-field-row-actions {
+  gap: 3px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-field-mapping,
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-field-mapping-button {
+  max-width: 155px !important;
+  padding: 3px 5px !important;
+  font-size: 11px !important;
+  line-height: 14px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-field-remove-button {
+  right: 7px !important;
+  width: 22px !important;
+  min-width: 22px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-field-remove-button svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-add-field {
+  min-height: 40px !important;
+  padding:
+    7px 10px 7px 34px !important;
+  font-size: 13px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-footer-actions {
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr) !important;
+  gap: 7px !important;
+  margin-top: 8px !important;
+  padding-bottom: 1px !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-footer-actions:has(
+  .notion-builder-delete-preset.hidden
+) {
+  grid-template-columns:
+    1fr !important;
+}
+
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-footer-actions
+.notion-builder-create-button,
+body[data-destination="notion"]
+.notion-preset-config-screen
+.notion-builder-footer-actions
+.notion-builder-delete-preset {
+  min-height: 38px !important;
+  height: 38px !important;
+  padding: 7px 10px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+}
