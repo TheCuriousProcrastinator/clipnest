@@ -2143,7 +2143,7 @@ async function renderNotionPresetChooser() {
 
           await loadNotionTagOptions();
 
-          showNotionPresetClip(
+          await showNotionPresetClip(
             preset
           );
         } catch (error) {
@@ -3811,7 +3811,7 @@ async function returnNotionBuilderToDestinationPicker() {
       );
 
     if (preset) {
-      showNotionPresetClip(
+      await showNotionPresetClip(
         preset
       );
     } else {
@@ -4865,7 +4865,7 @@ async function createNotionPresetFromBuilder() {
         "hidden"
       );
 
-    showNotionPresetClip(
+    await showNotionPresetClip(
       preset
     );
   } catch (error) {
@@ -10344,9 +10344,195 @@ function renderNotionPresetFields(
     );
 }
 
-function showNotionPresetClip(
+async function refreshNotionPresetFromLiveSchema(
   preset
 ) {
+  if (
+    preset?.destinationType !==
+      "collection"
+  ) {
+    return preset;
+  }
+
+  const workspaceId =
+    String(
+      preset?.workspaceId ||
+      ""
+    ).trim();
+
+  const userId =
+    String(
+      preset?.workspaceUserId ||
+      ""
+    ).trim();
+
+  const collectionId =
+    String(
+      preset?.destinationId ||
+      ""
+    ).trim();
+
+  const parentPageId =
+    String(
+      preset?.destinationParentId ||
+      ""
+    ).trim();
+
+  if (
+    !workspaceId ||
+    !userId ||
+    !collectionId ||
+    !parentPageId ||
+    !globalThis.ClipNestNotionSession
+  ) {
+    return preset;
+  }
+
+  try {
+    const schema =
+      await withNotionConnectionTimeout(
+        ClipNestNotionSession
+          .getDatabaseSchema({
+            workspaceId,
+            userId,
+            collectionId,
+            parentPageId
+          }),
+        5000
+      );
+
+    const properties =
+      Array.isArray(
+        schema?.properties
+      )
+        ? schema.properties
+        : [];
+
+    if (!properties.length) {
+      return preset;
+    }
+
+    const propertiesById =
+      new Map(
+        properties.map(
+          (property) => [
+            String(
+              property?.id ||
+              ""
+            ),
+            property
+          ]
+        )
+      );
+
+    const fields =
+      (
+        Array.isArray(
+          preset?.fields
+        )
+          ? preset.fields
+          : []
+      ).map(
+        (field) => {
+          const property =
+            propertiesById.get(
+              String(
+                field?.propertyId ||
+                ""
+              )
+            );
+
+          if (!property) {
+            return field;
+          }
+
+          const propertyType =
+            String(
+              property?.type ||
+              field?.propertyType ||
+              ""
+            );
+
+          const liveOptions =
+            Array.isArray(
+              property?.options
+            )
+              ? property.options
+              : [];
+
+          const storedOptions =
+            Array.isArray(
+              field?.options
+            )
+              ? field.options
+              : [];
+
+          const usesOptions =
+            [
+              "select",
+              "status",
+              "multi_select"
+            ].includes(
+              propertyType
+            );
+
+          return {
+            ...field,
+
+            propertyName:
+              String(
+                property?.name ||
+                field?.propertyName ||
+                ""
+              ),
+
+            label:
+              String(
+                property?.name ||
+                field?.label ||
+                field?.propertyName ||
+                "Field"
+              ),
+
+            propertyType,
+
+            numberFormat:
+              String(
+                property?.numberFormat ||
+                field?.numberFormat ||
+                ""
+              ),
+
+            options:
+              usesOptions &&
+              liveOptions.length
+                ? liveOptions
+                : storedOptions
+          };
+        }
+      );
+
+    return {
+      ...preset,
+      fields
+    };
+  } catch (error) {
+    console.warn(
+      "ClipNest could not refresh Notion preset schema:",
+      error
+    );
+
+    return preset;
+  }
+}
+
+async function showNotionPresetClip(
+  preset
+) {
+  preset =
+    await refreshNotionPresetFromLiveSchema(
+      preset
+    );
   notionOpenPresetId =
     String(
       preset?.id ||

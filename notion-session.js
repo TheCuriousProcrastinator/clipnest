@@ -1925,6 +1925,43 @@
     );
   }
 
+  function notionSchemaOptions(
+    property
+  ) {
+    const candidates = [
+      property?.options,
+      property?.multi_select
+        ?.options,
+      property?.select
+        ?.options,
+      property?.status
+        ?.options
+    ];
+
+    const populated =
+      candidates.find(
+        (candidate) =>
+          Array.isArray(
+            candidate
+          ) &&
+          candidate.length
+      );
+
+    if (populated) {
+      return populated;
+    }
+
+    return (
+      candidates.find(
+        (candidate) =>
+          Array.isArray(
+            candidate
+          )
+      ) ||
+      []
+    );
+  }
+
   async function getDatabaseSchema({
     workspaceId,
     userId,
@@ -2068,11 +2105,9 @@
                   ).trim(),
 
                 options:
-                  Array.isArray(
-                    property?.options
-                  )
-                    ? property.options
-                    : [],
+                  notionSchemaOptions(
+                    property
+                  ),
 
                 collectionId:
                   property?.collection_id ||
