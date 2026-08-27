@@ -4196,3 +4196,90 @@ body[data-destination="notion"]
   filter:
     brightness(.88);
 }
+
+/* POPUP HEIGHT FIT - V1.6.0 */
+
+body {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.app {
+  padding: 14px 16px 10px !important;
+}
+
+.topbar {
+  margin-bottom: 10px !important;
+}
+
+.destination {
+  margin-bottom: 10px !important;
+  padding: 3px !important;
+}
+
+.destination-button {
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
+
+.field,
+#vaultField,
+#folderField,
+#templateField {
+  margin-bottom: 6px !important;
+}
+
+.field > span,
+.selection-heading {
+  margin-bottom: 2px !important;
+}
+
+.content-mode {
+  margin-top: 3px !important;
+  margin-bottom: 3px !important;
+}
+
+.content-mode legend {
+  margin-bottom: 4px !important;
+}
+
+.clipper-ux-mode-segmented {
+  min-height: 36px !important;
+  height: 36px !important;
+  margin-top: 2px !important;
+  margin-bottom: 4px !important;
+}
+
+.clipper-ux-mode-button {
+  min-height: 30px !important;
+  height: 30px !important;
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+}
+
+.notes-compact {
+  margin: 0 0 3px !important;
+}
+
+.notes-toggle {
+  padding-top: 2px !important;
+  padding-bottom: 3px !important;
+}
+
+.popup-toggle-row {
+  margin: 0 0 5px !important;
+  padding: 2px 0 !important;
+}
+
+.actions {
+  margin-top: 3px !important;
+}
+
+#saveButton {
+  margin-top: 2px !important;
+}
+
+.status:empty {
+  min-height: 0 !important;
+  margin-top: 0 !important;
+}
