@@ -10,6 +10,8 @@ A Chrome extension for saving useful things from the web directly into Obsidian 
 
 Clip the whole article, selected text, or choose an area directly on the page.
 
+ClipNest also supports Quick Clip actions from Chrome's right-click menu.
+
 ## What it does
 
 ### Article
@@ -34,6 +36,37 @@ Select text on a webpage before opening the extension and save just that selecti
 Choose a specific part of the webpage visually.
 
 The clipper can also recognize repeated structured content and convert it into a Markdown table when appropriate.
+
+## Notion
+
+ClipNest can save directly into Notion pages and databases using your existing logged-in Notion browser session.
+
+Notion features include:
+
+- reusable presets
+- database and page destinations
+- custom ClipNest preset icons
+- title and source URL mapping
+- custom database field mappings
+- Select and Status properties
+- Multi-select properties
+- checkbox, number, and date properties
+- Files & media properties
+- webpage image picker
+- automatic page-image detection
+- automatic author detection from webpage metadata and structured book data
+- editable values before saving
+- dedicated Quick Clip preset
+- Chrome Sync for portable preset configuration
+- settings export and import
+
+Notion authentication stays local to each computer. Preset configuration can sync through Chrome.
+
+## Quick Clip
+
+Right-click a webpage or selected text to save without opening the ClipNest popup.
+
+Quick Clip can use its own dedicated Notion preset or your configured Obsidian destination.
 
 ## Obsidian
 
@@ -106,22 +139,50 @@ to save.
 
 ## Installation
 
-This extension is currently installed manually during development.
+Until the Chrome Web Store version is available, install ClipNest from a GitHub release.
 
-1. Download or clone this repository.
-2. Open `chrome://extensions`.
-3. Enable **Developer mode**.
-4. Click **Load unpacked**.
-5. Select this repository folder.
+1. Open the [ClipNest Releases](https://github.com/TheCuriousProcrastinator/clipnest/releases) page.
+2. Download the `clipnest-x.y.z.zip` release asset.
+3. Unzip it.
+4. Open `chrome://extensions`.
+5. Enable **Developer mode**.
+6. Click **Load unpacked**.
+7. Select the unzipped ClipNest folder.
+
+Use the named `clipnest-x.y.z.zip` release asset rather than GitHub's automatically generated Source code ZIP.
+
+## Sync and backups
+
+Notion preset configuration can sync between Chrome installations signed into the same Google account.
+
+Notion login sessions and Obsidian vault access do not sync.
+
+Portable ClipNest settings can also be exported and imported from the Settings page.
 
 ## Privacy
 
-Clipping and Obsidian file access happen locally in Chrome.
+ClipNest does not operate a backend service that receives clipped webpage content.
 
-The extension only receives access to an Obsidian vault after you explicitly choose the folder through Chrome's folder picker.
+Obsidian clips are written locally through Chrome's File System Access API.
+
+When saving to Notion, ClipNest communicates directly with Notion using the browser session already logged into Notion.
+
+Notion login sessions and Obsidian vault permissions are not included in settings exports or ClipNest sync.
+
+See the full [Privacy Policy](https://thecuriousprocrastinator.github.io/clipnest/privacy.html).
+
+## Development
+
+Development-only diagnostics live under `tools/dev/` and are not included in packaged ClipNest releases.
+
+## Links
+
+- [Latest releases](https://github.com/TheCuriousProcrastinator/clipnest/releases)
+- [Privacy Policy](https://thecuriousprocrastinator.github.io/clipnest/privacy.html)
+- [Support and issues](https://github.com/TheCuriousProcrastinator/clipnest/issues)
 
 ## Status
 
 Active development.
 
-Current version: **0.5.18**
+Latest packaged release: **1.5.3**
