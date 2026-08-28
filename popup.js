@@ -11542,14 +11542,19 @@ async function refreshPopupVaultContext() {
 
   const permission =
     await ensureWritePermission(
-      handle
+      handle,
+      true
     );
 
   if (!permission) {
-    setStatus(
-      "ClipNest needs permission to access this vault again.",
-      "error"
-    );
+    /*
+     * A programmatically reopened popup may not
+     * have transient user activation. Do not
+     * treat the stored vault handle as broken.
+     * A real Save click gets another chance to
+     * restore the permission.
+     */
+    setStatus("");
 
     return;
   }
@@ -11906,6 +11911,41 @@ async function save() {
   setStatus("");
 
   try {
+    /*
+     * Restore a persisted Obsidian vault permission
+     * immediately from the user's Save click.
+     *
+     * Do this before article enhancement so Chrome
+     * still has transient user activation available
+     * for FileSystemHandle.requestPermission().
+     */
+    if (
+      state.destination ===
+        "obsidian"
+    ) {
+      const handle =
+        pendingObsidianPermissionHandle ||
+        await getVaultHandle();
+
+      if (!handle) {
+        throw new Error(
+          "No Obsidian vault is connected. Open Settings and choose your vault folder."
+        );
+      }
+
+      const permission =
+        await ensureWritePermission(
+          handle,
+          true
+        );
+
+      if (!permission) {
+        throw new Error(
+          "Chrome could not restore access to the vault. Reconnect it in Settings."
+        );
+      }
+    }
+
     if (
       getContentMode() === "article" &&
       !state.articleEnhancementDone
@@ -12876,12 +12916,13 @@ async function handleFolderPickerChange() {
 
       const permission =
         await ensureWritePermission(
-          handle
+          handle,
+          true
         );
 
       if (!permission) {
         throw new Error(
-          "Chrome no longer has permission to write to the vault. Reconnect it in Settings."
+          "Chrome could not restore access to the vault. Reconnect it in Settings."
         );
       }
 
@@ -14991,7 +15032,10 @@ async function openSavedObsidianNote(
   }
 }
 
-async function ensureWritePermission(handle) {
+async function ensureWritePermission(
+  handle,
+  requestIfNeeded = false
+) {
   const options = {
     mode: "readwrite"
   };
@@ -15007,6 +15051,24 @@ async function ensureWritePermission(handle) {
         null;
 
       return true;
+    }
+
+    if (
+      requestIfNeeded &&
+      typeof handle.requestPermission ===
+        "function"
+    ) {
+      const requested =
+        await handle.requestPermission(
+          options
+        );
+
+      if (requested === "granted") {
+        pendingObsidianPermissionHandle =
+          null;
+
+        return true;
+      }
     }
 
     pendingObsidianPermissionHandle =
