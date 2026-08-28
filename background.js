@@ -4500,3 +4500,118 @@ function mergeQuickTemplateFrontmatter(
     source.slice(end + 4)
   );
 }
+
+
+/* ==================================================
+   ClipNest page image picker
+   ================================================== */
+
+chrome.runtime.onMessage.addListener(
+  (
+    message,
+    sender,
+    sendResponse
+  ) => {
+    if (
+      message?.type !==
+        "clipnest.imagePicked"
+    ) {
+      return;
+    }
+
+    void (
+      async () => {
+        try {
+          const url =
+            String(
+              message.url ||
+              ""
+            ).trim();
+
+          if (
+            !/^https?:\/\//i.test(
+              url
+            )
+          ) {
+            throw new Error(
+              "The selected element did not contain a usable image."
+            );
+          }
+
+          await chrome.storage.local.set({
+            clipnestPickedImage: {
+              url,
+
+              pageUrl:
+                String(
+                  message.pageUrl ||
+                  sender.tab?.url ||
+                  ""
+                ),
+
+              capturedAt:
+                Number(
+                  message.capturedAt ||
+                  Date.now()
+                )
+            }
+          });
+
+          /*
+           * Chrome 127+ allows an extension to
+           * reopen its action popup. If Chrome
+           * refuses for any reason, the selected
+           * image remains stored and will appear
+           * the next time the user opens ClipNest.
+           */
+          try {
+            if (
+              chrome.action
+                ?.openPopup
+            ) {
+              const windowId =
+                sender.tab?.windowId;
+
+              if (
+                Number.isInteger(
+                  windowId
+                )
+              ) {
+                await chrome.action
+                  .openPopup({
+                    windowId
+                  });
+              } else {
+                await chrome.action
+                  .openPopup();
+              }
+            }
+          } catch (
+            popupError
+          ) {
+            console.debug(
+              "ClipNest could not automatically reopen the popup:",
+              popupError
+            );
+          }
+
+          sendResponse({
+            ok: true
+          });
+        } catch (error) {
+          sendResponse({
+            ok: false,
+
+            error: {
+              message:
+                error?.message ||
+                String(error)
+            }
+          });
+        }
+      }
+    )();
+
+    return true;
+  }
+);

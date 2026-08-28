@@ -34,6 +34,22 @@
         return "";
       }
 
+      /*
+       * A product page is not an image.
+       * This previously allowed URLs such as
+       * amazon.com/dp/B08H7Y414K to reach Notion.
+       */
+      if (
+        /(^|\.)amazon\./i.test(
+          url.hostname
+        ) &&
+        /^\/(?:dp|gp\/product)\//i.test(
+          url.pathname
+        )
+      ) {
+        return "";
+      }
+
       return url.href;
     } catch {
       return "";
@@ -152,6 +168,404 @@
                     });
                   };
 
+                  const bestImageSource = (
+                    image
+                  ) => {
+                    if (!image) {
+                      return "";
+                    }
+
+                    const highResolution =
+                      String(
+                        image.getAttribute(
+                          "data-old-hires"
+                        ) ||
+                        ""
+                      ).trim();
+
+                    if (highResolution) {
+                      return highResolution;
+                    }
+
+                    const dynamic =
+                      String(
+                        image.getAttribute(
+                          "data-a-dynamic-image"
+                        ) ||
+                        ""
+                      ).trim();
+
+                    if (dynamic) {
+                      try {
+                        const parsed =
+                          JSON.parse(
+                            dynamic
+                          );
+
+                        const candidates =
+                          Object.entries(
+                            parsed
+                          )
+                            .map(
+                              ([
+                                url,
+                                dimensions
+                              ]) => ({
+                                url,
+
+                                area:
+                                  Number(
+                                    dimensions?.[0] ||
+                                    0
+                                  ) *
+                                  Number(
+                                    dimensions?.[1] ||
+                                    0
+                                  )
+                              })
+                            )
+                            .sort(
+                              (a, b) =>
+                                b.area -
+                                a.area
+                            );
+
+                        if (
+                          candidates[0]
+                            ?.url
+                        ) {
+                          return candidates[0]
+                            .url;
+                        }
+                      } catch {
+                      }
+                    }
+
+                    return (
+                      image.currentSrc ||
+                      image.src ||
+                      image.getAttribute(
+                        "src"
+                      ) ||
+                      ""
+                    );
+                  };
+
+                  /*
+                   * Amazon uses product-specific image
+                   * elements instead of relying on useful
+                   * Open Graph metadata consistently.
+                   */
+                  if (
+                    /(^|\\.)amazon\\./i.test(
+                      location.hostname
+                    )
+                  ) {
+                    [
+                      "#ebooksImgBlkFront",
+                      "#imgBlkFront",
+                      "#landingImage",
+                      "#imgTagWrapperId img",
+                      "#main-image-container img"
+                    ].forEach(
+                      (
+                        selector,
+                        index
+                      ) => {
+                        const image =
+                          document.querySelector(
+                            selector
+                          );
+
+                        if (!image) {
+                          return;
+                        }
+
+                        add(
+                          bestImageSource(
+                            image
+                          ),
+                          4_000_000_000 -
+                            index *
+                              10_000,
+                          "Amazon product image"
+                        );
+                      }
+                    );
+                  }
+
+                  /*
+                   * Product pages need stronger ranking than
+                   * generic image area.
+                   *
+                   * Amazon in particular can expose many large
+                   * recommendation/product images while the
+                   * actual book/product image is smaller.
+                   */
+                  const preferredImageSource = (
+                    image
+                  ) => {
+                    if (!image) {
+                      return "";
+                    }
+
+                    const oldHires =
+                      String(
+                        image.getAttribute(
+                          "data-old-hires"
+                        ) ||
+                        ""
+                      ).trim();
+
+                    if (oldHires) {
+                      return oldHires;
+                    }
+
+                    const dynamic =
+                      String(
+                        image.getAttribute(
+                          "data-a-dynamic-image"
+                        ) ||
+                        ""
+                      ).trim();
+
+                    if (dynamic) {
+                      try {
+                        const parsed =
+                          JSON.parse(
+                            dynamic
+                          );
+
+                        const candidates =
+                          Object.entries(
+                            parsed
+                          )
+                            .map(
+                              ([url, size]) => ({
+                                url,
+
+                                area:
+                                  Array.isArray(
+                                    size
+                                  )
+                                    ? (
+                                        Number(
+                                          size[0]
+                                        ) || 0
+                                      ) *
+                                      (
+                                        Number(
+                                          size[1]
+                                        ) || 0
+                                      )
+                                    : 0
+                              })
+                            )
+                            .sort(
+                              (a, b) =>
+                                b.area -
+                                a.area
+                            );
+
+                        if (
+                          candidates[0]
+                            ?.url
+                        ) {
+                          return (
+                            candidates[0]
+                              .url
+                          );
+                        }
+                      } catch {
+                        // Fall through.
+                      }
+                    }
+
+                    return (
+                      image.currentSrc ||
+                      image.src ||
+                      image.getAttribute(
+                        "data-src"
+                      ) ||
+                      ""
+                    );
+                  };
+
+                  const host =
+                    location.hostname
+                      .toLowerCase();
+
+                  const isAmazon =
+                    host ===
+                      "amazon.com" ||
+                    host.endsWith(
+                      ".amazon.com"
+                    );
+
+                  if (isAmazon) {
+                    const productSelectors = [
+                      "#landingImage",
+                      "#ebooksImgBlkFront",
+                      "#imgBlkFront",
+                      "#imgTagWrapperId img",
+                      "#main-image-container img",
+                      "#imageBlock img"
+                    ];
+
+                    productSelectors.forEach(
+                      (
+                        selector,
+                        index
+                      ) => {
+                        document
+                          .querySelectorAll(
+                            selector
+                          )
+                          .forEach(
+                            (
+                              image,
+                              imageIndex
+                            ) => {
+                              add(
+                                preferredImageSource(
+                                  image
+                                ),
+                                3_000_000_000 -
+                                  index *
+                                    10_000 -
+                                  imageIndex,
+                                image.alt ||
+                                  "Product image"
+                              );
+                            }
+                          );
+                      }
+                    );
+
+                    /*
+                     * Kindle/Amazon layouts vary.
+                     * If the canonical selectors miss,
+                     * strongly prefer an image whose alt
+                     * text resembles the actual product title.
+                     */
+                    const productTitle =
+                      String(
+                        document
+                          .querySelector(
+                            "#productTitle, #ebooksProductTitle"
+                          )
+                          ?.textContent ||
+                        ""
+                      )
+                        .replace(
+                          /\s+/g,
+                          " "
+                        )
+                        .trim()
+                        .toLowerCase();
+
+                    const titleWords =
+                      new Set(
+                        productTitle
+                          .split(
+                            /[^a-z0-9]+/i
+                          )
+                          .filter(
+                            (word) =>
+                              word.length >=
+                                3
+                          )
+                      );
+
+                    if (
+                      titleWords.size >=
+                        3
+                    ) {
+                      [
+                        ...document.images
+                      ].forEach(
+                        (
+                          image,
+                          index
+                        ) => {
+                          const alt =
+                            String(
+                              image.alt ||
+                              ""
+                            )
+                              .replace(
+                                /\s+/g,
+                                " "
+                              )
+                              .trim()
+                              .toLowerCase();
+
+                          if (!alt) {
+                            return;
+                          }
+
+                          const altWords =
+                            new Set(
+                              alt
+                                .split(
+                                  /[^a-z0-9]+/i
+                                )
+                                .filter(
+                                  (word) =>
+                                    word.length >=
+                                      3
+                                )
+                            );
+
+                          let matches =
+                            0;
+
+                          for (
+                            const word of
+                              titleWords
+                          ) {
+                            if (
+                              altWords.has(
+                                word
+                              )
+                            ) {
+                              matches +=
+                                1;
+                            }
+                          }
+
+                          const overlap =
+                            matches /
+                            Math.max(
+                              1,
+                              Math.min(
+                                titleWords.size,
+                                12
+                              )
+                            );
+
+                          if (
+                            matches >=
+                              3 &&
+                            overlap >=
+                              .35
+                          ) {
+                            add(
+                              preferredImageSource(
+                                image
+                              ),
+                              2_500_000_000 +
+                                matches *
+                                  100_000 -
+                                index,
+                              image.alt
+                            );
+                          }
+                        }
+                      );
+                    }
+                  }
+
                   const metaSelectors = [
                     'meta[property="og:image"]',
                     'meta[property="og:image:url"]',
@@ -236,8 +650,9 @@
                         height;
 
                       add(
-                        image.currentSrc ||
-                          image.src,
+                        bestImageSource(
+                          image
+                        ),
                         area -
                           index,
                         image.alt
@@ -509,17 +924,6 @@
               }
 
               if (!selected) {
-                selected =
-                  [...candidates]
-                    .sort(
-                      (a, b) =>
-                        b.score -
-                        a.score
-                    )[0] ||
-                  null;
-              }
-
-              if (!selected) {
                 return null;
               }
 
@@ -729,6 +1133,709 @@
     }
   }
 
+  async function startClipNestPageImageSelection() {
+    const tabs =
+      await chrome.tabs.query({
+        active: true,
+        currentWindow: true
+      });
+
+    const tab =
+      tabs?.[0];
+
+    if (
+      !Number.isInteger(
+        tab?.id
+      )
+    ) {
+      throw new Error(
+        "Could not access the current webpage."
+      );
+    }
+
+    await chrome.scripting.executeScript({
+      target: {
+        tabId: tab.id
+      },
+
+      func: () => {
+        if (
+          window
+            .__clipnestImagePickerCleanup
+        ) {
+          window
+            .__clipnestImagePickerCleanup();
+        }
+
+        const OVERLAY_ID =
+          "__clipnestImagePickerOverlay";
+
+        const TIP_ID =
+          "__clipnestImagePickerTip";
+
+        document
+          .getElementById(
+            OVERLAY_ID
+          )
+          ?.remove();
+
+        document
+          .getElementById(
+            TIP_ID
+          )
+          ?.remove();
+
+        const overlay =
+          document.createElement(
+            "div"
+          );
+
+        overlay.id =
+          OVERLAY_ID;
+
+        Object.assign(
+          overlay.style,
+          {
+            position: "fixed",
+            zIndex: "2147483646",
+            pointerEvents: "none",
+            border:
+              "3px solid #db5b27",
+            background:
+              "rgba(219,91,39,.10)",
+            borderRadius: "6px",
+            boxSizing: "border-box",
+            display: "none"
+          }
+        );
+
+        const tip =
+          document.createElement(
+            "div"
+          );
+
+        tip.id =
+          TIP_ID;
+
+        tip.textContent =
+          "Click an image · Esc cancel";
+
+        Object.assign(
+          tip.style,
+          {
+            position: "fixed",
+            zIndex: "2147483647",
+            top: "14px",
+            left: "50%",
+            transform:
+              "translateX(-50%)",
+            pointerEvents: "none",
+            padding: "9px 13px",
+            borderRadius: "9px",
+            background:
+              "rgba(20,20,20,.95)",
+            color: "#fff",
+            font:
+              "600 13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+            boxShadow:
+              "0 5px 22px rgba(0,0,0,.30)"
+          }
+        );
+
+        document
+          .documentElement
+          .append(
+            overlay,
+            tip
+          );
+
+        const parseSrcset = (
+          value
+        ) => {
+          const raw =
+            String(
+              value || ""
+            ).trim();
+
+          if (!raw) {
+            return "";
+          }
+
+          const candidates =
+            raw
+              .split(",")
+              .map(
+                (item) => {
+                  const parts =
+                    item
+                      .trim()
+                      .split(
+                        /\s+/
+                      );
+
+                  const url =
+                    parts[0] || "";
+
+                  const descriptor =
+                    parts[1] || "";
+
+                  let score = 1;
+
+                  if (
+                    descriptor.endsWith(
+                      "w"
+                    )
+                  ) {
+                    score =
+                      Number(
+                        descriptor.slice(
+                          0,
+                          -1
+                        )
+                      ) || 1;
+                  } else if (
+                    descriptor.endsWith(
+                      "x"
+                    )
+                  ) {
+                    score =
+                      (
+                        Number(
+                          descriptor.slice(
+                            0,
+                            -1
+                          )
+                        ) || 1
+                      ) * 1000;
+                  }
+
+                  return {
+                    url,
+                    score
+                  };
+                }
+              )
+              .filter(
+                (item) =>
+                  item.url
+              )
+              .sort(
+                (a, b) =>
+                  b.score -
+                  a.score
+              );
+
+          return (
+            candidates[0]?.url ||
+            ""
+          );
+        };
+
+        const bestImageUrl = (
+          image
+        ) => {
+          if (!image) {
+            return "";
+          }
+
+          const oldHires =
+            String(
+              image.getAttribute?.(
+                "data-old-hires"
+              ) ||
+              ""
+            ).trim();
+
+          if (oldHires) {
+            return oldHires;
+          }
+
+          const dynamic =
+            String(
+              image.getAttribute?.(
+                "data-a-dynamic-image"
+              ) ||
+              ""
+            ).trim();
+
+          if (dynamic) {
+            try {
+              const parsed =
+                JSON.parse(
+                  dynamic
+                );
+
+              const candidates =
+                Object.entries(
+                  parsed
+                )
+                  .map(
+                    ([
+                      url,
+                      dimensions
+                    ]) => ({
+                      url,
+
+                      area:
+                        Number(
+                          dimensions?.[0] ||
+                          0
+                        ) *
+                        Number(
+                          dimensions?.[1] ||
+                          0
+                        )
+                    })
+                  )
+                  .sort(
+                    (a, b) =>
+                      b.area -
+                      a.area
+                  );
+
+              if (
+                candidates[0]?.url
+              ) {
+                return candidates[0]
+                  .url;
+              }
+            } catch {
+            }
+          }
+
+          const picture =
+            image.closest?.(
+              "picture"
+            );
+
+          if (picture) {
+            const sources =
+              [
+                ...picture
+                  .querySelectorAll(
+                    "source[srcset]"
+                  )
+              ];
+
+            for (
+              const source of
+                sources
+            ) {
+              const candidate =
+                parseSrcset(
+                  source.getAttribute(
+                    "srcset"
+                  )
+                );
+
+              if (candidate) {
+                return candidate;
+              }
+            }
+          }
+
+          const srcset =
+            parseSrcset(
+              image.getAttribute?.(
+                "srcset"
+              )
+            );
+
+          if (srcset) {
+            return srcset;
+          }
+
+          return (
+            image.currentSrc ||
+            image.src ||
+            image.getAttribute?.(
+              "data-src"
+            ) ||
+            image.getAttribute?.(
+              "src"
+            ) ||
+            ""
+          );
+        };
+
+        const backgroundUrl = (
+          element
+        ) => {
+          if (
+            !element ||
+            !(element instanceof Element)
+          ) {
+            return "";
+          }
+
+          const value =
+            getComputedStyle(
+              element
+            ).backgroundImage || "";
+
+          const match =
+            value.match(
+              /url\((?:"|')?(.+?)(?:"|')?\)/
+            );
+
+          return (
+            match?.[1] ||
+            ""
+          );
+        };
+
+        const resolveTarget = (
+          rawTarget
+        ) => {
+          if (
+            !(rawTarget instanceof Element)
+          ) {
+            return null;
+          }
+
+          if (
+            rawTarget instanceof
+              HTMLImageElement
+          ) {
+            return {
+              element:
+                rawTarget,
+
+              url:
+                bestImageUrl(
+                  rawTarget
+                )
+            };
+          }
+
+          const pictureImage =
+            rawTarget
+              .closest?.(
+                "picture"
+              )
+              ?.querySelector?.(
+                "img"
+              );
+
+          if (pictureImage) {
+            return {
+              element:
+                pictureImage,
+
+              url:
+                bestImageUrl(
+                  pictureImage
+                )
+            };
+          }
+
+          const childImage =
+            rawTarget
+              .querySelector?.(
+                "img"
+              );
+
+          if (childImage) {
+            return {
+              element:
+                childImage,
+
+              url:
+                bestImageUrl(
+                  childImage
+                )
+            };
+          }
+
+          let current =
+            rawTarget;
+
+          for (
+            let depth = 0;
+            current &&
+            depth < 4;
+            depth += 1
+          ) {
+            const url =
+              backgroundUrl(
+                current
+              );
+
+            if (url) {
+              return {
+                element:
+                  current,
+                url
+              };
+            }
+
+            current =
+              current.parentElement;
+          }
+
+          return null;
+        };
+
+        const absoluteUrl = (
+          raw
+        ) => {
+          try {
+            const value =
+              new URL(
+                raw,
+                document.baseURI
+              );
+
+            if (
+              value.protocol !==
+                "http:" &&
+              value.protocol !==
+                "https:"
+            ) {
+              return "";
+            }
+
+            return value.href;
+          } catch {
+            return "";
+          }
+        };
+
+        let active =
+          null;
+
+        const draw = (
+          element
+        ) => {
+          if (!element) {
+            overlay.style.display =
+              "none";
+
+            return;
+          }
+
+          const rect =
+            element
+              .getBoundingClientRect();
+
+          if (
+            rect.width < 8 ||
+            rect.height < 8
+          ) {
+            overlay.style.display =
+              "none";
+
+            return;
+          }
+
+          const left =
+            Math.max(
+              0,
+              rect.left
+            );
+
+          const top =
+            Math.max(
+              0,
+              rect.top
+            );
+
+          const width =
+            Math.max(
+              0,
+              Math.min(
+                rect.right,
+                innerWidth
+              ) -
+              left
+            );
+
+          const height =
+            Math.max(
+              0,
+              Math.min(
+                rect.bottom,
+                innerHeight
+              ) -
+              top
+            );
+
+          Object.assign(
+            overlay.style,
+            {
+              display:
+                "block",
+
+              left:
+                `${left}px`,
+
+              top:
+                `${top}px`,
+
+              width:
+                `${width}px`,
+
+              height:
+                `${height}px`
+            }
+          );
+        };
+
+        const cleanup = () => {
+          document
+            .removeEventListener(
+              "pointermove",
+              onMove,
+              true
+            );
+
+          document
+            .removeEventListener(
+              "click",
+              onClick,
+              true
+            );
+
+          document
+            .removeEventListener(
+              "keydown",
+              onKeyDown,
+              true
+            );
+
+          overlay.remove();
+          tip.remove();
+
+          delete window
+            .__clipnestImagePickerCleanup;
+        };
+
+        const onMove = (
+          event
+        ) => {
+          const candidate =
+            resolveTarget(
+              event.target
+            );
+
+          if (
+            !candidate?.url
+          ) {
+            active =
+              null;
+
+            draw(
+              null
+            );
+
+            return;
+          }
+
+          const url =
+            absoluteUrl(
+              candidate.url
+            );
+
+          if (!url) {
+            active =
+              null;
+
+            draw(
+              null
+            );
+
+            return;
+          }
+
+          active = {
+            ...candidate,
+            url
+          };
+
+          draw(
+            active.element
+          );
+        };
+
+        const onClick = (
+          event
+        ) => {
+          if (
+            !active?.url
+          ) {
+            tip.textContent =
+              "Move over an image first";
+
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+
+          const picked =
+            active.url;
+
+          cleanup();
+
+          void chrome.runtime
+            .sendMessage({
+              type:
+                "clipnest.imagePicked",
+
+              url:
+                picked,
+
+              pageUrl:
+                location.href,
+
+              capturedAt:
+                Date.now()
+            });
+        };
+
+        const onKeyDown = (
+          event
+        ) => {
+          if (
+            event.key !==
+              "Escape"
+          ) {
+            return;
+          }
+
+          event.preventDefault();
+          cleanup();
+        };
+
+        window
+          .__clipnestImagePickerCleanup =
+          cleanup;
+
+        document
+          .addEventListener(
+            "pointermove",
+            onMove,
+            true
+          );
+
+        document
+          .addEventListener(
+            "click",
+            onClick,
+            true
+          );
+
+        document
+          .addEventListener(
+            "keydown",
+            onKeyDown,
+            true
+          );
+      }
+    });
+  }
+
   function create({
     detectedImage = "",
     initialValue = "",
@@ -773,27 +1880,13 @@
     preview.title =
       "Choose another image";
 
-    const add =
+    const previewWrap =
       document.createElement(
-        "button"
+        "div"
       );
 
-    add.type =
-      "button";
-
-    add.className =
-      "notion-image-add";
-
-    add.textContent =
-      "+";
-
-    add.title =
-      "Choose image";
-
-    add.setAttribute(
-      "aria-label",
-      "Choose image"
-    );
+    previewWrap.className =
+      "notion-image-preview-wrap";
 
     const clear =
       document.createElement(
@@ -824,6 +1917,57 @@
 
     menu.className =
       "notion-image-menu hidden";
+
+    const pageSelect =
+      document.createElement(
+        "button"
+      );
+
+    pageSelect.type =
+      "button";
+
+    pageSelect.className =
+      "notion-image-page-select";
+
+    pageSelect.textContent =
+      "Select image from page";
+
+    pageSelect.addEventListener(
+      "click",
+      async () => {
+        pageSelect.disabled =
+          true;
+
+        pageSelect.textContent =
+          "Starting picker…";
+
+        try {
+          await startClipNestPageImageSelection();
+
+          menu.classList.add(
+            "hidden"
+          );
+
+          /*
+           * A normal extension popup closes when
+           * the webpage is clicked. Close it now
+           * so the user can immediately pick.
+           */
+          window.close();
+        } catch (error) {
+          pageSelect.disabled =
+            false;
+
+          pageSelect.textContent =
+            "Select image from page";
+
+          console.error(
+            "Could not start image picker:",
+            error
+          );
+        }
+      }
+    );
 
     const header =
       document.createElement(
@@ -875,6 +2019,7 @@
 
     menu.append(
       header,
+      pageSelect,
       gallery
     );
 
@@ -900,7 +2045,7 @@
           "notion-image-empty";
 
         empty.textContent =
-          "No image";
+          "Click to add image";
 
         preview.append(
           empty
@@ -1227,11 +2372,6 @@
       openMenu
     );
 
-    add.addEventListener(
-      "click",
-      openMenu
-    );
-
     clear.addEventListener(
       "click",
       () => {
@@ -1265,10 +2405,13 @@
       }
     );
 
-    row.append(
+    previewWrap.append(
       preview,
-      add,
       clear
+    );
+
+    row.append(
+      previewWrap
     );
 
     control.append(

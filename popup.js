@@ -6,6 +6,9 @@ const state = {
 
 const els = {};
 
+let pendingObsidianPermissionHandle =
+  null;
+
 document.addEventListener("DOMContentLoaded", init);
 
 let notionPresetChooserEl =
@@ -240,6 +243,7 @@ async function init() {
   // Page capture is the primary popup task.
   // Never block it on vault/template scanning.
   await captureCurrentPage();
+  await restorePickedPageImage();
 
   if (
     state.destination ===
@@ -264,6 +268,102 @@ async function init() {
   void loadObsidianTemplates(
     defaultTemplatePath
   );
+}
+
+async function restorePickedPageImage() {
+  try {
+    const stored =
+      await chrome.storage.local.get(
+        "clipnestPickedImage"
+      );
+
+    const picked =
+      stored.clipnestPickedImage;
+
+    if (
+      !picked ||
+      typeof picked !==
+        "object"
+    ) {
+      return;
+    }
+
+    const capturedAt =
+      Number(
+        picked.capturedAt ||
+        0
+      );
+
+    /*
+     * Avoid resurrecting an image from an old tab
+     * or an abandoned picking session.
+     */
+    if (
+      !capturedAt ||
+      Date.now() -
+        capturedAt >
+        5 * 60 * 1000
+    ) {
+      await chrome.storage.local.remove(
+        "clipnestPickedImage"
+      );
+
+      return;
+    }
+
+    const pickedUrl =
+      String(
+        picked.url ||
+        ""
+      ).trim();
+
+    const pickedPageUrl =
+      String(
+        picked.pageUrl ||
+        ""
+      ).trim();
+
+    const currentPageUrl =
+      String(
+        state.capture?.url ||
+        ""
+      ).trim();
+
+    if (
+      !/^https?:\/\//i.test(
+        pickedUrl
+      )
+    ) {
+      await chrome.storage.local.remove(
+        "clipnestPickedImage"
+      );
+
+      return;
+    }
+
+    if (
+      pickedPageUrl &&
+      currentPageUrl &&
+      pickedPageUrl !==
+        currentPageUrl
+    ) {
+      return;
+    }
+
+    if (state.capture) {
+      state.capture.image =
+        pickedUrl;
+    }
+
+    await chrome.storage.local.remove(
+      "clipnestPickedImage"
+    );
+  } catch (error) {
+    console.warn(
+      "ClipNest could not restore the selected page image:",
+      error
+    );
+  }
 }
 
 function findCommonAncestor(
@@ -4900,12 +5000,6 @@ async function restoreNotionPresetBuilderState() {
     return false;
   }
 
-  if (
-    !(await ensureNotionConnectionForPopup())
-  ) {
-    return false;
-  }
-
   const stored =
     await chrome.storage.local.get(
       NOTION_PRESET_BUILDER_STATE_KEY
@@ -6626,7 +6720,25 @@ function renderNotionBuilderConfiguredFields() {
     return;
   }
 
+  /*
+   * Rebuilding the field list used to reset the
+   * internal Fields scroller to the top.
+   */
+  const preservedScrollTop =
+    container.scrollTop;
+
   container.replaceChildren();
+
+  queueMicrotask(
+    () => {
+      if (
+        container.isConnected
+      ) {
+        container.scrollTop =
+          preservedScrollTop;
+      }
+    }
+  );
 
   const configured =
     Array.isArray(
@@ -6735,9 +6847,7 @@ function renderNotionBuilderConfiguredFields() {
   );
 }
 
-function renderNotionBuilderAddFieldPicker(
-  query = ""
-) {
+function renderNotionBuilderAddFieldPicker() {
   const draft =
     notionPresetBuilderDraft;
 
@@ -6758,6 +6868,15 @@ function renderNotionBuilderAddFieldPicker(
       ".notion-builder-add-field-picker"
     )
     ?.remove();
+
+  const addButton =
+    container.querySelector(
+      "#notionBuilderAddField"
+    );
+
+  if (addButton) {
+    addButton.hidden = true;
+  }
 
   const configuredIds =
     new Set(
@@ -6786,14 +6905,6 @@ function renderNotionBuilderAddFieldPicker(
       "unique_id"
     ]);
 
-  const normalizedQuery =
-    String(
-      query ||
-      ""
-    )
-      .trim()
-      .toLowerCase();
-
   const properties =
     (
       Array.isArray(
@@ -6819,18 +6930,6 @@ function renderNotionBuilderAddFieldPicker(
               ""
             )
           )
-      )
-      .filter(
-        (property) =>
-          !normalizedQuery ||
-          String(
-            property.name ||
-            ""
-          )
-            .toLowerCase()
-            .includes(
-              normalizedQuery
-            )
       );
 
   const picker =
@@ -6871,56 +6970,14 @@ function renderNotionBuilderAddFieldPicker(
   close.textContent =
     "×";
 
-  close.addEventListener(
-    "click",
-    () => {
-      picker.remove();
-    }
+  close.setAttribute(
+    "aria-label",
+    "Close Add fields"
   );
 
   header.append(
     title,
     close
-  );
-
-  const search =
-    document.createElement(
-      "input"
-    );
-
-  search.type =
-    "search";
-
-  search.className =
-    "notion-builder-add-field-search";
-
-  search.placeholder =
-    "Search properties";
-
-  search.value =
-    query;
-
-  search.addEventListener(
-    "input",
-    () => {
-      renderNotionBuilderAddFieldPicker(
-        search.value
-      );
-
-      const next =
-        container.querySelector(
-          ".notion-builder-add-field-search"
-        );
-
-      if (next) {
-        next.focus();
-
-        next.setSelectionRange(
-          next.value.length,
-          next.value.length
-        );
-      }
-    }
   );
 
   const list =
@@ -6931,7 +6988,17 @@ function renderNotionBuilderAddFieldPicker(
   list.className =
     "notion-builder-add-field-list";
 
-  if (!properties.length) {
+  const showEmptyState = () => {
+    if (
+      list.querySelector(
+        ".notion-builder-property-option"
+      )
+    ) {
+      return;
+    }
+
+    list.replaceChildren();
+
     const empty =
       document.createElement(
         "div"
@@ -6941,14 +7008,12 @@ function renderNotionBuilderAddFieldPicker(
       "notion-builder-add-field-empty";
 
     empty.textContent =
-      normalizedQuery
-        ? "No matching properties."
-        : "All available fields have been added.";
+      "All available fields have been added.";
 
     list.append(
       empty
     );
-  }
+  };
 
   for (
     const property of
@@ -7027,9 +7092,6 @@ function renderNotionBuilderAddFieldPicker(
       button.addEventListener(
         "click",
         async () => {
-          const currentQuery =
-            search.value;
-
           if (
             !Array.isArray(
               draft.configuredFields
@@ -7039,21 +7101,52 @@ function renderNotionBuilderAddFieldPicker(
               [];
           }
 
-          draft.configuredFields.push(
+          const configuredField =
             notionBuilderConfiguredField(
               property
-            )
+            );
+
+          draft.configuredFields.push(
+            configuredField
           );
+
+          /*
+           * Add the configured row directly.
+           *
+           * Do NOT rebuild the container. Rebuilding
+           * it was the source of the scroll jump.
+           */
+          const configuredRow =
+            createNotionBuilderConfiguredFieldRow(
+              configuredField
+            );
+
+          if (
+            addButton &&
+            addButton.isConnected
+          ) {
+            container.insertBefore(
+              configuredRow,
+              addButton
+            );
+          } else {
+            container.insertBefore(
+              configuredRow,
+              picker
+            );
+          }
+
+          /*
+           * Remove only this option from the
+           * available-fields list.
+           */
+          button.remove();
 
           await persistNotionPresetBuilderState(
             "config"
           );
 
-          renderNotionBuilderConfiguredFields();
-
-          renderNotionBuilderAddFieldPicker(
-            currentQuery
-          );
+          showEmptyState();
         }
       );
     }
@@ -7063,17 +7156,40 @@ function renderNotionBuilderAddFieldPicker(
     );
   }
 
+  if (!properties.length) {
+    showEmptyState();
+  }
+
+  close.addEventListener(
+    "click",
+    () => {
+      const scrollTop =
+        container.scrollTop;
+
+      picker.remove();
+
+      if (addButton) {
+        addButton.hidden =
+          false;
+      }
+
+      /*
+       * Nothing was rebuilt, so this is mostly
+       * defensive against browser layout changes.
+       */
+      container.scrollTop =
+        scrollTop;
+    }
+  );
+
   picker.append(
     header,
-    search,
     list
   );
 
   container.append(
     picker
   );
-
-  search.focus();
 }
 
 async function loadNotionPresetConfigFields() {
@@ -7614,12 +7730,6 @@ async function showNotionPresetChooser() {
   if (
     state.destination !==
       "notion"
-  ) {
-    return;
-  }
-
-  if (
-    !(await ensureNotionConnectionForPopup())
   ) {
     return;
   }
@@ -14121,12 +14231,31 @@ async function openSavedObsidianNote(
 }
 
 async function ensureWritePermission(handle) {
-  const options = { mode: "readwrite" };
-  if ((await handle.queryPermission(options)) === "granted") return true;
+  const options = {
+    mode: "readwrite"
+  };
 
   try {
-    return (await handle.requestPermission(options)) === "granted";
+    const permission =
+      await handle.queryPermission(
+        options
+      );
+
+    if (permission === "granted") {
+      pendingObsidianPermissionHandle =
+        null;
+
+      return true;
+    }
+
+    pendingObsidianPermissionHandle =
+      handle;
+
+    return false;
   } catch {
+    pendingObsidianPermissionHandle =
+      handle;
+
     return false;
   }
 }
@@ -14473,8 +14602,116 @@ function sanitizeFilename(value) {
 }
 
 function setStatus(message, kind = "") {
-  els.status.textContent = message || "";
-  els.status.className = `status ${kind}`.trim();
+  if (!els.status) {
+    return;
+  }
+
+  els.status.textContent =
+    message || "";
+
+  els.status.className =
+    `status ${kind}`.trim();
+
+  const normalized =
+    String(
+      message || ""
+    ).toLowerCase();
+
+  const needsVaultPermission =
+    kind === "error" &&
+    normalized.includes("permission") &&
+    normalized.includes("vault") &&
+    pendingObsidianPermissionHandle;
+
+  if (!needsVaultPermission) {
+    return;
+  }
+
+  const messageEl =
+    document.createElement(
+      "span"
+    );
+
+  messageEl.textContent =
+    "ClipNest needs permission to access this vault again.";
+
+  const button =
+    document.createElement(
+      "button"
+    );
+
+  button.type =
+    "button";
+
+  button.className =
+    "vault-permission-button";
+
+  button.textContent =
+    "Grant access";
+
+  button.addEventListener(
+    "click",
+    async () => {
+      const handle =
+        pendingObsidianPermissionHandle;
+
+      if (!handle) {
+        setStatus(
+          "Vault access could not be restored. Open Settings and reconnect the vault.",
+          "error"
+        );
+
+        return;
+      }
+
+      button.disabled =
+        true;
+
+      try {
+        /*
+         * requestPermission must happen directly
+         * from this user click.
+         */
+        const permission =
+          await handle.requestPermission({
+            mode: "readwrite"
+          });
+
+        if (
+          permission !==
+            "granted"
+        ) {
+          button.disabled =
+            false;
+
+          setStatus(
+            "Vault access was not granted.",
+            "error"
+          );
+
+          return;
+        }
+
+        pendingObsidianPermissionHandle =
+          null;
+
+        window.location.reload();
+      } catch {
+        button.disabled =
+          false;
+
+        setStatus(
+          "Vault access could not be restored. Open Settings and reconnect the vault.",
+          "error"
+        );
+      }
+    }
+  );
+
+  els.status.replaceChildren(
+    messageEl,
+    button
+  );
 }
 
 /* UX PASS 1 - V0.5.0 */

@@ -535,12 +535,141 @@ function extractPage() {
     .trim()
     .slice(0, 500000);
 
+  const bestProductImageSource = (
+    image
+  ) => {
+    if (!image) {
+      return "";
+    }
+
+    const highResolution =
+      String(
+        image.getAttribute(
+          "data-old-hires"
+        ) ||
+        ""
+      ).trim();
+
+    if (highResolution) {
+      return highResolution;
+    }
+
+    const dynamic =
+      String(
+        image.getAttribute(
+          "data-a-dynamic-image"
+        ) ||
+        ""
+      ).trim();
+
+    if (dynamic) {
+      try {
+        const parsed =
+          JSON.parse(
+            dynamic
+          );
+
+        const candidates =
+          Object.entries(
+            parsed
+          )
+            .map(
+              ([
+                url,
+                dimensions
+              ]) => ({
+                url,
+
+                area:
+                  Number(
+                    dimensions?.[0] ||
+                    0
+                  ) *
+                  Number(
+                    dimensions?.[1] ||
+                    0
+                  )
+              })
+            )
+            .sort(
+              (a, b) =>
+                b.area -
+                a.area
+            );
+
+        if (
+          candidates[0]
+            ?.url
+        ) {
+          return candidates[0]
+            .url;
+        }
+      } catch {
+      }
+    }
+
+    return (
+      image.currentSrc ||
+      image.src ||
+      image.getAttribute(
+        "src"
+      ) ||
+      ""
+    );
+  };
+
+  const extractPrimaryImage =
+    () => {
+      if (
+        /(^|\\.)amazon\\./i.test(
+          location.hostname
+        )
+      ) {
+        const selectors = [
+          "#ebooksImgBlkFront",
+          "#imgBlkFront",
+          "#landingImage",
+          "#imgTagWrapperId img",
+          "#main-image-container img"
+        ];
+
+        for (
+          const selector of
+            selectors
+        ) {
+          const image =
+            document.querySelector(
+              selector
+            );
+
+          const source =
+            bestProductImageSource(
+              image
+            );
+
+          if (source) {
+            return absoluteUrl(
+              source
+            );
+          }
+        }
+      }
+
+      return absoluteUrl(
+        getMeta(
+          'meta[property="og:image"]',
+          'meta[name="twitter:image"]'
+        )
+      );
+    };
+
   const selection = normalizeText(window.getSelection()?.toString() || "").slice(0, 50000);
   const title = getMeta('meta[property="og:title"]', 'meta[name="twitter:title"]') || document.title || "Untitled";
   const description = getMeta('meta[name="description"]', 'meta[property="og:description"]');
   const author = extractAuthor();
   const siteName = getMeta('meta[property="og:site_name"]') || location.hostname;
-  const image = absoluteUrl(getMeta('meta[property="og:image"]', 'meta[name="twitter:image"]'));
+  const image =
+    extractPrimaryImage();
 
   return {
     title: normalizeText(title),

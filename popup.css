@@ -5216,3 +5216,179 @@ body[data-destination="notion"]
   border-radius: 8px !important;
   font-size: 12px !important;
 }
+
+/* Obsidian filesystem permission recovery */
+
+.status .vault-permission-button {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #9027db;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.status .vault-permission-button:hover {
+  filter: brightness(1.08);
+}
+
+.status .vault-permission-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+
+/* Page image picker */
+
+.notion-image-page-select {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 4px 12px 12px;
+  padding: 11px 13px;
+  border: 1px solid #494949;
+  border-radius: 9px;
+  background: #202020;
+  color: #f4f4f4;
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notion-image-page-select:hover {
+  background: #292929;
+}
+
+.notion-image-page-select:disabled {
+  opacity: .6;
+  cursor: default;
+}
+
+/* GEAR SIZE FINAL - V1.6.17 */
+
+/* Global ClipNest settings */
+#settingsButton {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  font-size: 28px !important;
+  line-height: 1 !important;
+
+  border-radius: 10px !important;
+}
+
+/* Notion preset header */
+body[data-destination="notion"].notion-preset-open
+.notion-clip-header {
+  grid-template-columns:
+    36px minmax(0, 1fr) 36px !important;
+
+  min-height: 38px !important;
+}
+
+/* Keep both sides of the preset header balanced */
+body[data-destination="notion"].notion-preset-open
+.notion-clip-back,
+body[data-destination="notion"].notion-preset-open
+.notion-clip-edit {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+
+  padding: 0 !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Preset/database settings gear */
+body[data-destination="notion"].notion-preset-open
+.notion-clip-edit {
+  font-size: 22px !important;
+  line-height: 1 !important;
+}
+
+/* Keep the back arrow visually unchanged */
+body[data-destination="notion"].notion-preset-open
+.notion-clip-back {
+  font-size: 24px !important;
+  line-height: 1 !important;
+}
+
+/* END GEAR SIZE FINAL - V1.6.17 */
+
+/* ADD FIELDS - SINGLE SCROLLER FINAL */
+
+.notion-builder-add-field-list {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.notion-builder-add-field-picker {
+  margin-top: 8px !important;
+}
+
+/* END ADD FIELDS - SINGLE SCROLLER FINAL */
+
+/* IMAGE REMOVE CONTROL - FINAL */
+
+.notion-image-preview-wrap {
+  position: relative !important;
+  flex: 0 0 auto !important;
+}
+
+.notion-image-preview-wrap .notion-image-clear {
+  position: absolute !important;
+  top: 6px !important;
+  right: 6px !important;
+
+  width: 26px !important;
+  min-width: 26px !important;
+  height: 26px !important;
+  min-height: 26px !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  border: 1px solid rgba(255,255,255,.24) !important;
+  border-radius: 999px !important;
+
+  background: rgba(10,10,10,.82) !important;
+  color: #fff !important;
+
+  font-size: 19px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+
+  cursor: pointer !important;
+  z-index: 3 !important;
+}
+
+.notion-image-preview-wrap .notion-image-clear:hover {
+  background: #db5b27 !important;
+  border-color: #db5b27 !important;
+}
+
+.notion-image-preview-wrap .notion-image-clear[hidden] {
+  display: none !important;
+}
+
+/* END IMAGE REMOVE CONTROL */
