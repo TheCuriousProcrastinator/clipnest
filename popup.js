@@ -348,7 +348,7 @@ async function init() {
   await restorePickedPageImage();
 
   await globalThis
-    .ClipNestNotionBodyMedia
+    .ClipNestBodyMedia
     ?.restorePending(
       state.capture?.url ||
       ""
@@ -11121,10 +11121,16 @@ function setDestination(destination) {
     destination;
 
   globalThis
-    .ClipNestNotionBodyMedia
+    .ClipNestBodyMedia
     ?.setVisible(
       destination ===
-        "notion"
+        "notion" ||
+      (
+        destination ===
+          "obsidian" &&
+        getContentMode() ===
+          "article"
+      )
     );
 
   if (
@@ -11932,10 +11938,14 @@ async function save() {
     const payload = buildPayload();
 
     /*
-     * Page-body captures are temporary.
-     * Once Save is pressed, keep only the copy already
-     * contained in this save payload and immediately
-     * purge ClipNest's persisted/UI copy.
+     * Notion keeps its existing privacy behavior:
+     * once Save is pressed, the payload keeps its own
+     * copy and ClipNest clears the temporary draft.
+     *
+     * Obsidian is different because Chrome may interrupt
+     * the save to request vault permission. Keep Obsidian
+     * media until the filesystem write succeeds so the
+     * user never has to recapture it.
      */
     if (
       state.destination ===
@@ -11946,7 +11956,7 @@ async function save() {
       payload.notionBodyMedia.length
     ) {
       await globalThis
-        .ClipNestNotionBodyMedia
+        .ClipNestBodyMedia
         ?.clear?.();
     }
 
@@ -11967,8 +11977,20 @@ async function save() {
     } else {
       const obsidianResult =
         await saveToObsidian(
-          payload
+          payload,
+          state.articleEnhancementTab?.id
         );
+
+      if (
+        Array.isArray(
+          payload?.obsidianBodyMedia
+        ) &&
+        payload.obsidianBodyMedia.length
+      ) {
+        await globalThis
+          .ClipNestBodyMedia
+          ?.clear?.();
+      }
 
       const filename =
         obsidianResult.filename;
@@ -12021,7 +12043,11 @@ async function save() {
 
     setTimeout(() => window.close(), 450);
   } catch (error) {
-    setStatus(error.message || String(error), "error");
+    setStatus(
+      error?.message ||
+        String(error),
+      "error"
+    );
   } finally {
     state.saving = false;
     els.saveButton.disabled = false;
@@ -12038,13 +12064,20 @@ function buildPayload() {
       ? "article"
       : getContentMode();
 
-  const includePageContent =
-    state.destination !==
-      "notion" ||
+  const pageBodyTextEnabled =
     document.getElementById(
       "notionIncludePageContent"
     )?.checked !==
       false;
+
+  const includePageContent =
+    state.destination ===
+      "notion"
+      ? pageBodyTextEnabled
+      : contentMode ===
+          "article"
+        ? pageBodyTextEnabled
+        : true;
 
   const sections = [];
 
@@ -12115,6 +12148,12 @@ function buildPayload() {
         ) || null
       : null;
 
+  const bodyMedia =
+    globalThis
+      .ClipNestBodyMedia
+      ?.getItems?.() ||
+    [];
+
   return {
     title,
     url: state.capture.url,
@@ -12141,12 +12180,15 @@ function buildPayload() {
     notionBodyMedia:
       state.destination ===
         "notion"
-        ? (
-            globalThis
-              .ClipNestNotionBodyMedia
-              ?.getItems?.() ||
-            []
-          )
+        ? bodyMedia
+        : [],
+
+    obsidianBodyMedia:
+      state.destination ===
+          "obsidian" &&
+        contentMode ===
+          "article"
+        ? bodyMedia
         : []
   };
 }
@@ -12449,6 +12491,19 @@ function updateContentModeUI() {
   } else if (els.selectAreaButton) {
     els.selectAreaButton.textContent = "Pick area on page";
   }
+
+  globalThis
+    .ClipNestBodyMedia
+    ?.setVisible(
+      state.destination ===
+        "notion" ||
+      (
+        state.destination ===
+          "obsidian" &&
+        mode ===
+          "article"
+      )
+    );
 }
 
 async function restoreAreaSelection(tab, capture) {
@@ -14286,7 +14341,413 @@ function parseTags(value) {
   )];
 }
 
-async function saveToObsidian(payload) {
+async function readObsidianAppConfig(
+  root
+) {
+  try {
+    const configDirectory =
+      await root.getDirectoryHandle(
+        ".obsidian",
+        {
+          create: false
+        }
+      );
+
+    const configHandle =
+      await configDirectory
+        .getFileHandle(
+          "app.json",
+          {
+            create: false
+          }
+        );
+
+    const file =
+      await configHandle.getFile();
+
+    return JSON.parse(
+      await file.text()
+    );
+  } catch {
+    return {};
+  }
+}
+
+function resolveObsidianAttachmentSubfolder(
+  rawPath,
+  noteSubfolder
+) {
+  const raw =
+    String(
+      rawPath ??
+      ""
+    ).trim();
+
+  const noteFolder =
+    normalizeObsidianSubfolder(
+      noteSubfolder ||
+      ""
+    );
+
+  if (
+    !raw ||
+    raw === "/"
+  ) {
+    return "";
+  }
+
+  if (
+    raw === "." ||
+    raw === "./"
+  ) {
+    return noteFolder;
+  }
+
+  if (
+    raw.startsWith(
+      "./"
+    )
+  ) {
+    return normalizeObsidianSubfolder(
+      [
+        noteFolder,
+        raw.slice(2)
+      ]
+        .filter(Boolean)
+        .join("/")
+    );
+  }
+
+  return normalizeObsidianSubfolder(
+    raw.replace(
+      /^\/+/,
+      ""
+    )
+  );
+}
+
+function obsidianMediaExtension(
+  mimeType
+) {
+  const value =
+    String(
+      mimeType ||
+      ""
+    )
+      .toLowerCase();
+
+  if (value === "image/png") {
+    return ".png";
+  }
+
+  if (
+    value === "image/webp"
+  ) {
+    return ".webp";
+  }
+
+  if (
+    value === "image/gif"
+  ) {
+    return ".gif";
+  }
+
+  if (
+    value === "image/svg+xml"
+  ) {
+    return ".svg";
+  }
+
+  return ".jpg";
+}
+
+function sanitizeObsidianMediaFilename(
+  rawName,
+  mimeType
+) {
+  let filename =
+    String(
+      rawName ||
+      "clipnest-image"
+    )
+      .split(/[\\\\/]/)
+      .pop()
+      .replace(
+        /[<>:"/\\\\|?*\u0000-\u001F[\]#^]/g,
+        "-"
+      )
+      .replace(
+        /\s+/g,
+        " "
+      )
+      .trim()
+      .replace(
+        /^\.+|\.+$/g,
+        ""
+      );
+
+  if (!filename) {
+    filename =
+      "clipnest-image";
+  }
+
+  if (
+    !/\.[a-z0-9]{2,6}$/i.test(
+      filename
+    )
+  ) {
+    filename +=
+      obsidianMediaExtension(
+        mimeType
+      );
+  }
+
+  return filename.slice(
+    0,
+    180
+  );
+}
+
+async function findAvailableMediaFilename(
+  directory,
+  requestedName
+) {
+  const dot =
+    requestedName.lastIndexOf(
+      "."
+    );
+
+  const stem =
+    dot > 0
+      ? requestedName.slice(
+          0,
+          dot
+        )
+      : requestedName;
+
+  const extension =
+    dot > 0
+      ? requestedName.slice(
+          dot
+        )
+      : "";
+
+  for (
+    let index = 1;
+    index < 1000;
+    index += 1
+  ) {
+    const suffix =
+      index === 1
+        ? ""
+        : ` (${index})`;
+
+    const candidate =
+      `${stem}${suffix}${extension}`;
+
+    try {
+      await directory.getFileHandle(
+        candidate,
+        {
+          create: false
+        }
+      );
+    } catch (error) {
+      if (
+        error?.name ===
+          "NotFoundError"
+      ) {
+        return candidate;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error(
+    "Could not create a unique attachment filename."
+  );
+}
+
+async function obsidianMediaBlob(
+  media
+) {
+  const localDataUrl =
+    String(
+      media?.dataUrl ||
+      ""
+    );
+
+  if (
+    /^data:image\//i.test(
+      localDataUrl
+    )
+  ) {
+    return fetch(
+      localDataUrl
+    ).then(
+      (response) =>
+        response.blob()
+    );
+  }
+
+  const url =
+    String(
+      media?.url ||
+      ""
+    ).trim();
+
+  if (
+    media?.kind ===
+      "external" &&
+    /^https?:\/\//i.test(
+      url
+    )
+  ) {
+    try {
+      const response =
+        await fetch(
+          url,
+          {
+            credentials:
+              "omit"
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          `HTTP ${response.status}`
+        );
+      }
+
+      const blob =
+        await response.blob();
+
+      if (
+        !/^image\//i.test(
+          blob.type ||
+          ""
+        )
+      ) {
+        throw new Error(
+          "The selected URL did not return an image."
+        );
+      }
+
+      return blob;
+    } catch (error) {
+      throw new Error(
+        "ClipNest could not copy the selected page image into Obsidian. Try one of the screenshot capture options instead. " +
+        (
+          error?.message ||
+          String(error)
+        )
+      );
+    }
+  }
+
+  throw new Error(
+    "ClipNest could not read the captured image."
+  );
+}
+
+async function writeObsidianBodyMedia(
+  root,
+  noteSubfolder,
+  mediaItems
+) {
+  const appConfig =
+    await readObsidianAppConfig(
+      root
+    );
+
+  const attachmentSubfolder =
+    resolveObsidianAttachmentSubfolder(
+      appConfig
+        ?.attachmentFolderPath,
+      noteSubfolder
+    );
+
+  const directory =
+    await getSubfolder(
+      root,
+      attachmentSubfolder
+    );
+
+  const embeds = [];
+  const filePaths = [];
+
+  for (
+    const media of
+      mediaItems
+  ) {
+    const blob =
+      await obsidianMediaBlob(
+        media
+      );
+
+    const requestedFilename =
+      sanitizeObsidianMediaFilename(
+        media?.filename,
+        blob.type ||
+          media?.mimeType ||
+          "image/jpeg"
+      );
+
+    const filename =
+      await findAvailableMediaFilename(
+        directory,
+        requestedFilename
+      );
+
+    const fileHandle =
+      await directory
+        .getFileHandle(
+          filename,
+          {
+            create: true
+          }
+        );
+
+    const writable =
+      await fileHandle
+        .createWritable();
+
+    try {
+      await writable.write(
+        blob
+      );
+    } finally {
+      await writable.close();
+    }
+
+    const filePath =
+      [
+        attachmentSubfolder,
+        filename
+      ]
+        .filter(Boolean)
+        .join("/");
+
+    filePaths.push(
+      filePath
+    );
+
+    embeds.push(
+      `![[${filePath}]]`
+    );
+  }
+
+  return {
+    embeds,
+    filePaths
+  };
+}
+
+async function saveToObsidian(
+  payload,
+  sourceTabId = null
+) {
   const handle =
     await getVaultHandle();
 
@@ -14319,6 +14780,50 @@ async function saveToObsidian(payload) {
       ""
     );
 
+  const bodyMedia =
+    Array.isArray(
+      payload?.obsidianBodyMedia
+    )
+      ? payload.obsidianBodyMedia
+          .slice(
+            0,
+            6
+          )
+      : [];
+
+  const writtenMedia =
+    bodyMedia.length
+      ? await writeObsidianBodyMedia(
+          handle,
+          subfolder,
+          bodyMedia
+        )
+      : {
+          embeds: [],
+          filePaths: []
+        };
+
+  const mediaMarkdown =
+    writtenMedia.embeds
+      .join(
+        "\n\n"
+      );
+
+  const finalPayload = {
+    ...payload,
+
+    markdown:
+      [
+        payload.markdown,
+        mediaMarkdown
+      ]
+        .filter(Boolean)
+        .join(
+          "\n\n"
+        )
+        .trim()
+  };
+
   const directory =
     await getSubfolder(
       handle,
@@ -14327,7 +14832,7 @@ async function saveToObsidian(payload) {
 
   const baseName =
     sanitizeFilename(
-      payload.title
+      finalPayload.title
     ) ||
     "Untitled";
 
@@ -14351,7 +14856,7 @@ async function saveToObsidian(payload) {
 
   await writable.write(
     buildObsidianMarkdown(
-      payload
+      finalPayload
     )
   );
 
@@ -14372,7 +14877,8 @@ async function saveToObsidian(payload) {
       await openSavedObsidianNote(
         handle.name ||
           "",
-        filePath
+        filePath,
+        sourceTabId
       );
     } catch (error) {
       console.warn(
@@ -14384,7 +14890,9 @@ async function saveToObsidian(payload) {
 
   return {
     filename,
-    filePath
+    filePath,
+    mediaFilePaths:
+      writtenMedia.filePaths
   };
 }
 
@@ -14451,7 +14959,8 @@ function buildObsidianOpenUri(
 
 async function openSavedObsidianNote(
   vaultName,
-  filePath
+  filePath,
+  sourceTabId = null
 ) {
   const uri =
     buildObsidianOpenUri(
@@ -14459,28 +14968,27 @@ async function openSavedObsidianNote(
       filePath
     );
 
-  const [tab] =
-    await chrome.tabs.query({
-      active: true,
-      currentWindow: true
+  const response =
+    await chrome.runtime.sendMessage({
+      type:
+        "obsidian.openSavedNote",
+
+      uri,
+
+      tabId:
+        Number.isInteger(
+          sourceTabId
+        )
+          ? sourceTabId
+          : null
     });
 
-  if (
-    !Number.isInteger(
-      tab?.id
-    )
-  ) {
+  if (!response?.ok) {
     throw new Error(
-      "No active Chrome tab is available."
+      response?.error?.message ||
+      "ClipNest could not open the saved Obsidian note."
     );
   }
-
-  await chrome.tabs.update(
-    tab.id,
-    {
-      url: uri
-    }
-  );
 }
 
 async function ensureWritePermission(handle) {
@@ -14865,106 +15373,6 @@ function setStatus(message, kind = "") {
   els.status.className =
     `status ${kind}`.trim();
 
-  const normalized =
-    String(
-      message || ""
-    ).toLowerCase();
-
-  const needsVaultPermission =
-    kind === "error" &&
-    normalized.includes("permission") &&
-    normalized.includes("vault") &&
-    pendingObsidianPermissionHandle;
-
-  if (!needsVaultPermission) {
-    return;
-  }
-
-  const messageEl =
-    document.createElement(
-      "span"
-    );
-
-  messageEl.textContent =
-    "ClipNest needs permission to access this vault again.";
-
-  const button =
-    document.createElement(
-      "button"
-    );
-
-  button.type =
-    "button";
-
-  button.className =
-    "vault-permission-button";
-
-  button.textContent =
-    "Grant access";
-
-  button.addEventListener(
-    "click",
-    async () => {
-      const handle =
-        pendingObsidianPermissionHandle;
-
-      if (!handle) {
-        setStatus(
-          "Vault access could not be restored. Open Settings and reconnect the vault.",
-          "error"
-        );
-
-        return;
-      }
-
-      button.disabled =
-        true;
-
-      try {
-        /*
-         * requestPermission must happen directly
-         * from this user click.
-         */
-        const permission =
-          await handle.requestPermission({
-            mode: "readwrite"
-          });
-
-        if (
-          permission !==
-            "granted"
-        ) {
-          button.disabled =
-            false;
-
-          setStatus(
-            "Vault access was not granted.",
-            "error"
-          );
-
-          return;
-        }
-
-        pendingObsidianPermissionHandle =
-          null;
-
-        window.location.reload();
-      } catch {
-        button.disabled =
-          false;
-
-        setStatus(
-          "Vault access could not be restored. Open Settings and reconnect the vault.",
-          "error"
-        );
-      }
-    }
-  );
-
-  els.status.replaceChildren(
-    messageEl,
-    button
-  );
 }
 
 /* UX PASS 1 - V0.5.0 */
@@ -15327,15 +15735,23 @@ function updateUxSaveButtonLabel() {
 
   let label = "Save";
 
-  const notionImageOnly =
-    state?.destination ===
-      "notion" &&
+  const pageBodyImageOnly =
+    (
+      state?.destination ===
+        "notion" ||
+      (
+        state?.destination ===
+          "obsidian" &&
+        kind ===
+          "article"
+      )
+    ) &&
     document.getElementById(
       "notionIncludePageContent"
     )?.checked ===
       false;
 
-  if (notionImageOnly) {
+  if (pageBodyImageOnly) {
     label = "Save image";
   } else if (kind === "article") {
     label = "Save article";

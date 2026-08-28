@@ -4602,23 +4602,115 @@ chrome.runtime.onMessage.addListener(
             );
           }
 
-          await chrome.storage.local.set({
-            clipnestPickedImage: {
-              url,
+          const bodyPurpose =
+            message.purpose ===
+              "body" ||
+            message.purpose ===
+              "body-obsidian";
 
-              pageUrl:
-                String(
-                  message.pageUrl ||
-                  sender.tab?.url ||
-                  ""
-                ),
+          const pickedImage = {
+            url,
 
-              capturedAt:
-                Number(
-                  message.capturedAt ||
-                  Date.now()
-                )
+            pageUrl:
+              String(
+                message.pageUrl ||
+                sender.tab?.url ||
+                ""
+              ),
+
+            capturedAt:
+              Number(
+                message.capturedAt ||
+                Date.now()
+              )
+          };
+
+          if (
+            message.purpose ===
+              "body-obsidian"
+          ) {
+            const windowId =
+              sender.tab?.windowId;
+
+            const rect =
+              message.rect &&
+              typeof message.rect ===
+                "object"
+                ? message.rect
+                : {};
+
+            if (
+              !Number.isInteger(
+                windowId
+              ) ||
+              Number(
+                rect.width ||
+                0
+              ) <= 0 ||
+              Number(
+                rect.height ||
+                0
+              ) <= 0
+            ) {
+              throw new Error(
+                "ClipNest could not capture the selected image."
+              );
             }
+
+            await new Promise(
+              (resolve) =>
+                setTimeout(
+                  resolve,
+                  80
+                )
+            );
+
+            const dataUrl =
+              await chrome.tabs
+                .captureVisibleTab(
+                  windowId,
+                  {
+                    format:
+                      "jpeg",
+
+                    quality:
+                      92
+                  }
+                );
+
+            if (!dataUrl) {
+              throw new Error(
+                "ClipNest could not capture the selected image."
+              );
+            }
+
+            pickedImage.dataUrl =
+              dataUrl;
+
+            pickedImage.rect =
+              rect;
+
+            pickedImage.viewportWidth =
+              Number(
+                message.viewportWidth ||
+                0
+              );
+
+            pickedImage.viewportHeight =
+              Number(
+                message.viewportHeight ||
+                0
+              );
+          }
+
+          const storageKey =
+            bodyPurpose
+              ? "clipnestPickedBodyImage"
+              : "clipnestPickedImage";
+
+          await chrome.storage.local.set({
+            [storageKey]:
+              pickedImage
           });
 
           /*
@@ -4656,6 +4748,139 @@ chrome.runtime.onMessage.addListener(
             console.debug(
               "ClipNest could not automatically reopen the popup:",
               popupError
+            );
+          }
+
+          sendResponse({
+            ok: true
+          });
+        } catch (error) {
+          sendResponse({
+            ok: false,
+
+            error: {
+              message:
+                error?.message ||
+                String(error)
+            }
+          });
+        }
+      }
+    )();
+
+    return true;
+  }
+);
+
+
+
+/* ==================================================
+   ClipNest Obsidian note opener
+   ================================================== */
+
+chrome.runtime.onMessage.addListener(
+  (
+    message,
+    sender,
+    sendResponse
+  ) => {
+    if (
+      message?.type !==
+        "obsidian.openSavedNote"
+    ) {
+      return;
+    }
+
+    void (
+      async () => {
+        try {
+          const uri =
+            String(
+              message.uri ||
+              ""
+            ).trim();
+
+          let tabId =
+            Number.isInteger(
+              message.tabId
+            )
+              ? message.tabId
+              : null;
+
+          if (
+            !/^obsidian:\/\//i.test(
+              uri
+            )
+          ) {
+            throw new Error(
+              "Invalid Obsidian URI."
+            );
+          }
+
+          if (
+            !Number.isInteger(
+              tabId
+            )
+          ) {
+            const [tab] =
+              await chrome.tabs.query({
+                active: true,
+                currentWindow: true
+              });
+
+            tabId =
+              Number.isInteger(
+                tab?.id
+              )
+                ? tab.id
+                : null;
+          }
+
+          if (
+            !Number.isInteger(
+              tabId
+            )
+          ) {
+            throw new Error(
+              "No Chrome tab is available to open the saved Obsidian note."
+            );
+          }
+
+          /*
+           * On macOS, Obsidian can consume the first URI
+           * only as an application launch when it is not
+           * already running. Retry the exact same URI once
+           * after startup so the requested note is opened.
+           *
+           * This runs in the service worker so it survives
+           * the popup losing focus when Obsidian launches.
+           */
+          await chrome.tabs.update(
+            tabId,
+            {
+              url: uri
+            }
+          );
+
+          await new Promise(
+            (resolve) =>
+              setTimeout(
+                resolve,
+                1400
+              )
+          );
+
+          try {
+            await chrome.tabs.update(
+              tabId,
+              {
+                url: uri
+              }
+            );
+          } catch (retryError) {
+            console.debug(
+              "ClipNest Obsidian URI retry failed:",
+              retryError
             );
           }
 

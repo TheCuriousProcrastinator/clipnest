@@ -1776,6 +1776,64 @@
           const picked =
             active.url;
 
+          const selectedRect =
+            active.element
+              ?.getBoundingClientRect?.();
+
+          const left =
+            selectedRect
+              ? Math.max(
+                  0,
+                  selectedRect.left
+                )
+              : 0;
+
+          const top =
+            selectedRect
+              ? Math.max(
+                  0,
+                  selectedRect.top
+                )
+              : 0;
+
+          const right =
+            selectedRect
+              ? Math.min(
+                  innerWidth,
+                  selectedRect.right
+                )
+              : 0;
+
+          const bottom =
+            selectedRect
+              ? Math.min(
+                  innerHeight,
+                  selectedRect.bottom
+                )
+              : 0;
+
+          const rect = {
+            x:
+              left,
+
+            y:
+              top,
+
+            width:
+              Math.max(
+                0,
+                right -
+                  left
+              ),
+
+            height:
+              Math.max(
+                0,
+                bottom -
+                  top
+              )
+          };
+
           cleanup();
 
           void chrome.runtime
@@ -1793,7 +1851,15 @@
                 Date.now(),
 
               purpose:
-                pickerPurpose
+                pickerPurpose,
+
+              rect,
+
+              viewportWidth:
+                innerWidth,
+
+              viewportHeight:
+                innerHeight
             });
         };
 
@@ -2467,8 +2533,7 @@
     return control;
   }
 
-  globalThis
-    .ClipNestNotionImagePicker =
+  const api =
     Object.freeze({
       create,
       collectPageImages,
@@ -2476,4 +2541,12 @@
       startPageSelection:
         startClipNestPageImageSelection
     });
+
+  globalThis
+    .ClipNestImagePicker =
+    api;
+
+  globalThis
+    .ClipNestNotionImagePicker =
+    api;
 })();

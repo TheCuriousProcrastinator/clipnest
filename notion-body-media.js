@@ -2657,7 +2657,7 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
   async function startImageSelection() {
     if (
       !globalThis
-        .ClipNestNotionImagePicker
+        .ClipNestImagePicker
         ?.startPageSelection
     ) {
       throw new Error(
@@ -2706,10 +2706,18 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
       });
     }
 
+    const pickerPurpose =
+      document.body
+        ?.dataset
+        ?.destination ===
+          "obsidian"
+        ? "body-obsidian"
+        : "body";
+
     await globalThis
-      .ClipNestNotionImagePicker
+      .ClipNestImagePicker
       .startPageSelection(
-        "body"
+        pickerPurpose
       );
 
     window.close();
@@ -2874,7 +2882,7 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
       "notion-body-content-toggle";
 
     includeContentToggle.title =
-      "Include the clipped article text in the Notion page body";
+      "Include the clipped article text in the saved page body";
 
     const includeContentText =
       document.createElement(
@@ -3193,21 +3201,53 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
           currentPageUrl
       )
     ) {
-      await addItem({
-        kind:
-          "external",
+      if (
+        /^data:image\//i.test(
+          String(
+            pickedImage.dataUrl ||
+            ""
+          )
+        )
+      ) {
+        const cropped =
+          await cropScreenshot(
+            pickedImage.dataUrl,
+            pickedImage
+          );
 
-        url:
-          pickedImage.url,
+        await addItem({
+          kind:
+            "data",
 
-        filename:
-          filenameFromUrl(
-            pickedImage.url
-          ),
+          dataUrl:
+            cropped,
 
-        label:
-          "Selected image"
-      });
+          mimeType:
+            "image/jpeg",
+
+          filename:
+            `clipnest-image-${Date.now()}.jpg`,
+
+          label:
+            "Selected image"
+        });
+      } else {
+        await addItem({
+          kind:
+            "external",
+
+          url:
+            pickedImage.url,
+
+          filename:
+            filenameFromUrl(
+              pickedImage.url
+            ),
+
+          label:
+            "Selected image"
+        });
+      }
 
       await chrome.storage.local
         .remove(
@@ -3362,12 +3402,19 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
 
   mount();
 
-  globalThis
-    .ClipNestNotionBodyMedia =
+  const api =
     Object.freeze({
       setVisible,
       restorePending,
       getItems,
       clear
     });
+
+  globalThis
+    .ClipNestBodyMedia =
+    api;
+
+  globalThis
+    .ClipNestNotionBodyMedia =
+    api;
 })();
