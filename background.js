@@ -2873,8 +2873,7 @@ async function saveToNotion(
                 ]
               : field.source ===
                   "page_image"
-                ? payload?.image ||
-                  ""
+                ? ""
                 : (
                     field.source ===
                       "page_author" ||
@@ -3025,19 +3024,84 @@ async function saveToNotion(
 
   try {
     const content =
-      await ClipNestNotionSession
-        .appendMarkdownToPage({
-          workspaceId:
-            preset.workspaceId,
+      markdown
+        ? await ClipNestNotionSession
+            .appendMarkdownToPage({
+              workspaceId:
+                preset.workspaceId,
 
-          userId:
-            preset.workspaceUserId,
+              userId:
+                preset.workspaceUserId,
 
-          pageId:
-            page.id,
+              pageId:
+                page.id,
 
-          markdown
-        });
+              markdown
+            })
+        : {
+            blockIds:
+              [],
+
+            blockCount:
+              0
+          };
+
+    const bodyMedia =
+      Array.isArray(
+        payload?.notionBodyMedia
+      )
+        ? payload.notionBodyMedia
+            .slice(
+              0,
+              6
+            )
+        : [];
+
+    let mediaBlockCount =
+      0;
+
+    let afterBlockId =
+      content.blockIds
+        ?.at?.(
+          -1
+        ) ||
+      "";
+
+    for (
+      const media of
+        bodyMedia
+    ) {
+      const appended =
+        await ClipNestNotionSession
+          .appendImageToPage({
+            workspaceId:
+              preset.workspaceId,
+
+            userId:
+              preset.workspaceUserId,
+
+            pageId:
+              page.id,
+
+            media,
+
+            afterBlockId
+          });
+
+      afterBlockId =
+        appended.blockId ||
+        afterBlockId;
+
+      mediaBlockCount +=
+        1;
+    }
+
+    const totalBlockCount =
+      Number(
+        content.blockCount ||
+        0
+      ) +
+      mediaBlockCount;
 
     console.log(
       "ClipNest Notion save succeeded:",
@@ -3058,7 +3122,7 @@ async function saveToNotion(
           page.id,
 
         blockCount:
-          content.blockCount
+          totalBlockCount
       }
     );
 
@@ -4615,3 +4679,233 @@ chrome.runtime.onMessage.addListener(
     return true;
   }
 );
+
+
+/* ==================================================
+   CLIPNEST BODY AREA CAPTURE - V2
+   ================================================== */
+
+async function processPendingBodyAreaCapture(
+  pending
+) {
+  const stored =
+    await chrome.storage.local.get(
+      "clipnestBodyAreaContext"
+    );
+
+  const context =
+    stored.clipnestBodyAreaContext ||
+    {};
+
+  const tabId =
+    Number(
+      context.tabId
+    );
+
+  const windowId =
+    Number(
+      context.windowId
+    );
+
+  const reopenPopup =
+    async () => {
+      if (
+        !Number.isInteger(
+          windowId
+        )
+      ) {
+        return;
+      }
+
+      try {
+        await chrome.action.openPopup({
+          windowId
+        });
+      } catch (error) {
+        console.warn(
+          "ClipNest could not reopen popup after area capture:",
+          error
+        );
+      }
+    };
+
+  try {
+    if (
+      !Number.isInteger(
+        tabId
+      ) ||
+      !Number.isInteger(
+        windowId
+      )
+    ) {
+      throw new Error(
+        "ClipNest lost the page context for this capture."
+      );
+    }
+
+    const tab =
+      await chrome.tabs.get(
+        tabId
+      );
+
+    if (
+      !tab?.active ||
+      tab.windowId !==
+        windowId
+    ) {
+      throw new Error(
+        "The page changed before ClipNest could capture the selected area."
+      );
+    }
+
+    if (
+      context.pageUrl &&
+      pending?.pageUrl &&
+      context.pageUrl !==
+        pending.pageUrl
+    ) {
+      throw new Error(
+        "The page changed before ClipNest could capture the selected area."
+      );
+    }
+
+    await new Promise(
+      (resolve) =>
+        setTimeout(
+          resolve,
+          120
+        )
+    );
+
+    const dataUrl =
+      await chrome.tabs.captureVisibleTab(
+        windowId,
+        {
+          format:
+            "jpeg",
+
+          quality:
+            92
+        }
+      );
+
+    if (!dataUrl) {
+      throw new Error(
+        "Chrome could not capture the selected area."
+      );
+    }
+
+    await chrome.storage.local.set({
+      clipnestPickedBodyArea: {
+        dataUrl,
+
+        rect:
+          pending?.rect ||
+          {},
+
+        viewportWidth:
+          Number(
+            pending?.viewportWidth ||
+            0
+          ),
+
+        viewportHeight:
+          Number(
+            pending?.viewportHeight ||
+            0
+          ),
+
+        pageUrl:
+          String(
+            pending?.pageUrl ||
+            context.pageUrl ||
+            tab.url ||
+            ""
+          ),
+
+        capturedAt:
+          Date.now()
+      }
+    });
+
+    await chrome.storage.local.remove([
+      "clipnestBodyAreaContext",
+      "clipnestBodyAreaError"
+    ]);
+
+    await reopenPopup();
+  } catch (error) {
+    console.error(
+      "ClipNest area capture failed:",
+      error
+    );
+
+    await chrome.storage.local.set({
+      clipnestBodyAreaError: {
+        message:
+          error?.message ||
+          String(error),
+
+        capturedAt:
+          Date.now()
+      }
+    });
+
+    await chrome.storage.local.remove([
+      "clipnestBodyAreaContext"
+    ]);
+
+    await reopenPopup();
+  }
+}
+
+
+/* CLIPNEST BODY AREA RUNTIME HANDOFF */
+
+chrome.runtime.onMessage.addListener(
+  (
+    message,
+    sender,
+    sendResponse
+  ) => {
+    if (
+      message?.type !==
+        "clipnest.bodyAreaPicked"
+    ) {
+      return;
+    }
+
+    void processPendingBodyAreaCapture(
+      message
+    )
+      .then(
+        () => {
+          sendResponse({
+            ok:
+              true
+          });
+        }
+      )
+      .catch(
+        (error) => {
+          console.error(
+            "ClipNest area runtime handoff failed:",
+            error
+          );
+
+          sendResponse({
+            ok:
+              false,
+
+            error:
+              error?.message ||
+              String(error)
+          });
+        }
+      );
+
+    return true;
+  }
+);
+
+/* END CLIPNEST BODY AREA CAPTURE - V2 */

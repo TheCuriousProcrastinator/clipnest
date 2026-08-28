@@ -4360,6 +4360,1226 @@ function encodeDatabaseProperties({
     };
   }
 
+
+  function notionMediaFilename(
+    value,
+    fallback =
+      "clipnest-image.jpg"
+  ) {
+    const cleaned =
+      String(
+        value ||
+        fallback
+      )
+        .replace(
+          /[<>:"/\\|?*\x00-\x1f]/g,
+          "-"
+        )
+        .trim()
+        .slice(
+          0,
+          160
+        );
+
+    return (
+      cleaned ||
+      fallback
+    );
+  }
+
+  function notionFilenameFromUrl(
+    value
+  ) {
+    try {
+      const parsed =
+        new URL(
+          value
+        );
+
+      const last =
+        parsed.pathname
+          .split(
+            "/"
+          )
+          .filter(Boolean)
+          .pop();
+
+      if (last) {
+        return notionMediaFilename(
+          decodeURIComponent(
+            last
+          ),
+          "image"
+        );
+      }
+    } catch {
+    }
+
+    return "image";
+  }
+
+  async function requestImageUpload({
+    workspaceId,
+    userId,
+    blockId,
+    filename,
+    mimeType,
+    size
+  }) {
+    const attempts =
+      [];
+
+    const body = {
+      bucket:
+        "secure",
+
+      name:
+        filename,
+
+      contentType:
+        mimeType,
+
+      record: {
+        table:
+          "block",
+
+        id:
+          normalizeNotionRecordId(
+            blockId
+          ),
+
+        spaceId:
+          normalizeNotionRecordId(
+            workspaceId
+          )
+      },
+
+      supportExtraHeaders:
+        true,
+
+      contentLength:
+        size
+    };
+
+    for (
+      const host of
+        NOTION_HOSTS
+    ) {
+      try {
+        const response =
+          await postNotion(
+            host,
+            "getUploadFileUrl",
+            body,
+            {
+              userId,
+              spaceId:
+                workspaceId
+            }
+          );
+
+
+
+        const finalUrl =
+          String(
+            response?.url ||
+            ""
+          ).trim();
+
+        const signedUploadPostUrl =
+          String(
+            response
+              ?.signedUploadPostUrl ||
+            ""
+          ).trim();
+
+        const signedPutUrl =
+          String(
+            response
+              ?.signedPutUrl ||
+            ""
+          ).trim();
+
+        if (
+          !finalUrl ||
+          (
+            !signedUploadPostUrl &&
+            !signedPutUrl
+          )
+        ) {
+          throw new Error(
+            "Notion did not return an upload destination."
+          );
+        }
+
+        return {
+          host,
+          finalUrl,
+          signedUploadPostUrl,
+          signedPutUrl,
+          userId,
+
+          fields:
+            response?.fields &&
+            typeof response.fields ===
+              "object"
+              ? response.fields
+              : {},
+
+          postHeaders:
+            Array.isArray(
+              response?.postHeaders
+            )
+              ? response.postHeaders
+              : [],
+
+          putHeaders:
+            Array.isArray(
+              response?.putHeaders
+            )
+              ? response.putHeaders
+              : [],
+
+          headers:
+            Array.isArray(
+              response?.headers
+            )
+              ? response.headers
+              : []
+        };
+      } catch (error) {
+        attempts.push({
+          host,
+
+          error:
+            error?.message ||
+            String(error),
+
+          status:
+            error?.status ||
+            null
+        });
+      }
+    }
+
+    const error =
+      new Error(
+        "ClipNest could not start the Notion image upload."
+      );
+
+    error.attempts =
+      attempts;
+
+    throw error;
+  }
+
+  function notionXmlTaggingToQuery(
+    value
+  ) {
+    const source =
+      String(
+        value ||
+        ""
+      );
+
+    if (!source) {
+      return "";
+    }
+
+    const keys =
+      [
+        ...source.matchAll(
+          /<Key>(.*?)<\/Key>/g
+        )
+      ].map(
+        (match) =>
+          match[1]
+      );
+
+    const values =
+      [
+        ...source.matchAll(
+          /<Value>(.*?)<\/Value>/g
+        )
+      ].map(
+        (match) =>
+          match[1]
+      );
+
+    return keys
+      .map(
+        (
+          key,
+          index
+        ) =>
+          `${encodeURIComponent(
+            key
+          )}=${encodeURIComponent(
+            values[index] ||
+            ""
+          )}`
+      )
+      .join(
+        "&"
+      );
+  }
+
+  function buildNotionSignedPutHeaders(
+    descriptor,
+    mimeType
+  ) {
+    const headers =
+      {};
+
+    const addHeader =
+      (
+        rawKey,
+        rawValue
+      ) => {
+        const key =
+          String(
+            rawKey ||
+            ""
+          ).trim();
+
+        if (!key) {
+          return;
+        }
+
+        const lower =
+          key.toLowerCase();
+
+        /*
+         * Chrome owns these headers.
+         * The browser will supply the real values.
+         */
+        if (
+          lower ===
+            "content-length" ||
+          lower ===
+            "host"
+        ) {
+          return;
+        }
+
+        headers[key] =
+          String(
+            rawValue ??
+            ""
+          );
+      };
+
+    for (
+      const list of [
+        descriptor?.putHeaders,
+        descriptor?.postHeaders,
+        descriptor?.headers
+      ]
+    ) {
+      if (
+        !Array.isArray(
+          list
+        )
+      ) {
+        continue;
+      }
+
+      for (
+        const item of
+          list
+      ) {
+        addHeader(
+          item?.key ||
+          item?.name,
+          item?.value
+        );
+      }
+    }
+
+    const hasContentType =
+      Object.keys(
+        headers
+      ).some(
+        (key) =>
+          key.toLowerCase() ===
+            "content-type"
+      );
+
+    if (
+      mimeType &&
+      !hasContentType
+    ) {
+      headers[
+        "Content-Type"
+      ] =
+        mimeType;
+    }
+
+    const putUrl =
+      String(
+        descriptor?.signedPutUrl ||
+        ""
+      );
+
+    const needsTagging =
+      /X-Amz-SignedHeaders=[^&]*x-amz-tagging/i
+        .test(
+          putUrl
+        );
+
+    const hasTagging =
+      Object.keys(
+        headers
+      ).some(
+        (key) =>
+          key.toLowerCase() ===
+            "x-amz-tagging"
+      );
+
+    if (
+      needsTagging &&
+      !hasTagging
+    ) {
+      let tagging =
+        notionXmlTaggingToQuery(
+          descriptor
+            ?.fields
+            ?.tagging
+        );
+
+      if (!tagging) {
+        tagging =
+          `source=UserUpload&env=production&creator=${encodeURIComponent(
+            `notion_user:${
+              descriptor?.userId ||
+              "unknown"
+            }::`
+          )}`;
+      }
+
+      headers[
+        "x-amz-tagging"
+      ] =
+        tagging;
+    }
+
+    return headers;
+  }
+
+  function buildSignedUploadForm(
+    descriptor,
+    blob,
+    filename
+  ) {
+    const form =
+      new FormData();
+
+    for (
+      const [
+        key,
+        value
+      ] of Object.entries(
+        descriptor.fields ||
+        {}
+      )
+    ) {
+      form.append(
+        key,
+        String(value)
+      );
+    }
+
+    form.append(
+      "file",
+      blob,
+      filename
+    );
+
+    return form;
+  }
+
+  async function waitForNotionUploadTab(
+    tabId,
+    timeoutMs =
+      12000
+  ) {
+    try {
+      const tab =
+        await chrome.tabs.get(
+          tabId
+        );
+
+      if (
+        tab?.status ===
+          "complete"
+      ) {
+        return;
+      }
+    } catch {
+    }
+
+    await new Promise(
+      (
+        resolve,
+        reject
+      ) => {
+        let timer =
+          null;
+
+        const cleanup =
+          () => {
+            chrome.tabs.onUpdated
+              .removeListener(
+                onUpdated
+              );
+
+            if (timer) {
+              clearTimeout(
+                timer
+              );
+            }
+          };
+
+        const onUpdated =
+          (
+            id,
+            info
+          ) => {
+            if (
+              id !==
+                tabId ||
+              info.status !==
+                "complete"
+            ) {
+              return;
+            }
+
+            cleanup();
+            resolve();
+          };
+
+        chrome.tabs.onUpdated
+          .addListener(
+            onUpdated
+          );
+
+        timer =
+          setTimeout(
+            () => {
+              cleanup();
+
+              reject(
+                new Error(
+                  "Notion upload helper did not load in time."
+                )
+              );
+            },
+            timeoutMs
+          );
+      }
+    );
+  }
+
+  async function uploadThroughNotionTab({
+    descriptor,
+    dataUrl,
+    filename,
+    mimeType
+  }) {
+    let tabs =
+      await chrome.tabs.query({
+        url:
+          NOTION_ORIGINS
+      });
+
+    let tab =
+      tabs.find(
+        (candidate) =>
+          Number.isInteger(
+            candidate.id
+          )
+      );
+
+    let created =
+      false;
+
+    if (!tab) {
+      tab =
+        await chrome.tabs.create({
+          url:
+            "https://www.notion.so/",
+
+          active:
+            false
+        });
+
+      created =
+        true;
+
+      await waitForNotionUploadTab(
+        tab.id
+      );
+    }
+
+    try {
+      const result =
+        await chrome.scripting
+          .executeScript({
+            target: {
+              tabId:
+                tab.id
+            },
+
+            func:
+              async (
+                upload
+              ) => {
+                const blob =
+                  await fetch(
+                    upload.dataUrl
+                  ).then(
+                    (response) =>
+                      response.blob()
+                  );
+
+                if (
+                  upload
+                    .signedUploadPostUrl
+                ) {
+                  const form =
+                    new FormData();
+
+                  for (
+                    const [
+                      key,
+                      value
+                    ] of Object.entries(
+                      upload.fields ||
+                      {}
+                    )
+                  ) {
+                    form.append(
+                      key,
+                      String(value)
+                    );
+                  }
+
+                  form.append(
+                    "file",
+                    blob,
+                    upload.filename
+                  );
+
+                  const response =
+                    await fetch(
+                      upload
+                        .signedUploadPostUrl,
+                      {
+                        method:
+                          "POST",
+
+                        body:
+                          form
+                      }
+                    );
+
+                  return {
+                    ok:
+                      response.ok,
+
+                    status:
+                      response.status
+                  };
+                }
+
+                const response =
+                  await fetch(
+                    upload.signedPutUrl,
+                    {
+                      method:
+                        "PUT",
+
+                      headers:
+                        upload.putHeaders ||
+                        {},
+
+                      body:
+                        blob
+                    }
+                  );
+
+                return {
+                  ok:
+                    response.ok,
+
+                  status:
+                    response.status
+                };
+              },
+
+            args: [
+              {
+                dataUrl,
+                filename,
+                mimeType,
+
+                signedUploadPostUrl:
+                  descriptor
+                    .signedUploadPostUrl,
+
+                signedPutUrl:
+                  descriptor
+                    .signedPutUrl,
+
+                fields:
+                  descriptor
+                    .fields,
+
+                putHeaders:
+                  buildNotionSignedPutHeaders(
+                    descriptor,
+                    mimeType
+                  )
+              }
+            ]
+          });
+
+      const uploadResult =
+        result?.[0]
+          ?.result;
+
+      if (
+        !uploadResult?.ok
+      ) {
+        throw new Error(
+          `Notion image upload returned HTTP ${
+            uploadResult?.status ||
+            "unknown"
+          }.`
+        );
+      }
+    } finally {
+      if (
+        created &&
+        Number.isInteger(
+          tab?.id
+        )
+      ) {
+        try {
+          await chrome.tabs.remove(
+            tab.id
+          );
+        } catch {
+        }
+      }
+    }
+  }
+
+  async function uploadImageBlob({
+    descriptor,
+    blob,
+    dataUrl,
+    filename,
+    mimeType
+  }) {
+    let directError =
+      null;
+
+    try {
+      if (
+        descriptor
+          .signedUploadPostUrl
+      ) {
+        const response =
+          await fetch(
+            descriptor
+              .signedUploadPostUrl,
+            {
+              method:
+                "POST",
+
+              body:
+                buildSignedUploadForm(
+                  descriptor,
+                  blob,
+                  filename
+                )
+            }
+          );
+
+        if (
+          response.ok
+        ) {
+          return;
+        }
+
+        directError =
+          new Error(
+            `Upload returned HTTP ${response.status}.`
+          );
+      } else {
+        const response =
+          await fetch(
+            descriptor
+              .signedPutUrl,
+            {
+              method:
+                "PUT",
+
+              headers:
+                buildNotionSignedPutHeaders(
+                  descriptor,
+                  mimeType
+                ),
+
+              body:
+                blob
+            }
+          );
+
+        if (
+          response.ok
+        ) {
+          return;
+        }
+
+        directError =
+          new Error(
+            `Upload returned HTTP ${response.status}.`
+          );
+      }
+    } catch (error) {
+      directError =
+        error;
+    }
+
+    /*
+     * Never treat a no-cors upload as success.
+     *
+     * An opaque response cannot tell us whether S3
+     * accepted the file. That caused ClipNest to
+     * continue saving even when the screenshot was
+     * never actually uploaded.
+     *
+     * If direct upload is blocked by CORS, perform
+     * the signed upload from a real Notion tab.
+     */
+    const error =
+      new Error(
+        "ClipNest could not upload the screenshot to Notion."
+      );
+
+    error.directError =
+      directError
+        ?.message ||
+      "";
+
+    error.fallbackError =
+      "Notion-tab fallback disabled while debugging.";
+
+    throw error;
+  }
+
+  async function setImageBlockSource({
+    workspaceId,
+    userId,
+    blockId,
+    url,
+    filename =
+      "image",
+    size =
+      0
+  }) {
+    const id =
+      normalizeNotionRecordId(
+        blockId
+      );
+
+    const spaceId =
+      normalizeNotionRecordId(
+        workspaceId
+      );
+
+    const source =
+      String(
+        url ||
+        ""
+      ).trim();
+
+    const attachmentMatch =
+      source.match(
+        /^attachment:([^:]+):/
+      );
+
+    const isExternalUrl =
+      /^https?:\/\//i.test(
+        source
+      );
+
+    if (
+      !id ||
+      !spaceId ||
+      (
+        !isExternalUrl &&
+        !attachmentMatch
+      )
+    ) {
+      throw new Error(
+        "The Notion image source is invalid."
+      );
+    }
+
+    const properties = {
+      source: [
+        [
+          source
+        ]
+      ]
+    };
+
+    if (
+      Number(size) >
+        0
+    ) {
+      properties.size = [
+        [
+          `${
+            (
+              Number(size) /
+              1024
+            ).toFixed(1)
+          }KB`
+        ]
+      ];
+    }
+
+    const now =
+      Date.now();
+
+    const operations = [
+      {
+        table:
+          "block",
+
+        id,
+
+        path: [
+          "properties"
+        ],
+
+        command:
+          "update",
+
+        args:
+          properties
+      },
+
+      {
+        table:
+          "block",
+
+        id,
+
+        path: [
+          "properties",
+          "title"
+        ],
+
+        command:
+          "set",
+
+        args: [
+          [
+            notionMediaFilename(
+              filename,
+              "image"
+            )
+          ]
+        ]
+      }
+    ];
+
+    if (
+      isExternalUrl
+    ) {
+      operations.push({
+        table:
+          "block",
+
+        id,
+
+        path: [
+          "format"
+        ],
+
+        command:
+          "update",
+
+        args: {
+          display_source:
+            source
+        }
+      });
+    }
+
+    operations.push({
+      table:
+        "block",
+
+      id,
+
+      path:
+        [],
+
+      command:
+        "update",
+
+      args: {
+        type:
+          "image",
+
+        ...(
+          attachmentMatch
+            ? {
+                file_ids: [
+                  attachmentMatch[1]
+                ]
+              }
+            : {}
+        ),
+
+        last_edited_time:
+          now,
+
+        ...(
+          userId
+            ? {
+                last_edited_by_id:
+                  userId,
+
+                last_edited_by_table:
+                  "notion_user"
+              }
+            : {}
+        )
+      }
+    });
+
+    await submitOperations({
+      workspaceId:
+        spaceId,
+
+      userId,
+
+      operations
+    });
+  }
+
+  async function uploadImageDataUrlToBlock({
+    workspaceId,
+    userId,
+    blockId,
+    dataUrl,
+    filename =
+      "clipnest-screenshot.jpg",
+    mimeType =
+      "image/jpeg"
+  }) {
+    if (
+      !/^data:image\//i.test(
+        String(
+          dataUrl ||
+          ""
+        )
+      )
+    ) {
+      throw new Error(
+        "The screenshot data is invalid."
+      );
+    }
+
+    const blob =
+      await fetch(
+        dataUrl
+      ).then(
+        (response) =>
+          response.blob()
+      );
+
+    const actualMimeType =
+      blob.type ||
+      mimeType ||
+      "image/jpeg";
+
+    const cleanFilename =
+      notionMediaFilename(
+        filename,
+        actualMimeType ===
+          "image/png"
+          ? "clipnest-screenshot.png"
+          : "clipnest-screenshot.jpg"
+      );
+
+    const descriptor =
+      await requestImageUpload({
+        workspaceId,
+        userId,
+        blockId,
+        filename:
+          cleanFilename,
+
+        mimeType:
+          actualMimeType,
+
+        size:
+          blob.size
+      });
+
+    await uploadImageBlob({
+      descriptor,
+      blob,
+      dataUrl,
+      filename:
+        cleanFilename,
+      mimeType:
+        actualMimeType
+    });
+
+    await setImageBlockSource({
+      workspaceId,
+      userId,
+      blockId,
+
+      url:
+        descriptor.finalUrl,
+
+      filename:
+        cleanFilename,
+
+      size:
+        blob.size
+    });
+
+    return {
+      url:
+        descriptor.finalUrl,
+
+      size:
+        blob.size
+    };
+  }
+
+  async function appendImageToPage({
+    workspaceId,
+    userId,
+    pageId,
+    media,
+    afterBlockId =
+      ""
+  } = {}) {
+    const built =
+      buildAppendMarkdownOperations({
+        workspaceId,
+        userId,
+
+        parentPageId:
+          pageId,
+
+        markdown:
+          "\u200b"
+      });
+
+    if (
+      !built.blockIds.length
+    ) {
+      throw new Error(
+        "Could not create the Notion image block."
+      );
+    }
+
+    if (
+      afterBlockId
+    ) {
+      const listOperation =
+        built.operations.find(
+          (operation) =>
+            operation.command ===
+              "listAfter" &&
+            Array.isArray(
+              operation.path
+            ) &&
+            operation.path[0] ===
+              "content"
+        );
+
+      if (
+        listOperation
+          ?.args
+      ) {
+        listOperation.args.after =
+          normalizeNotionRecordId(
+            afterBlockId
+          );
+      }
+    }
+
+    await submitOperations({
+      workspaceId,
+      userId,
+
+      operations:
+        built.operations
+    });
+
+    const blockId =
+      built.blockIds[0];
+
+    if (
+      media?.kind ===
+        "external"
+    ) {
+      const url =
+        String(
+          media.url ||
+          ""
+        ).trim();
+
+      await setImageBlockSource({
+        workspaceId,
+        userId,
+        blockId,
+        url,
+
+        filename:
+          media.filename ||
+          notionFilenameFromUrl(
+            url
+          )
+      });
+    } else {
+      await uploadImageDataUrlToBlock({
+        workspaceId,
+        userId,
+        blockId,
+
+        dataUrl:
+          media?.dataUrl,
+
+        filename:
+          media?.filename ||
+          `clipnest-screenshot-${Date.now()}.jpg`,
+
+        mimeType:
+          media?.mimeType ||
+          "image/jpeg"
+      });
+    }
+
+    return {
+      blockId
+    };
+  }
+
   globalThis.ClipNestNotionSession =
     Object.freeze({
       hasPermission,
@@ -4372,6 +5592,7 @@ function encodeDatabaseProperties({
       markdownToNotionBlocks,
       buildAppendMarkdownOperations,
       appendMarkdownToPage,
+      appendImageToPage,
       submitOperations,
       createPage,
       postNotion

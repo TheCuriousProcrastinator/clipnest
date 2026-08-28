@@ -1133,7 +1133,7 @@
     }
   }
 
-  async function startClipNestPageImageSelection() {
+  async function startClipNestPageImageSelection(purpose = "property") {
     const tabs =
       await chrome.tabs.query({
         active: true,
@@ -1158,7 +1158,7 @@
         tabId: tab.id
       },
 
-      func: () => {
+      func: (pickerPurpose) => {
         if (
           window
             .__clipnestImagePickerCleanup
@@ -1790,7 +1790,10 @@
                 location.href,
 
               capturedAt:
-                Date.now()
+                Date.now(),
+
+              purpose:
+                pickerPurpose
             });
         };
 
@@ -1832,7 +1835,14 @@
             onKeyDown,
             true
           );
-      }
+      },
+
+      args: [
+        String(
+          purpose ||
+          "property"
+        )
+      ]
     });
   }
 
@@ -1850,12 +1860,14 @@
     control.className =
       "notion-image-picker";
 
+    /*
+     * detectedImage is a suggestion only.
+     * Files & media remains empty until the
+     * user explicitly chooses an image.
+     */
     let selected =
       normalizeImageUrl(
         initialValue
-      ) ||
-      normalizeImageUrl(
-        detectedImage
       );
 
     const row =
@@ -1942,6 +1954,36 @@
           "Starting picker…";
 
         try {
+          const resumePresetId =
+            String(
+              document
+                .getElementById(
+                  "notionPresetSelect"
+                )
+                ?.value ||
+              ""
+            ).trim();
+
+          if (resumePresetId) {
+            await chrome.storage.local.set({
+              clipnestNotionCaptureResume: {
+                presetId:
+                  resumePresetId,
+
+                includePageContent:
+                  document
+                    .getElementById(
+                      "notionIncludePageContent"
+                    )
+                    ?.checked !==
+                      false,
+
+                createdAt:
+                  Date.now()
+              }
+            });
+          }
+
           await startClipNestPageImageSelection();
 
           menu.classList.add(
@@ -2122,7 +2164,7 @@
             "notion-image-empty";
 
           status.textContent =
-            "Image detected";
+            "Image unavailable";
 
           preview.replaceChildren(
             status
@@ -2428,6 +2470,10 @@
   globalThis
     .ClipNestNotionImagePicker =
     Object.freeze({
-      create
+      create,
+      collectPageImages,
+
+      startPageSelection:
+        startClipNestPageImageSelection
     });
 })();

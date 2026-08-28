@@ -5392,3 +5392,276 @@ body[data-destination="notion"].notion-preset-open
 }
 
 /* END IMAGE REMOVE CONTROL */
+
+
+/* NOTION PAGE BODY MEDIA - V1 */
+
+.notion-body-media {
+  margin: 8px 0 12px;
+}
+
+.notion-body-media-label {
+  margin-bottom: 8px;
+  color: var(--muted, #a8a8a8);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.notion-body-media-previews {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 9px;
+}
+
+.notion-body-media-thumb {
+  position: relative;
+  width: 108px;
+  height: 82px;
+  overflow: hidden;
+  border: 1px solid #3b3b3b;
+  border-radius: 11px;
+  background: #171717;
+}
+
+.notion-body-media-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.notion-body-media-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 25px;
+  min-width: 25px;
+  height: 25px;
+  min-height: 25px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 999px;
+  background: rgba(10,10,10,.86);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.notion-body-media-remove:hover {
+  border-color: #db5b27;
+  background: #db5b27;
+}
+
+.notion-body-media-add {
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #db5b27;
+  font-size: 15px;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notion-body-media-add:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.notion-body-media-menu {
+  margin-top: 6px;
+  padding: 4px;
+  border: 1px solid #3b3b3b;
+  border-radius: 10px;
+  background: #171717;
+}
+
+.notion-body-media-menu-button {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #c4c4c4;
+  font-size: 13px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.notion-body-media-menu-button:hover {
+  background: rgba(255, 255, 255, .055);
+  color: #fff;
+}
+
+.notion-body-media-menu-button:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+.notion-body-media-status {
+  margin-top: 8px;
+  color: #a8a8a8;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.notion-body-media-status.error {
+  color: #ff625c;
+}
+
+/* END NOTION PAGE BODY MEDIA - V1 */
+
+.notion-body-media-label {
+  margin-bottom: 7px;
+}
+
+.notion-body-content-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin-bottom: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.notion-body-content-toggle-text {
+  color: #9f9f9f;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  transition:
+    color 120ms ease;
+}
+
+.notion-body-content-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.notion-body-content-toggle-track {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #3a3a3a;
+  transition:
+    background 120ms ease;
+}
+
+.notion-body-content-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #d4d4d4;
+  transition:
+    transform 120ms ease,
+    background 120ms ease;
+}
+
+.notion-body-content-toggle input:checked +
+.notion-body-content-toggle-track {
+  background: #9027db;
+}
+
+.notion-body-content-toggle input:checked +
+.notion-body-content-toggle-track::after {
+  transform: translateX(12px);
+  background: #fff;
+}
+
+.notion-body-content-toggle:hover
+.notion-body-content-toggle-text {
+  color: #c8c8c8;
+}
+
+/* PAGE BODY TOGGLE STATE COLOR - V1 */
+
+.notion-body-media .notion-body-media-label,
+.notion-body-media .notion-body-content-toggle-text {
+  color: #8f8f8f;
+  transition: color 120ms ease;
+}
+
+.notion-body-media:has(
+  #notionIncludePageContent:checked
+)
+.notion-body-media-label,
+.notion-body-media:has(
+  #notionIncludePageContent:checked
+)
+.notion-body-content-toggle-text {
+  color: #fff;
+}
+
+.notion-body-media:has(
+  #notionIncludePageContent:checked
+)
+.notion-body-media-label {
+  opacity: 1;
+}
+
+/* NOTION POPUP BOTTOM + TOGGLE POLISH - V1 */
+
+/*
+ * Never alter the page-text label color merely
+ * because the mouse is hovering over the control.
+ */
+.notion-body-media
+.notion-body-content-toggle:hover
+.notion-body-content-toggle-text {
+  color: #8f8f8f !important;
+}
+
+.notion-body-media:has(
+  #notionIncludePageContent:checked
+)
+.notion-body-content-toggle:hover
+.notion-body-content-toggle-text {
+  color: #fff !important;
+}
+
+/*
+ * Chrome extension popups are capped vertically.
+ * When the Notion preset is taller than that cap,
+ * scroll the popup instead of allowing its bottom
+ * edge to be clipped.
+ */
+body[data-destination="notion"].notion-preset-open {
+  max-height: 600px;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+body[data-destination="notion"].notion-preset-open .app {
+  padding-bottom: 14px !important;
+}
+
+body[data-destination="notion"].notion-preset-open .actions {
+  padding-bottom: 2px !important;
+}
+
+body[data-destination="notion"].notion-preset-open #saveButton {
+  display: block;
+  width: 100%;
+  margin-bottom: 0 !important;
+}

@@ -53,6 +53,107 @@ let notionTagsFieldPlaceholder =
 let notionDynamicFieldValues =
   {};
 
+const NOTION_CAPTURE_RESUME_KEY =
+  "clipnestNotionCaptureResume";
+
+async function restoreNotionPresetAfterCapture() {
+  const stored =
+    await chrome.storage.local.get(
+      NOTION_CAPTURE_RESUME_KEY
+    );
+
+  const resume =
+    stored[
+      NOTION_CAPTURE_RESUME_KEY
+    ];
+
+  if (!resume) {
+    return false;
+  }
+
+  /*
+   * This is a one-reopen token.
+   * Never let it affect a later normal popup open.
+   */
+  await chrome.storage.local.remove(
+    NOTION_CAPTURE_RESUME_KEY
+  );
+
+  const presetId =
+    String(
+      resume.presetId ||
+      ""
+    ).trim();
+
+  const createdAt =
+    Number(
+      resume.createdAt ||
+      0
+    );
+
+  const resumePageUrl =
+    String(
+      resume.pageUrl ||
+      ""
+    ).trim();
+
+  const currentPageUrl =
+    String(
+      state.capture?.url ||
+      ""
+    ).trim();
+
+  if (
+    !presetId ||
+    !createdAt ||
+    Date.now() -
+      createdAt >
+      5 * 60 * 1000
+  ) {
+    return false;
+  }
+
+  if (
+    resumePageUrl &&
+    currentPageUrl &&
+    resumePageUrl !==
+      currentPageUrl
+  ) {
+    return false;
+  }
+
+  const preset =
+    await getNotionPresetById(
+      presetId
+    );
+
+  if (!preset) {
+    return false;
+  }
+
+  await showNotionPresetClip(
+    preset
+  );
+
+  const includeContentInput =
+    document.getElementById(
+      "notionIncludePageContent"
+    );
+
+  if (
+    includeContentInput &&
+    typeof resume.includePageContent ===
+      "boolean"
+  ) {
+    includeContentInput.checked =
+      resume.includePageContent;
+  }
+
+  updateUxSaveButtonLabel();
+
+  return true;
+}
+
 async function init() {
   els.siteLabel = document.getElementById("siteLabel");
   els.settingsButton = document.getElementById("settingsButton");
@@ -85,6 +186,11 @@ async function init() {
   els.destinationButtons = [...document.querySelectorAll(".destination-button")];
 
   setupNotionPresetNavigation();
+
+  document.addEventListener(
+    "clipnest:notion-page-content-change",
+    updateUxSaveButtonLabel
+  );
 
   els.settingsButton.addEventListener("click", () => chrome.runtime.openOptionsPage());
   els.saveButton.addEventListener("click", save);
@@ -236,26 +342,37 @@ async function init() {
   const defaultSubfolder =
     settings.obsidianSubfolder || "";
 
-  void loadObsidianFolders(
-    defaultSubfolder
-  );
-
   // Page capture is the primary popup task.
   // Never block it on vault/template scanning.
   await captureCurrentPage();
   await restorePickedPageImage();
 
+  await globalThis
+    .ClipNestNotionBodyMedia
+    ?.restorePending(
+      state.capture?.url ||
+      ""
+    );
+
   if (
     state.destination ===
       "notion"
   ) {
-    const restored =
-      await restoreNotionPresetBuilderState();
+    const captureRestored =
+      await restoreNotionPresetAfterCapture();
+
+    const builderRestored =
+      captureRestored
+        ? false
+        : await restoreNotionPresetBuilderState();
 
     notionPresetBuilderResumePending =
       false;
 
-    if (!restored) {
+    if (
+      !captureRestored &&
+      !builderRestored
+    ) {
       await showNotionPresetChooser();
     }
   } else {
@@ -263,11 +380,10 @@ async function init() {
       false;
   }
 
-  // Templates may appear a moment later without
-  // preventing the user from using the clipper.
-  void loadObsidianTemplates(
-    defaultTemplatePath
-  );
+  /*
+   * Obsidian filesystem data is loaded only when
+   * Obsidian is the active destination.
+   */
 }
 
 async function restorePickedPageImage() {
@@ -353,6 +469,14 @@ async function restorePickedPageImage() {
     if (state.capture) {
       state.capture.image =
         pickedUrl;
+
+      /*
+       * Distinguish an image the user explicitly
+       * selected from the image ClipNest merely
+       * detected on the page.
+       */
+      state.capture.imageExplicit =
+        true;
     }
 
     await chrome.storage.local.remove(
@@ -10286,12 +10410,33 @@ function createNotionCustomFieldNode(
         ""
       ).trim();
 
+    /*
+     * A detected page image is only a suggestion.
+     * Do not populate the Notion Files & media
+     * property until the user explicitly chooses it.
+     */
+    const explicitlyPicked =
+      state.capture?.imageExplicit ===
+        true
+        ? detected
+        : "";
+
     const initial =
       field?.source ===
         "page_image"
-        ? detected ||
-          stored
+        ? explicitlyPicked
         : stored;
+
+    /*
+     * Always create the dynamic value, even when it
+     * is empty. This prevents saveToNotion from
+     * interpreting a missing key as permission to
+     * auto-fill the detected image.
+     */
+    notionDynamicFieldValues[
+      propertyId
+    ] =
+      initial;
 
     const picker =
       globalThis
@@ -10975,6 +11120,13 @@ function setDestination(destination) {
   document.body.dataset.destination =
     destination;
 
+  globalThis
+    .ClipNestNotionBodyMedia
+    ?.setVisible(
+      destination ===
+        "notion"
+    );
+
   if (
     destination === "notion" &&
     getContentMode() !== "article"
@@ -11053,7 +11205,7 @@ function setDestination(destination) {
   notionTagOptions =
     [];
 
-  void loadObsidianTags();
+  void refreshPopupVaultContext();
 }
 
 async function loadNotionPresetPicker() {
@@ -11366,7 +11518,37 @@ async function saveObsidianOpenAfterSave() {
 }
 
 async function refreshPopupVaultContext() {
+  if (
+    state.destination !==
+      "obsidian"
+  ) {
+    return;
+  }
+
   await loadVaultPicker();
+
+  const handle =
+    await getVaultHandle();
+
+  if (!handle) {
+    return;
+  }
+
+  const permission =
+    await ensureWritePermission(
+      handle
+    );
+
+  if (!permission) {
+    setStatus(
+      "ClipNest needs permission to access this vault again.",
+      "error"
+    );
+
+    return;
+  }
+
+  setStatus("");
 
   const settings =
     await chrome.storage.local.get([
@@ -11749,6 +11931,25 @@ async function save() {
 
     const payload = buildPayload();
 
+    /*
+     * Page-body captures are temporary.
+     * Once Save is pressed, keep only the copy already
+     * contained in this save payload and immediately
+     * purge ClipNest's persisted/UI copy.
+     */
+    if (
+      state.destination ===
+        "notion" &&
+      Array.isArray(
+        payload?.notionBodyMedia
+      ) &&
+      payload.notionBodyMedia.length
+    ) {
+      await globalThis
+        .ClipNestNotionBodyMedia
+        ?.clear?.();
+    }
+
     if (state.destination === "notion") {
       setStatus(
         "Writing to Notion…"
@@ -11837,13 +12038,24 @@ function buildPayload() {
       ? "article"
       : getContentMode();
 
+  const includePageContent =
+    state.destination !==
+      "notion" ||
+    document.getElementById(
+      "notionIncludePageContent"
+    )?.checked !==
+      false;
+
   const sections = [];
 
   if (notes) {
     sections.push(`## Notes\n\n${notes}`);
   }
 
-  if (contentMode === "article") {
+  if (
+    contentMode === "article" &&
+    includePageContent
+  ) {
     const articleMarkdown =
       ClipNestArticleEngine.cleanArticleMarkdown(
         state.capture.structuredMarkdown ||
@@ -11883,7 +12095,8 @@ function buildPayload() {
   }
 
   const sourceLine =
-    state.destination === "notion"
+    state.destination === "notion" &&
+    includePageContent
       ? `[Source](${state.capture.url})`
       : "";
 
@@ -11913,6 +12126,7 @@ function buildPayload() {
     tags,
     notes,
     contentMode,
+    includePageContent,
     markdown,
     template,
 
@@ -11922,7 +12136,18 @@ function buildPayload() {
         ? {
             ...notionDynamicFieldValues
           }
-        : {}
+        : {},
+
+    notionBodyMedia:
+      state.destination ===
+        "notion"
+        ? (
+            globalThis
+              .ClipNestNotionBodyMedia
+              ?.getItems?.() ||
+            []
+          )
+        : []
   };
 }
 
@@ -12367,6 +12592,13 @@ async function loadObsidianFolders(
   defaultPath = "",
   forceRefresh = false
 ) {
+  if (
+    state.destination !==
+      "obsidian"
+  ) {
+    return;
+  }
+
   if (!els.folderSelect) {
     return;
   }
@@ -12496,6 +12728,13 @@ async function loadObsidianFolders(
     els.folderSelect.value =
       previous;
   } catch (error) {
+    if (
+      state.destination !==
+        "obsidian"
+    ) {
+      return;
+    }
+
     setStatus(
       error.message ||
         String(error),
@@ -12663,6 +12902,13 @@ async function handleFolderPickerChange() {
 async function loadObsidianTemplates(
   defaultPath = ""
 ) {
+  if (
+    state.destination !==
+      "obsidian"
+  ) {
+    return;
+  }
+
   if (
     !els.templateSelect ||
     !els.templateField
@@ -13091,6 +13337,13 @@ function setupObsidianTagAutocomplete() {
 }
 
 async function loadObsidianTags() {
+  if (
+    state.destination !==
+      "obsidian"
+  ) {
+    return;
+  }
+
   try {
     const response =
       await chrome.runtime.sendMessage({
@@ -15074,7 +15327,17 @@ function updateUxSaveButtonLabel() {
 
   let label = "Save";
 
-  if (kind === "article") {
+  const notionImageOnly =
+    state?.destination ===
+      "notion" &&
+    document.getElementById(
+      "notionIncludePageContent"
+    )?.checked ===
+      false;
+
+  if (notionImageOnly) {
+    label = "Save image";
+  } else if (kind === "article") {
     label = "Save article";
   } else if (kind === "text") {
     label = "Save selection";
