@@ -9,7 +9,295 @@ const els = {};
 let pendingObsidianPermissionHandle =
   null;
 
-document.addEventListener("DOMContentLoaded", init);
+
+
+
+/*
+ * QUICK CLIP FIRST-USE ACCESS POPUP - 1.9.34
+ *
+ * A context-menu Quick Clip can detect that a remembered
+ * Obsidian vault needs permission, but Chrome requires a
+ * foreground user click before requestPermission() can show
+ * its native filesystem dialog.
+ *
+ * When a pending Quick Clip access intent exists, skip the
+ * normal popup initialization and show this one-time gate.
+ */
+
+const QUICK_CLIP_ACCESS_INTENT_KEY =
+  "clipnestQuickClipAccessIntentV1";
+
+const QUICK_CLIP_ACCESS_INTENT_TTL =
+  5 * 60 * 1000;
+
+let quickClipAccessIntent =
+  null;
+
+function isFreshPopupQuickClipAccessIntent(
+  intent
+) {
+  if (
+    !intent ||
+    typeof intent !== "object" ||
+    !intent.id ||
+    !intent.vaultId
+  ) {
+    return false;
+  }
+
+  const createdAt =
+    Number(
+      intent.createdAt ||
+      0
+    );
+
+  return Boolean(
+    createdAt &&
+    (
+      Date.now() -
+      createdAt
+    ) <
+      QUICK_CLIP_ACCESS_INTENT_TTL
+  );
+}
+
+async function getPendingQuickClipAccessIntent() {
+  const stored =
+    await chrome.storage.session.get([
+      QUICK_CLIP_ACCESS_INTENT_KEY
+    ]);
+
+  const intent =
+    stored[
+      QUICK_CLIP_ACCESS_INTENT_KEY
+    ];
+
+  if (
+    !isFreshPopupQuickClipAccessIntent(
+      intent
+    )
+  ) {
+    if (intent) {
+      await chrome.storage.session.remove([
+        QUICK_CLIP_ACCESS_INTENT_KEY
+      ]);
+    }
+
+    return null;
+  }
+
+  return intent;
+}
+
+function setQuickClipAccessStatus(
+  message,
+  kind = ""
+) {
+  const status =
+    document.getElementById(
+      "quickClipAccessStatus"
+    );
+
+  if (!status) {
+    return;
+  }
+
+  status.textContent =
+    message ||
+    "";
+
+  status.className =
+    `status ${kind}`.trim();
+}
+
+async function showQuickClipAccessGate(
+  intent
+) {
+  const gate =
+    document.getElementById(
+      "quickClipAccessGate"
+    );
+
+  const button =
+    document.getElementById(
+      "quickClipAccessButton"
+    );
+
+  const cancel =
+    document.getElementById(
+      "quickClipAccessCancel"
+    );
+
+  const siteLabel =
+    document.getElementById(
+      "siteLabel"
+    );
+
+  const settingsButton =
+    document.getElementById(
+      "settingsButton"
+    );
+
+  if (
+    !gate ||
+    !button ||
+    !cancel
+  ) {
+    return false;
+  }
+
+  quickClipAccessIntent =
+    intent;
+
+  /*
+   * The normal startup reveal guard intentionally hides most
+   * popup children until the destination is known. This gate
+   * is a different startup route, so release that guard before
+   * showing the permission screen.
+   */
+
+  document.body.removeAttribute(
+    "data-notion-startup"
+  );
+
+  document.body.classList.add(
+    "quick-clip-access-open"
+  );
+
+  gate.classList.remove(
+    "hidden"
+  );
+
+  if (siteLabel) {
+    siteLabel.textContent =
+      "One-time Quick Clip setup";
+  }
+
+  settingsButton?.addEventListener(
+    "click",
+    () => {
+      void chrome.runtime
+        .openOptionsPage();
+    }
+  );
+
+  cancel.addEventListener(
+    "click",
+    async () => {
+      await chrome.storage.session.remove([
+        QUICK_CLIP_ACCESS_INTENT_KEY
+      ]);
+
+      window.close();
+    }
+  );
+
+  button.addEventListener(
+    "click",
+    async () => {
+      button.disabled =
+        true;
+
+      cancel.disabled =
+        true;
+
+      button.textContent =
+        "Opening Settings…";
+
+      setQuickClipAccessStatus(
+        "Finish Quick Clip access in Settings."
+      );
+
+      try {
+        const currentIntent =
+          await getPendingQuickClipAccessIntent();
+
+        if (
+          !currentIntent ||
+          currentIntent.id !==
+            quickClipAccessIntent?.id
+        ) {
+          throw new Error(
+            "This Quick Clip request expired. Try clipping the text again."
+          );
+        }
+
+        /*
+         * PERSISTENT ACCESS ROUTE - 1.9.35
+         *
+         * Chrome's action popup only restores a temporary
+         * filesystem grant. The full extension Settings page
+         * is the surface where Chrome exposes the persistent
+         * "Allow on every visit" choice.
+         *
+         * Keep the pending Quick Clip intent alive and move
+         * the user's activation to Settings.
+         */
+
+        await chrome.runtime
+          .openOptionsPage();
+
+        window.close();
+      } catch (error) {
+        setQuickClipAccessStatus(
+          error?.message ||
+            String(error),
+          "error"
+        );
+
+        button.disabled =
+          false;
+
+        cancel.disabled =
+          false;
+
+        button.textContent =
+          "Continue setup";
+      }
+    }
+  );
+
+  return true;
+}
+
+async function startClipNestPopup() {
+  const intent =
+    await getPendingQuickClipAccessIntent();
+
+  if (intent) {
+    const shown =
+      await showQuickClipAccessGate(
+        intent
+      );
+
+    if (shown) {
+      return;
+    }
+  }
+
+  await init();
+}
+
+
+document.addEventListener(
+  "DOMContentLoaded",
+  () => {
+    void startClipNestPopup()
+      .finally(
+        () => {
+          /*
+           * Never leave the popup permanently hidden if an
+           * unrelated startup error interrupts initialization.
+           */
+
+          document.body.removeAttribute(
+            "data-notion-startup"
+          );
+        }
+      );
+  }
+);
+
 
 let notionPresetChooserEl =
   null;
@@ -55,6 +343,162 @@ let notionDynamicFieldValues =
 
 const NOTION_CAPTURE_RESUME_KEY =
   "clipnestNotionCaptureResume";
+
+/*
+ * NOTION FULL FORM CAPTURE RESUME - 1.9.7
+ *
+ * Body-image and area selection temporarily close the
+ * popup. Preserve the user's in-progress Notion form so
+ * reopening the popup does not rebuild fields from preset
+ * defaults and discard edits.
+ */
+let notionCaptureResumeFieldValues =
+  null;
+
+function cloneNotionCaptureResumeValue(
+  value
+) {
+  if (
+    Array.isArray(
+      value
+    )
+  ) {
+    return value.map(
+      cloneNotionCaptureResumeValue
+    );
+  }
+
+  if (
+    value &&
+    typeof value ===
+      "object"
+  ) {
+    return Object.fromEntries(
+      Object.entries(
+        value
+      ).map(
+        (
+          [
+            key,
+            child
+          ]
+        ) => [
+          key,
+          cloneNotionCaptureResumeValue(
+            child
+          )
+        ]
+      )
+    );
+  }
+
+  return value;
+}
+
+function buildNotionCaptureResumeSnapshot(
+  presetId,
+  pageUrl = "",
+  {
+    excludePropertyId =
+      ""
+  } = {}
+) {
+  const excluded =
+    String(
+      excludePropertyId ||
+      ""
+    );
+
+  const notionFields =
+    {};
+
+  for (
+    const [
+      propertyId,
+      value
+    ] of Object.entries(
+      notionDynamicFieldValues ||
+      {}
+    )
+  ) {
+    if (
+      !propertyId ||
+      propertyId ===
+        excluded ||
+      typeof value ===
+        "undefined"
+    ) {
+      continue;
+    }
+
+    notionFields[
+      propertyId
+    ] =
+      cloneNotionCaptureResumeValue(
+        value
+      );
+  }
+
+  return {
+    presetId:
+      String(
+        presetId ||
+        ""
+      ).trim(),
+
+    pageUrl:
+      String(
+        pageUrl ||
+        state.capture?.url ||
+        ""
+      ).trim(),
+
+    includePageContent:
+      document
+        .getElementById(
+          "notionIncludePageContent"
+        )
+        ?.checked !==
+          false,
+
+    title:
+      String(
+        els.titleInput?.value ??
+        ""
+      ),
+
+    tags:
+      serializeCurrentTags(),
+
+    notes:
+      String(
+        els.notesInput?.value ??
+        ""
+      ),
+
+    notesExpanded:
+      Boolean(
+        els.notesField &&
+        !els.notesField
+          .classList
+          .contains(
+            "hidden"
+          )
+      ),
+
+    notionFields,
+
+    createdAt:
+      Date.now()
+  };
+}
+
+globalThis
+  .ClipNestNotionCaptureResume =
+  Object.freeze({
+    snapshot:
+      buildNotionCaptureResumeSnapshot
+  });
 
 async function restoreNotionPresetAfterCapture() {
   const stored =
@@ -131,9 +575,83 @@ async function restoreNotionPresetAfterCapture() {
     return false;
   }
 
-  await showNotionPresetClip(
-    preset
-  );
+  const resumeFields =
+    resume.notionFields &&
+    typeof resume.notionFields ===
+      "object" &&
+    !Array.isArray(
+      resume.notionFields
+    )
+      ? resume.notionFields
+      : {};
+
+  /*
+   * Keep overrides alive only while the preset controls
+   * are being reconstructed.
+   */
+  notionCaptureResumeFieldValues =
+    resumeFields;
+
+  try {
+    await showNotionPresetClip(
+      preset
+    );
+  } finally {
+    notionCaptureResumeFieldValues =
+      null;
+  }
+
+  if (
+    els.titleInput &&
+    Object.prototype
+      .hasOwnProperty.call(
+        resume,
+        "title"
+      )
+  ) {
+    els.titleInput.value =
+      String(
+        resume.title ??
+        ""
+      );
+  }
+
+  if (
+    Object.prototype
+      .hasOwnProperty.call(
+        resume,
+        "tags"
+      )
+  ) {
+    restoreTagEditorValue(
+      resume.tags,
+      "notion"
+    );
+  }
+
+  if (
+    els.notesInput &&
+    Object.prototype
+      .hasOwnProperty.call(
+        resume,
+        "notes"
+      )
+  ) {
+    els.notesInput.value =
+      String(
+        resume.notes ??
+        ""
+      );
+  }
+
+  if (
+    typeof resume.notesExpanded ===
+      "boolean"
+  ) {
+    setNotesExpanded(
+      resume.notesExpanded
+    );
+  }
 
   const includeContentInput =
     document.getElementById(
@@ -154,6 +672,8 @@ async function restoreNotionPresetAfterCapture() {
   return true;
 }
 
+
+
 async function init() {
   els.siteLabel = document.getElementById("siteLabel");
   els.settingsButton = document.getElementById("settingsButton");
@@ -169,6 +689,22 @@ async function init() {
   els.vaultSelect = document.getElementById("vaultSelect");
   els.folderField = document.getElementById("folderField");
   els.folderSelect = document.getElementById("folderSelect");
+  els.obsidianSaveTo =
+    document.getElementById(
+      "obsidianSaveTo"
+    );
+  els.obsidianSaveToButton =
+    document.getElementById(
+      "obsidianSaveToButton"
+    );
+  els.obsidianSaveToSummary =
+    document.getElementById(
+      "obsidianSaveToSummary"
+    );
+  els.obsidianSaveToDetails =
+    document.getElementById(
+      "obsidianSaveToDetails"
+    );
   els.obsidianOpenAfterSave =
     document.getElementById(
       "obsidianOpenAfterSave"
@@ -235,6 +771,70 @@ async function init() {
     }
   );
 
+  els.obsidianSaveToButton
+    ?.addEventListener(
+      "click",
+      async () => {
+        const expanded =
+          els.obsidianSaveToButton
+            ?.getAttribute(
+              "aria-expanded"
+            ) ===
+              "true";
+
+        if (!expanded) {
+          await refreshObsidianSaveToChoices();
+        }
+
+        setObsidianSaveToExpanded(
+          !expanded
+        );
+      }
+    );
+
+  els.obsidianSaveTo
+    ?.querySelector(
+      ".obsidian-save-to-label"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+        const expanded =
+          els.obsidianSaveToButton
+            ?.getAttribute(
+              "aria-expanded"
+            ) ===
+              "true";
+
+        if (expanded) {
+          setObsidianSaveToExpanded(
+            false
+          );
+        }
+      }
+    );
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (
+        state.destination !==
+          "obsidian" ||
+        !els.obsidianSaveTo ||
+        els.obsidianSaveTo
+          .contains(
+            event.target
+          )
+      ) {
+        return;
+      }
+
+      setObsidianSaveToExpanded(
+        false
+      );
+    }
+  );
+
   els.obsidianOpenAfterSave
     ?.addEventListener(
       "change",
@@ -277,10 +877,35 @@ async function init() {
     ] ||
     null;
 
-  notionPresetBuilderResumePending =
-    Boolean(
-      savedNotionBuilderState
+  const [builderOwnerTab] =
+    await chrome.tabs.query({
+      active:
+        true,
+
+      currentWindow:
+        true
+    });
+
+  notionPresetBuilderOwnerTabId =
+    Number(
+      builderOwnerTab?.id ||
+      0
     );
+
+  const savedNotionBuilderStateMatchesTab =
+    Boolean(
+      savedNotionBuilderState &&
+      notionPresetBuilderOwnerTabId &&
+      Number(
+        savedNotionBuilderState
+          .tabId ||
+        0
+      ) ===
+        notionPresetBuilderOwnerTabId
+    );
+
+  notionPresetBuilderResumePending =
+    savedNotionBuilderStateMatchesTab;
 
   const rememberedDestination =
     settings[
@@ -296,7 +921,7 @@ async function init() {
         : "";
 
   const initialDestination =
-    savedNotionBuilderState
+    savedNotionBuilderStateMatchesTab
       ? "notion"
       : rememberedDestination ||
         (
@@ -342,43 +967,375 @@ async function init() {
   const defaultSubfolder =
     settings.obsidianSubfolder || "";
 
-  // Page capture is the primary popup task.
-  // Never block it on vault/template scanning.
+  /*
+   * Template configuration must be available even
+   * when filesystem permission cannot be restored
+   * during popup startup.
+   *
+   * Use the background cache here and do not block
+   * primary page capture on template discovery.
+   */
+  if (
+    state.destination ===
+      "obsidian"
+  ) {
+    void loadObsidianTemplates(
+      defaultTemplatePath
+    );
+  }
+
+  /*
+   * ROUTE-FIRST NOTION STARTUP - 1.9.10
+   *
+   * A pending Notion clip should not wait for article
+   * extraction before ClipNest knows which screen to show.
+   *
+   * First use the active tab URL plus locally persisted
+   * draft/resume state to resolve the preset. Only after
+   * the correct screen is already mounted do we perform
+   * the heavier page capture.
+   */
+  let startupNotionPresetRestored =
+    false;
+
+  let startupNotionBodyRestored =
+    false;
+
+  if (
+    state.destination ===
+      "notion" &&
+    !savedNotionBuilderStateMatchesTab
+  ) {
+    try {
+      const [startupTab] =
+        await chrome.tabs.query({
+          active:
+            true,
+
+          currentWindow:
+            true
+        });
+
+      const startupUrl =
+        String(
+          startupTab?.url ||
+          ""
+        ).trim();
+
+      if (
+        startupTab?.id &&
+        /^https?:/i.test(
+          startupUrl
+        )
+      ) {
+        let hostname =
+          "";
+
+        try {
+          hostname =
+            new URL(
+              startupUrl
+            ).hostname;
+        } catch {
+        }
+
+        /*
+         * Give the UI enough page context to render from
+         * local state immediately. Full article capture
+         * will replace this lightweight shell shortly.
+         */
+        state.capture = {
+          url:
+            startupUrl,
+
+          hostname,
+
+          siteName:
+            hostname,
+
+          title:
+            String(
+              startupTab.title ||
+              "Untitled"
+            ),
+
+          author:
+            "",
+
+          description:
+            "",
+
+          image:
+            "",
+
+          selection:
+            ""
+        };
+
+        if (els.titleInput) {
+          els.titleInput.value =
+            state.capture.title;
+        }
+
+        if (els.siteLabel) {
+          els.siteLabel.textContent =
+            hostname ||
+            "Webpage";
+        }
+
+        /*
+         * Restore IndexedDB body media before choosing the
+         * screen. This also restores the preset ID persisted
+         * with the pending body-media draft.
+         */
+
+        await globalThis
+          .ClipNestBodyMedia
+          ?.restorePending(
+            startupUrl
+          );
+
+        startupNotionBodyRestored =
+          true;
+
+
+        const storedResume =
+          await chrome.storage.local.get(
+            NOTION_CAPTURE_RESUME_KEY
+          );
+
+        const resume =
+          storedResume[
+            NOTION_CAPTURE_RESUME_KEY
+          ];
+
+        const resumeCreatedAt =
+          Number(
+            resume?.createdAt ||
+            0
+          );
+
+        const resumePageUrl =
+          String(
+            resume?.pageUrl ||
+            ""
+          ).trim();
+
+        const resumeValid =
+          Boolean(
+            resume &&
+            resumeCreatedAt &&
+            Date.now() -
+              resumeCreatedAt <
+              5 * 60 * 1000 &&
+            (
+              !resumePageUrl ||
+              resumePageUrl ===
+                startupUrl
+            )
+          );
+
+        const startupPresetId =
+          String(
+            (
+              resumeValid
+                ? resume?.presetId
+                : ""
+            ) ||
+            globalThis
+              .ClipNestBodyMedia
+              ?.getPendingNotionPresetId?.() ||
+            ""
+          ).trim();
+
+
+        if (startupPresetId) {
+          const startupPreset =
+            await getNotionPresetById(
+              startupPresetId
+            );
+
+          if (startupPreset) {
+            await ClipNestNotionStore
+              .setActivePreset(
+                startupPresetId
+              );
+
+            await loadNotionPresetPicker();
+
+            /*
+             * Stored preset schema is enough for the first
+             * paint. Do not wait for a live Notion request.
+             */
+            await showNotionPresetClip(
+              startupPreset,
+              {
+                refreshSchema:
+                  false
+              }
+            );
+
+            startupNotionPresetRestored =
+              true;
+
+
+            /*
+             * Now that the correct preset is mounted,
+             * reveal it immediately.
+             */
+
+            document.body.removeAttribute(
+              "data-notion-startup"
+            );
+
+            /*
+             * Tag suggestions do not need to delay display.
+             */
+            void loadNotionTagOptions();
+          }
+        }
+
+        /*
+         * EARLY NOTION CHOOSER SHELL - 1.9.12
+         *
+         * A clean Notion page has already resolved its route
+         * at this point. Mount the chooser before the heavier
+         * page capture so the unused clip form cannot inflate
+         * Chrome's popup height while startup is pending.
+         *
+         * Keep data-notion-startup in place. The chooser is
+         * therefore still visually guarded until normal final
+         * hydration completes, but its final layout dimensions
+         * are established before captureCurrentPage().
+         */
+        if (
+          !startupNotionPresetRestored
+        ) {
+
+          await showNotionPresetChooser();
+        }
+      }
+    } catch (error) {
+      console.warn(
+        "ClipNest could not resolve the pending Notion route early:",
+        error
+      );
+    }
+  }
+
+  /*
+   * Full page capture now happens AFTER local Notion route
+   * resolution instead of before it.
+   */
   await captureCurrentPage();
   await restorePickedPageImage();
 
-  await globalThis
-    .ClipNestBodyMedia
-    ?.restorePending(
-      state.capture?.url ||
-      ""
-    );
+  if (
+    !startupNotionBodyRestored
+  ) {
+
+    await globalThis
+      .ClipNestBodyMedia
+      ?.restorePending(
+        state.capture?.url ||
+        ""
+      );
+
+  }
 
   if (
     state.destination ===
       "notion"
   ) {
+    /*
+     * A one-time capture resume still performs its normal
+     * full-form restoration after page capture. Since the
+     * preset itself is already open, this no longer causes
+     * a chooser/previous-screen flash.
+     */
     const captureRestored =
       await restoreNotionPresetAfterCapture();
 
+
     const builderRestored =
-      captureRestored
+      captureRestored ||
+      startupNotionPresetRestored
         ? false
         : await restoreNotionPresetBuilderState();
 
     notionPresetBuilderResumePending =
       false;
 
+
     if (
       !captureRestored &&
-      !builderRestored
+      !builderRestored &&
+      !startupNotionPresetRestored
     ) {
-      await showNotionPresetChooser();
+      let pendingPresetRestored =
+        false;
+
+      const pendingPresetId =
+        String(
+          globalThis
+            .ClipNestBodyMedia
+            ?.getPendingNotionPresetId?.() ||
+          ""
+        ).trim();
+
+      if (pendingPresetId) {
+        const pendingPreset =
+          await getNotionPresetById(
+            pendingPresetId
+          );
+
+        if (pendingPreset) {
+          try {
+            await ClipNestNotionStore
+              .setActivePreset(
+                pendingPresetId
+              );
+
+            await loadNotionPresetPicker();
+            await loadNotionTagOptions();
+
+            await showNotionPresetClip(
+              pendingPreset
+            );
+
+            pendingPresetRestored =
+              true;
+          } catch (error) {
+            console.warn(
+              "ClipNest could not reopen pending Notion preset:",
+              error
+            );
+          }
+        }
+      }
+
+      if (
+        !pendingPresetRestored
+      ) {
+        await showNotionPresetChooser();
+      }
     }
   } else {
     notionPresetBuilderResumePending =
       false;
   }
+
+  /*
+   * NOTION STARTUP REVEAL - 1.9.9
+   *
+   * At this point the initial destination has resolved its
+   * final screen. Reveal the work area only now, preventing
+   * the chooser/previous state from flashing first.
+   */
+
+  document.body.removeAttribute(
+    "data-notion-startup"
+  );
 
   /*
    * Obsidian filesystem data is loaded only when
@@ -2097,8 +3054,13 @@ function createNotionBuilderIconPicker() {
   useNotion.dataset.presetIcon =
     "";
 
+  useNotion.setAttribute(
+    "aria-label",
+    "Keep Notion icon for preset"
+  );
+
   useNotion.textContent =
-    "Use Notion icon";
+    "Keep Notion icon";
 
   const grid =
     document.createElement(
@@ -2824,6 +3786,16 @@ const NOTION_PRESET_BUILDER_STATE_KEY =
 
 const LAST_POPUP_DESTINATION_KEY =
   "clipnestLastPopupDestination";
+
+/*
+ * TAB-SCOPED PRESET BUILDER DRAFT - 1.9.21
+ *
+ * Builder drafts may survive closing/reopening the popup,
+ * but only the browser tab that created the draft is
+ * allowed to restore it.
+ */
+let notionPresetBuilderOwnerTabId =
+  0;
 
 let notionPresetBuilderResumePending =
   false;
@@ -3905,6 +4877,9 @@ async function persistNotionPresetBuilderState(
   await chrome.storage.local.set({
     [NOTION_PRESET_BUILDER_STATE_KEY]: {
       screen,
+
+      tabId:
+        notionPresetBuilderOwnerTabId,
 
       workspaceId:
         workspaceSelect?.value ||
@@ -5135,6 +6110,20 @@ async function restoreNotionPresetBuilderState() {
     ];
 
   if (!saved) {
+    return false;
+  }
+
+  const savedTabId =
+    Number(
+      saved.tabId ||
+      0
+    );
+
+  if (
+    !notionPresetBuilderOwnerTabId ||
+    savedTabId !==
+      notionPresetBuilderOwnerTabId
+  ) {
     return false;
   }
 
@@ -6401,12 +7390,24 @@ function setupNotionBuilderFieldDrag(
 
       if (
         !container ||
-        !dragged ||
-        dragged === row
+        !dragged
       ) {
         return;
       }
 
+      /*
+       * ACCEPT LIVE FIELD DROP - 1.9.22
+       *
+       * dragover() moves the real row immediately. Once moved,
+       * the pointer can naturally end up over the dragged row
+       * itself. That still has to remain an accepted drop target.
+       *
+       * Previously we returned for dragged === row BEFORE
+       * preventDefault(), so Chrome interpreted mouse-up there
+       * as a failed native drop and animated the drag image back
+       * to its source. dragend() then committed the already-moved
+       * DOM order, producing the visible snap-back-then-swap.
+       */
       event.preventDefault();
 
       if (
@@ -6414,6 +7415,12 @@ function setupNotionBuilderFieldDrag(
       ) {
         event.dataTransfer.dropEffect =
           "move";
+      }
+
+      if (
+        dragged === row
+      ) {
+        return;
       }
 
       const rect =
@@ -7064,6 +8071,88 @@ function renderNotionBuilderAddFieldPicker() {
   picker.className =
     "notion-builder-add-field-picker";
 
+  /*
+   * ADD FIELDS TRUE AUTO-SCROLL - 1.9.25
+   *
+   * Keep the picker in its natural position at the bottom of
+   * the configured fields.
+   *
+   * A bottom-most element normally cannot scroll all the way
+   * to the top because there is no content beneath it. Add a
+   * temporary invisible runway after the picker so the Fields
+   * scroller has enough range to align the picker with the top.
+   *
+   * Only the internal Fields scroller moves. The outer popup
+   * and the configured-field DOM order remain untouched.
+   */
+  const returnScrollTop =
+    container.scrollTop;
+
+  const scrollRunway =
+    document.createElement(
+      "div"
+    );
+
+  scrollRunway.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+
+  scrollRunway.style.pointerEvents =
+    "none";
+
+  scrollRunway.style.flex =
+    "0 0 auto";
+
+  const alignPickerToFieldsTop =
+    () => {
+      requestAnimationFrame(
+        () => {
+          if (
+            !picker.isConnected ||
+            !scrollRunway.isConnected ||
+            !container.isConnected
+          ) {
+            return;
+          }
+
+          const runwayHeight =
+            Math.max(
+              0,
+              container.clientHeight -
+                picker.offsetHeight
+            );
+
+          scrollRunway.style.height =
+            `${runwayHeight}px`;
+
+          requestAnimationFrame(
+            () => {
+              if (
+                !picker.isConnected ||
+                !container.isConnected
+              ) {
+                return;
+              }
+
+              const containerRect =
+                container.getBoundingClientRect();
+
+              const pickerRect =
+                picker.getBoundingClientRect();
+
+              const offset =
+                pickerRect.top -
+                containerRect.top;
+
+              container.scrollTop +=
+                offset;
+            }
+          );
+        }
+      );
+    };
+
   const header =
     document.createElement(
       "div"
@@ -7271,6 +8360,13 @@ function renderNotionBuilderAddFieldPicker() {
           );
 
           showEmptyState();
+
+          /*
+           * The new configured row is inserted above the picker,
+           * so its document position moves down. Re-align the
+           * existing picker without moving it in the DOM.
+           */
+          alignPickerToFieldsTop();
         }
       );
     }
@@ -7287,22 +8383,25 @@ function renderNotionBuilderAddFieldPicker() {
   close.addEventListener(
     "click",
     () => {
-      const scrollTop =
-        container.scrollTop;
-
       picker.remove();
+
+      scrollRunway.remove();
 
       if (addButton) {
         addButton.hidden =
           false;
       }
 
-      /*
-       * Nothing was rebuilt, so this is mostly
-       * defensive against browser layout changes.
-       */
-      container.scrollTop =
-        scrollTop;
+      requestAnimationFrame(
+        () => {
+          if (
+            container.isConnected
+          ) {
+            container.scrollTop =
+              returnScrollTop;
+          }
+        }
+      );
     }
   );
 
@@ -7311,9 +8410,17 @@ function renderNotionBuilderAddFieldPicker() {
     list
   );
 
+  /*
+   * Keep the picker exactly where Add fields naturally lives.
+   * The invisible runway exists only to provide enough scroll
+   * range for the picker header to reach the top.
+   */
   container.append(
-    picker
+    picker,
+    scrollRunway
   );
+
+  alignPickerToFieldsTop();
 }
 
 async function loadNotionPresetConfigFields() {
@@ -7858,6 +8965,34 @@ async function showNotionPresetChooser() {
     return;
   }
 
+  /*
+   * ATOMIC NOTION CHOOSER ROUTE - 1.9.27
+   *
+   * Build the complete chooser BEFORE changing the visible
+   * route.
+   *
+   * Previously ClipNest exposed the empty chooser shell and
+   * only then awaited listPresets(). Chrome therefore saw one
+   * popup height for the shell and another after preset cards
+   * were inserted.
+   *
+   * Keeping the current/startup route in place during chooser
+   * hydration means the visible route changes only after its
+   * final geometry exists.
+   */
+  await renderNotionPresetChooser();
+
+  /*
+   * The async preset read may outlive a destination change.
+   * Never reveal a stale Notion route.
+   */
+  if (
+    state.destination !==
+      "notion"
+  ) {
+    return;
+  }
+
   notionClipHeaderEl?.classList.add(
     "hidden"
   );
@@ -7881,8 +9016,6 @@ async function showNotionPresetChooser() {
   notionPresetChooserEl?.classList.remove(
     "hidden"
   );
-
-  await renderNotionPresetChooser();
 }
 
 function ensureNotionDynamicFieldsHost() {
@@ -8231,6 +9364,24 @@ function fitNotionFieldMenuToPopup(
     "important"
   );
 
+  /*
+   * SINGLE-SELECT FULL VIEWPORT - 1.9.16
+   *
+   * Tall Notion presets now scroll at the popup-body level,
+   * so Status and regular Select controls do not need to
+   * collapse their own option lists merely to keep Save
+   * inside the initial viewport.
+   *
+   * Multi-select retains the adaptive fitting behavior.
+   */
+  if (
+    menu.closest(
+      ".notion-custom-select"
+    )
+  ) {
+    return;
+  }
+
   requestAnimationFrame(
     () => {
       if (
@@ -8314,13 +9465,43 @@ function fitNotionPresetBuilderToPopup() {
     return;
   }
 
-  fields.style.removeProperty(
-    "max-height"
-  );
+  /*
+   * STABLE PRESET BUILDER LAYOUT - 1.9.26
+   *
+   * Never remove the existing max-height before measuring.
+   *
+   * The old fitter removed the constraint synchronously and
+   * restored it on the next animation frame. Any field DOM
+   * mutation could therefore expose one unconstrained layout
+   * frame, producing the visible expand/contract flicker.
+   *
+   * scrollHeight already gives us the natural content height
+   * while the element is constrained, so that reset is not
+   * necessary.
+   *
+   * Also coalesce multiple MutationObserver calls into one
+   * layout pass per frame.
+   */
+  if (
+    fields.dataset
+      .clipnestFitPending ===
+      "true"
+  ) {
+    return;
+  }
+
+  fields.dataset
+    .clipnestFitPending =
+    "true";
 
   requestAnimationFrame(
     () => {
+      delete fields.dataset
+        .clipnestFitPending;
+
       if (
+        !fields.isConnected ||
+        !screen.isConnected ||
         screen.classList.contains(
           "hidden"
         )
@@ -8354,16 +9535,41 @@ function fitNotionPresetBuilderToPopup() {
         naturalHeight <=
           availableHeight
       ) {
+        /*
+         * Content now fits naturally. Removing an obsolete
+         * constraint cannot cause an expansion beyond the
+         * measured natural height.
+         */
+        fields.style.removeProperty(
+          "max-height"
+        );
+
         return;
       }
 
-      fields.style.setProperty(
-        "max-height",
+      const nextHeight =
         `${Math.floor(
           availableHeight
-        )}px`,
-        "important"
-      );
+        )}px`;
+
+      if (
+        fields.style
+          .getPropertyValue(
+            "max-height"
+          ) !==
+          nextHeight ||
+        fields.style
+          .getPropertyPriority(
+            "max-height"
+          ) !==
+          "important"
+      ) {
+        fields.style.setProperty(
+          "max-height",
+          nextHeight,
+          "important"
+        );
+      }
     }
   );
 }
@@ -8507,6 +9713,25 @@ function createNotionChoiceControl(
         (option) =>
           option.value
       );
+
+  /*
+   * STABLE SELECT SEARCH VISIBILITY - 1.9.17
+   *
+   * Search visibility must depend on the field itself,
+   * not on the number of currently filtered result rows.
+   * Otherwise typing can hide the focused search input,
+   * trigger focusout, and close the menu.
+   *
+   * Select always keeps Search or create visible.
+   * Status keeps search only when its original option set
+   * is large enough to benefit from it.
+   */
+  menu.classList.toggle(
+    "notion-custom-select-search-enabled",
+    allowCreate ||
+      options.length >=
+        6
+  );
 
   let selected =
     String(
@@ -9049,11 +10274,18 @@ function createNotionStatusControl(
   field,
   propertyId
 ) {
-  return createNotionChoiceControl(
-    field,
-    propertyId,
-    false
+  const control =
+    createNotionChoiceControl(
+      field,
+      propertyId,
+      false
+    );
+
+  control.classList.add(
+    "notion-custom-status"
   );
+
+  return control;
 }
 
 function createNotionDateControl(
@@ -9883,7 +11115,11 @@ function createNotionMultiSelectControl(
   }
 
   function addValue(
-    rawValue
+    rawValue,
+    {
+      refocus =
+        true
+    } = {}
   ) {
     const value =
       String(
@@ -9926,7 +11162,9 @@ function createNotionMultiSelectControl(
     renderMenu();
 
 
-    input.focus();
+    if (refocus) {
+      input.focus();
+    }
   }
 
   function removeValue(
@@ -10276,18 +11514,53 @@ function createNotionMultiSelectControl(
     }
   );
 
+  /*
+   * MULTI-SELECT BLUR COMMIT - 1.9.18
+   *
+   * Commit pending text when focus leaves the entire control,
+   * matching the existing Enter-key behavior.
+   */
   control.addEventListener(
     "focusout",
     () => {
       setTimeout(
         () => {
           if (
-            !control.contains(
+            control.contains(
               document.activeElement
             )
           ) {
-            closeMenu();
+            return;
           }
+
+          const query =
+            input.value
+              .trim();
+
+          if (query) {
+            const exact =
+              options.find(
+                (option) =>
+                  normalize(
+                    option.value
+                  ) ===
+                  normalize(
+                    query
+                  )
+              );
+
+            addValue(
+              exact
+                ? exact.value
+                : query,
+              {
+                refocus:
+                  false
+              }
+            );
+          }
+
+          closeMenu();
         },
         120
       );
@@ -10315,6 +11588,45 @@ function createNotionCustomFieldNode(
       field?.propertyId ||
       ""
     );
+
+  if (
+    notionCaptureResumeFieldValues &&
+    Object.prototype
+      .hasOwnProperty.call(
+        notionCaptureResumeFieldValues,
+        propertyId
+      )
+  ) {
+    field = {
+      ...field,
+
+      defaultValue:
+        cloneNotionCaptureResumeValue(
+          notionCaptureResumeFieldValues[
+            propertyId
+          ]
+        )
+    };
+
+    /*
+     * Page-derived image/author mappings normally
+     * rebuild themselves from the newly captured page.
+     * During a resume, the user's current value wins.
+     */
+    if (
+      [
+        "file",
+        "files",
+        "text",
+        "rich_text"
+      ].includes(
+        type
+      )
+    ) {
+      field.source =
+        "fixed";
+    }
+  }
 
   const wrapper =
     document.createElement(
@@ -10447,6 +11759,8 @@ function createNotionCustomFieldNode(
 
           initialValue:
             initial,
+
+          propertyId,
 
           onChange:
             (value) => {
@@ -10995,17 +12309,36 @@ async function refreshNotionPresetFromLiveSchema(
 }
 
 async function showNotionPresetClip(
-  preset
+  preset,
+  {
+    refreshSchema =
+      true
+  } = {}
 ) {
-  preset =
-    await refreshNotionPresetFromLiveSchema(
-      preset
-    );
+  if (refreshSchema) {
+    preset =
+      await refreshNotionPresetFromLiveSchema(
+        preset
+      );
+  }
   notionOpenPresetId =
     String(
       preset?.id ||
       ""
     ).trim();
+
+  /*
+   * AUTHORITATIVE NOTION PRESET OWNER - 1.9.11
+   *
+   * Body media must learn ownership from the preset that is
+   * actually being shown, rather than trying to rediscover it
+   * later from a hidden selector or a temporary resume token.
+   */
+  await globalThis
+    .ClipNestBodyMedia
+    ?.setNotionPresetId?.(
+      notionOpenPresetId
+    );
 
   document.body.classList.add(
     "notion-preset-open"
@@ -11117,8 +12450,51 @@ function setDestination(destination) {
   state.destination =
     destination;
 
+  /*
+   * PRE-COLLAPSE NOTION STARTUP - 1.9.13
+   *
+   * data-destination="notion" activates Notion-specific
+   * layout rules immediately. During startup, collapse the
+   * unused clip form BEFORE setting that attribute so Chrome
+   * never gets a chance to paint the temporary tall layout.
+   *
+   * The resolved route owns what happens next:
+   * - chooser keeps the clip range collapsed
+   * - showNotionPresetClip() explicitly reopens it
+   */
+  const notionStartupPending =
+    destination ===
+      "notion" &&
+    document.body.hasAttribute(
+      "data-notion-startup"
+    );
+
+  if (notionStartupPending) {
+    setNotionClipRangeHidden(
+      true
+    );
+  }
+
   document.body.dataset.destination =
     destination;
+
+  els.obsidianSaveTo
+    ?.classList.toggle(
+      "hidden",
+      destination !==
+        "obsidian"
+    );
+
+  if (
+    destination !==
+      "obsidian"
+  ) {
+    setObsidianSaveToExpanded(
+      false
+    );
+  } else {
+    updateObsidianSaveToSummary();
+  }
 
   globalThis
     .ClipNestBodyMedia
@@ -11164,6 +12540,12 @@ function setDestination(destination) {
       "obsidian"
   );
 
+  els.templateField?.classList.toggle(
+    "hidden",
+    destination !==
+      "obsidian"
+  );
+
   els.notionPresetField?.classList.toggle(
     "hidden",
     destination !==
@@ -11178,6 +12560,18 @@ function setDestination(destination) {
     destination ===
       "notion"
   ) {
+    /*
+     * ROUTE-FIRST NOTION STARTUP - 1.9.10
+     *
+     * init() owns the initial Notion route while startup is
+     * pending. Do not start a competing chooser here.
+     */
+    if (
+      notionStartupPending
+    ) {
+      return;
+    }
+
     if (
       !notionPresetBuilderResumePending
     ) {
@@ -11356,6 +12750,151 @@ function setNotesExpanded(expanded) {
   }
 }
 
+async function refreshObsidianSaveToChoices() {
+  if (
+    state.destination !==
+      "obsidian"
+  ) {
+    return;
+  }
+
+  const handle =
+    pendingObsidianPermissionHandle ||
+    await getVaultHandle();
+
+  if (!handle) {
+    return;
+  }
+
+  const permission =
+    await ensureWritePermission(
+      handle,
+      true
+    );
+
+  if (!permission) {
+    /*
+     * Keep cached choices visible. Save itself gets
+     * another permission-restoration opportunity.
+     */
+    return;
+  }
+
+  const settings =
+    await chrome.storage.local.get([
+      "obsidianSubfolder",
+      "obsidianDefaultTemplatePath"
+    ]);
+
+  await Promise.all([
+    loadObsidianFolders(
+      settings.obsidianSubfolder ||
+        "",
+      true
+    ),
+
+    loadObsidianTemplates(
+      settings.obsidianDefaultTemplatePath ||
+        "",
+      {
+        refresh: true
+      }
+    )
+  ]);
+
+  updateObsidianSaveToSummary();
+}
+
+function setObsidianSaveToExpanded(
+  expanded
+) {
+  if (
+    !els.obsidianSaveToButton ||
+    !els.obsidianSaveToDetails
+  ) {
+    return;
+  }
+
+  const next =
+    Boolean(expanded) &&
+    state.destination ===
+      "obsidian";
+
+  els.obsidianSaveToButton
+    .setAttribute(
+      "aria-expanded",
+      next
+        ? "true"
+        : "false"
+    );
+
+  els.obsidianSaveToDetails
+    .classList.toggle(
+      "hidden",
+      !next
+    );
+}
+
+function updateObsidianSaveToSummary() {
+  if (
+    !els.obsidianSaveToSummary
+  ) {
+    return;
+  }
+
+  const vaultValue =
+    String(
+      els.vaultSelect?.value ||
+      ""
+    );
+
+  const vaultOption =
+    els.vaultSelect
+      ?.selectedOptions?.[0];
+
+  const vaultName =
+    vaultValue &&
+    vaultValue !== "__connect__"
+      ? String(
+          vaultOption?.textContent ||
+          ""
+        ).trim()
+      : "";
+
+  const folderValue =
+    String(
+      els.folderSelect?.value ||
+      ""
+    );
+
+  const folderOption =
+    els.folderSelect
+      ?.selectedOptions?.[0];
+
+  let folderName =
+    folderValue.startsWith("__")
+      ? "Vault root"
+      : String(
+          folderOption?.textContent ||
+          "Vault root"
+        ).trim();
+
+  folderName =
+    folderName
+      .replace(
+        /\s+·\s+current$/i,
+        ""
+      )
+      .trim() ||
+    "Vault root";
+
+  els.obsidianSaveToSummary
+    .textContent =
+      vaultName
+        ? `${vaultName} / ${folderName}`
+        : "Choose a vault";
+}
+
 async function loadVaultPicker() {
   if (!els.vaultSelect) {
     return;
@@ -11417,6 +12956,8 @@ async function loadVaultPicker() {
   els.vaultSelect.value =
     info.activeVaultId ||
     "";
+
+  updateObsidianSaveToSummary();
 }
 
 async function handleVaultPickerChange() {
@@ -11580,9 +13121,10 @@ async function refreshPopupVaultContext() {
   state.obsidianTags = [];
   state.obsidianTemplates = [];
 
-  els.templateField?.classList.add(
-    "hidden"
-  );
+  if (els.templateMeta) {
+    els.templateMeta.textContent =
+      "Loading templates…";
+  }
 
   if (els.tagSyncMeta) {
     els.tagSyncMeta.textContent =
@@ -11593,7 +13135,10 @@ async function refreshPopupVaultContext() {
     loadObsidianTags(),
     loadObsidianTemplates(
       settings.obsidianDefaultTemplatePath ||
-      ""
+      "",
+      {
+        refresh: true
+      }
     ),
     loadObsidianFolders(
       settings.obsidianSubfolder ||
@@ -11902,6 +13447,77 @@ async function enhanceStructuredArticleCapture(
   }
 }
 
+async function ensureSelectedObsidianTemplateAvailable() {
+  if (
+    state.destination !==
+      "obsidian" ||
+    !els.templateSelect
+  ) {
+    return;
+  }
+
+  const selectedPath =
+    String(
+      els.templateSelect.value ||
+      ""
+    ).trim();
+
+  if (!selectedPath) {
+    return;
+  }
+
+  const current =
+    Array.isArray(
+      state.obsidianTemplates
+    )
+      ? state.obsidianTemplates.find(
+          (item) =>
+            item.path ===
+              selectedPath
+        ) ||
+        null
+      : null;
+
+  if (current) {
+    return;
+  }
+
+  const refreshed =
+    await loadObsidianTemplates(
+      selectedPath,
+      {
+        refresh: true
+      }
+    );
+
+  if (!refreshed) {
+    throw new Error(
+      "ClipNest could not verify the selected Obsidian template. Try again or choose None."
+    );
+  }
+
+  const verified =
+    Array.isArray(
+      state.obsidianTemplates
+    )
+      ? state.obsidianTemplates.find(
+          (item) =>
+            item.path ===
+              selectedPath
+        ) ||
+        null
+      : null;
+
+  if (!verified) {
+    throw new Error(
+      "The selected Obsidian template no longer exists. Choose another template or None."
+    );
+  }
+
+  els.templateSelect.value =
+    selectedPath;
+}
+
 async function save() {
   if (!state.capture || state.saving) return;
 
@@ -11973,6 +13589,13 @@ async function save() {
 
       state.articleEnhancementDone =
         true;
+    }
+
+    if (
+      state.destination ===
+        "obsidian"
+    ) {
+      await ensureSelectedObsidianTemplateAvailable();
     }
 
     const payload = buildPayload();
@@ -12187,6 +13810,17 @@ function buildPayload() {
           (item) => item.path === templatePath
         ) || null
       : null;
+
+  if (
+    state.destination ===
+      "obsidian" &&
+    templatePath &&
+    !template
+  ) {
+    throw new Error(
+      "The selected Obsidian template is unavailable. Open Save to and choose another template or None."
+    );
+  }
 
   const bodyMedia =
     globalThis
@@ -12698,12 +14332,21 @@ async function loadObsidianFolders(
     return;
   }
 
-  const previous =
+  const previousRaw =
     String(
       defaultPath ||
       els.folderSelect.value ||
       ""
     );
+
+  /*
+   * Select commands are UI actions, never folders.
+   * Do not preserve them as "... · current".
+   */
+  const previous =
+    previousRaw.startsWith("__")
+      ? ""
+      : previousRaw;
 
   try {
     const response =
@@ -12805,23 +14448,10 @@ async function loadObsidianFolders(
       createFolder
     );
 
-    const refresh =
-      document.createElement(
-        "option"
-      );
-
-    refresh.value =
-      "__refresh__";
-
-    refresh.textContent =
-      "Refresh folders…";
-
-    els.folderSelect.append(
-      refresh
-    );
-
     els.folderSelect.value =
       previous;
+
+    updateObsidianSaveToSummary();
   } catch (error) {
     if (
       state.destination !==
@@ -12966,23 +14596,6 @@ async function handleFolderPickerChange() {
     return;
   }
 
-  if (
-    value === "__refresh__"
-  ) {
-    const settings =
-      await chrome.storage.local.get([
-        "obsidianSubfolder"
-      ]);
-
-    await loadObsidianFolders(
-      settings.obsidianSubfolder ||
-        "",
-      true
-    );
-
-    return;
-  }
-
   await chrome.storage.local.set({
     obsidianSubfolder:
       value || ""
@@ -12993,73 +14606,163 @@ async function handleFolderPickerChange() {
       subfolder:
         value || ""
     });
+
+  updateObsidianSaveToSummary();
 }
 
 async function loadObsidianTemplates(
-  defaultPath = ""
+  defaultPath = "",
+  {
+    refresh = false
+  } = {}
 ) {
   if (
     state.destination !==
       "obsidian"
   ) {
-    return;
+    return false;
   }
 
   if (
     !els.templateSelect ||
     !els.templateField
   ) {
-    return;
+    return false;
   }
 
-  try {
-    let response =
-      await chrome.runtime.sendMessage({
-        type: "obsidian.templates.get"
-      });
+  const selectedBefore =
+    String(
+      els.templateSelect.value ||
+      defaultPath ||
+      ""
+    ).trim();
 
+  const ensureNoneOption = () => {
     if (
-      response?.ok &&
-      response.stale
+      els.templateSelect
+        .querySelector(
+          'option[value=""]'
+        )
     ) {
-      const refreshed =
-        await chrome.runtime.sendMessage({
-          type: "obsidian.templates.refresh"
-        });
-
-      if (refreshed?.ok) {
-        response = refreshed;
-      }
-    }
-
-    if (!response?.ok) {
-      els.templateField.classList.add(
-        "hidden"
-      );
       return;
     }
 
+    const none =
+      document.createElement(
+        "option"
+      );
+
+    none.value = "";
+    none.textContent = "None";
+
+    els.templateSelect.prepend(
+      none
+    );
+  };
+
+  const preserveSavedSelection = (
+    value
+  ) => {
+    const savedPath =
+      String(
+        value ||
+        ""
+      ).trim();
+
+    ensureNoneOption();
+
+    if (!savedPath) {
+      els.templateSelect.value =
+        "";
+
+      return;
+    }
+
+    const exists =
+      Array.from(
+        els.templateSelect.options
+      ).some(
+        (option) =>
+          option.value ===
+            savedPath
+      );
+
+    if (!exists) {
+      const saved =
+        document.createElement(
+          "option"
+        );
+
+      saved.value =
+        savedPath;
+
+      saved.textContent =
+        `${savedPath} · saved`;
+
+      els.templateSelect.append(
+        saved
+      );
+    }
+
+    els.templateSelect.value =
+      savedPath;
+  };
+
+  try {
+    const response =
+      await chrome.runtime.sendMessage({
+        type:
+          refresh
+            ? "obsidian.templates.refresh"
+            : "obsidian.templates.get"
+      });
+
+    if (!response?.ok) {
+      preserveSavedSelection(
+        selectedBefore
+      );
+
+      if (els.templateMeta) {
+        els.templateMeta.textContent =
+          "Templates unavailable";
+      }
+
+      return false;
+    }
+
     const templates =
-      Array.isArray(response.templates)
+      Array.isArray(
+        response.templates
+      )
         ? response.templates
         : [];
 
     state.obsidianTemplates =
       templates;
 
-    els.templateSelect.replaceChildren();
+    els.templateSelect
+      .replaceChildren();
 
     const none =
-      document.createElement("option");
+      document.createElement(
+        "option"
+      );
 
     none.value = "";
     none.textContent = "None";
 
-    els.templateSelect.append(none);
+    els.templateSelect.append(
+      none
+    );
 
-    for (const item of templates) {
+    for (
+      const item of
+        templates
+    ) {
       const option =
-        document.createElement("option");
+        document.createElement(
+          "option"
+        );
 
       option.value =
         item.path;
@@ -13074,41 +14777,77 @@ async function loadObsidianTemplates(
       );
     }
 
-    if (!templates.length) {
-      els.templateField.classList.add(
-        "hidden"
-      );
-      return;
-    }
+    const desiredPath =
+      selectedBefore ||
+      String(
+        defaultPath ||
+        ""
+      ).trim();
 
-    els.templateField.classList.remove(
-      "hidden"
-    );
-
-    const exists =
+    const desiredExists =
+      Boolean(
+        desiredPath
+      ) &&
       templates.some(
         (item) =>
-          item.path === defaultPath
+          item.path ===
+            desiredPath
       );
 
-    els.templateSelect.value =
-      exists
-        ? defaultPath
-        : "";
+    if (desiredExists) {
+      els.templateSelect.value =
+        desiredPath;
+    } else if (desiredPath) {
+      /*
+       * Preserve the user's saved choice in the UI
+       * even if the cache does not currently contain
+       * the template.
+       *
+       * Save will verify it against a fresh vault
+       * read before building the payload.
+       */
+      preserveSavedSelection(
+        desiredPath
+      );
+    } else {
+      els.templateSelect.value =
+        "";
+    }
 
     const folders =
-      Array.isArray(response.folders)
+      Array.isArray(
+        response.folders
+      )
         ? response.folders
         : [];
 
-    els.templateMeta.textContent =
-      folders.length
-        ? `Auto-detected from ${folders.join(", ")}`
-        : `${templates.length} templates found`;
+    if (els.templateMeta) {
+      els.templateMeta.textContent =
+        templates.length
+          ? (
+              folders.length
+                ? `Auto-detected from ${folders.join(", ")}`
+                : `${templates.length} template${
+                    templates.length === 1
+                      ? ""
+                      : "s"
+                  } found`
+            )
+          : "No templates found";
+    }
+
+    return true;
   } catch {
-    els.templateField.classList.add(
-      "hidden"
+    preserveSavedSelection(
+      selectedBefore
     );
+
+    if (els.templateMeta) {
+      els.templateMeta.textContent =
+        "Templates unavailable";
+    }
+
+    return false;
   }
 }
 
@@ -15792,39 +17531,11 @@ function updateUxSaveButtonLabel() {
     return;
   }
 
-  const kind =
-    getUxCurrentModeKind();
-
-  let label = "Save";
-
-  const pageBodyImageOnly =
-    (
-      state?.destination ===
-        "notion" ||
-      (
-        state?.destination ===
-          "obsidian" &&
-        kind ===
-          "article"
-      )
-    ) &&
-    document.getElementById(
-      "notionIncludePageContent"
-    )?.checked ===
-      false;
-
-  if (pageBodyImageOnly) {
-    label = "Save image";
-  } else if (kind === "article") {
-    label = "Save article";
-  } else if (kind === "text") {
-    label = "Save selection";
-  } else if (kind === "area") {
-    label = "Save area";
-  }
-
   els.saveButton.textContent =
-    label;
+    state?.destination ===
+      "notion"
+      ? "Save to Notion"
+      : "Save to Obsidian";
 
   els.saveButton.title =
     "Save - ⌘ Enter";
@@ -15967,6 +17678,23 @@ function installUxPass1() {
         !event.defaultPrevented &&
         !state?.saving
       ) {
+        const saveToExpanded =
+          els.obsidianSaveToButton
+            ?.getAttribute(
+              "aria-expanded"
+            ) ===
+              "true";
+
+        if (saveToExpanded) {
+          event.preventDefault();
+
+          setObsidianSaveToExpanded(
+            false
+          );
+
+          return;
+        }
+
         window.close();
       }
     }
@@ -15977,17 +17705,19 @@ function installUxPass1() {
   // so observing those attributes can create a refresh loop.
 }
 
-if (
-  document.readyState ===
-  "loading"
-) {
-  document.addEventListener(
-    "DOMContentLoaded",
-    installUxPass1,
-    {
-      once: true
-    }
-  );
-} else {
-  installUxPass1();
-}
+/*
+ * PRE-PAINT UX INSTALL - 1.9.28
+ *
+ * popup.js is loaded at the end of popup.html, so all popup
+ * controls already exist when this script executes.
+ *
+ * Waiting for DOMContentLoaded allowed Chrome to observe the
+ * legacy Content radio layout before installUxPass1() replaced
+ * it with the compact segmented UI. That produced a 96px ->
+ * 60px Content layout transition during popup startup.
+ *
+ * Perform the synchronous DOM normalization in this same
+ * initial script task so the browser's first painted frame
+ * already contains the final Content geometry.
+ */
+installUxPass1();

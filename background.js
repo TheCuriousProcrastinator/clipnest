@@ -128,6 +128,368 @@ async function getQuickClipNotionPreset(
   return preset;
 }
 
+/*
+ * QUICK CLIP FIRST-USE ACCESS HANDOFF - 1.9.34
+ *
+ * A context-menu Quick Clip runs in the background service
+ * worker. If the remembered Obsidian vault currently needs
+ * permission, preserve the original Quick Clip intent in
+ * session storage and open ClipNest.
+ *
+ * The popup can then request filesystem permission from a
+ * real user click and ask the worker to retry the original
+ * Quick Clip operation.
+ */
+
+const QUICK_CLIP_ACCESS_INTENT_KEY =
+  "clipnestQuickClipAccessIntentV1";
+
+const QUICK_CLIP_ACCESS_INTENT_TTL =
+  5 * 60 * 1000;
+
+function isFreshQuickClipAccessIntent(
+  intent
+) {
+  if (
+    !intent ||
+    typeof intent !== "object" ||
+    !intent.id ||
+    !intent.kind
+  ) {
+    return false;
+  }
+
+  const createdAt =
+    Number(
+      intent.createdAt ||
+      0
+    );
+
+  return Boolean(
+    createdAt &&
+    (
+      Date.now() -
+      createdAt
+    ) <
+      QUICK_CLIP_ACCESS_INTENT_TTL
+  );
+}
+
+async function queueQuickClipAccessIntent(
+  kind,
+  info,
+  tab,
+  vaultId
+) {
+  const tabId =
+    Number.isInteger(
+      tab?.id
+    )
+      ? tab.id
+      : null;
+
+  if (!Number.isInteger(tabId)) {
+    throw new Error(
+      "ClipNest could not identify the page for Quick Clip."
+    );
+  }
+
+  const id =
+    globalThis.crypto
+      ?.randomUUID?.() ||
+    (
+      `clipnest-${Date.now()}-` +
+      Math.random()
+        .toString(36)
+        .slice(2)
+    );
+
+  const intent = {
+    id,
+
+    kind,
+
+    createdAt:
+      Date.now(),
+
+    vaultId:
+      String(
+        vaultId ||
+        ""
+      ),
+
+    tabId,
+
+    pageUrl:
+      String(
+        tab?.url ||
+        info?.pageUrl ||
+        ""
+      ),
+
+    selectionText:
+      kind === "selection"
+        ? String(
+            info?.selectionText ||
+            ""
+          )
+        : ""
+  };
+
+  await chrome.storage.session.set({
+    [QUICK_CLIP_ACCESS_INTENT_KEY]:
+      intent
+  });
+
+  try {
+    if (
+      typeof chrome.action.openPopup !==
+        "function"
+    ) {
+      throw new Error(
+        "This Chrome build cannot open ClipNest automatically."
+      );
+    }
+
+    await chrome.action.openPopup();
+  } catch (error) {
+    await chrome.storage.session.remove([
+      QUICK_CLIP_ACCESS_INTENT_KEY
+    ]);
+
+    throw error;
+  }
+}
+
+async function ensureQuickClipContextAccess(
+  kind,
+  info,
+  tab,
+  knownDestination = ""
+) {
+  let destination =
+    String(
+      knownDestination ||
+      ""
+    );
+
+  if (!destination) {
+    const settings =
+      await chrome.storage.local.get([
+        "defaultDestination"
+      ]);
+
+    destination =
+      settings.defaultDestination ===
+        "notion"
+        ? "notion"
+        : "obsidian";
+  }
+
+  if (destination !== "obsidian") {
+    return true;
+  }
+
+  const vaultId =
+    String(
+      await ClipNestVaultStore
+        .getActiveVaultId() ||
+      ""
+    ).trim();
+
+  if (!vaultId) {
+    return true;
+  }
+
+  const handle =
+    await ClipNestVaultStore
+      .getVaultHandle(
+        vaultId
+      );
+
+  if (!handle) {
+    return true;
+  }
+
+  const permission =
+    await handle.queryPermission({
+      mode:
+        "readwrite"
+    });
+
+  if (permission === "granted") {
+    return true;
+  }
+
+  await queueQuickClipAccessIntent(
+    kind,
+    info,
+    tab,
+    vaultId
+  );
+
+  return false;
+}
+
+
+chrome.runtime.onMessage.addListener(
+  (
+    message,
+    sender,
+    sendResponse
+  ) => {
+    if (
+      message?.type !==
+        "obsidian.quickClipAccess.resume"
+    ) {
+      return;
+    }
+
+    void (
+      async () => {
+        let intent = null;
+
+        try {
+          const stored =
+            await chrome.storage.session.get([
+              QUICK_CLIP_ACCESS_INTENT_KEY
+            ]);
+
+          intent =
+            stored[
+              QUICK_CLIP_ACCESS_INTENT_KEY
+            ];
+
+          if (
+            !isFreshQuickClipAccessIntent(
+              intent
+            )
+          ) {
+            await chrome.storage.session.remove([
+              QUICK_CLIP_ACCESS_INTENT_KEY
+            ]);
+
+            throw new Error(
+              "The Quick Clip request expired. Try clipping it again."
+            );
+          }
+
+          const handle =
+            await ClipNestVaultStore
+              .getVaultHandle(
+                intent.vaultId
+              );
+
+          if (!handle) {
+            throw new Error(
+              "The Obsidian vault for this Quick Clip is no longer connected."
+            );
+          }
+
+          const permission =
+            await handle.queryPermission({
+              mode:
+                "readwrite"
+            });
+
+          if (permission !== "granted") {
+            throw new Error(
+              "Vault access was not granted."
+            );
+          }
+
+          await ClipNestVaultStore
+            .activateVault(
+              intent.vaultId
+            );
+
+          const tab =
+            await chrome.tabs.get(
+              intent.tabId
+            );
+
+          const currentUrl =
+            String(
+              tab?.url ||
+              ""
+            );
+
+          if (
+            !/^https?:/i.test(
+              currentUrl
+            ) ||
+            (
+              intent.pageUrl &&
+              currentUrl !==
+                intent.pageUrl
+            )
+          ) {
+            throw new Error(
+              "The page changed before Quick Clip could finish. Try clipping it again."
+            );
+          }
+
+          if (
+            intent.kind ===
+              "selection"
+          ) {
+            await quickClipSelectedText(
+              {
+                pageUrl:
+                  intent.pageUrl,
+
+                selectionText:
+                  intent.selectionText
+              },
+              tab
+            );
+          } else if (
+            intent.kind ===
+              "article"
+          ) {
+            await quickClipArticle(
+              {
+                pageUrl:
+                  intent.pageUrl
+              },
+              tab
+            );
+          } else {
+            throw new Error(
+              "The pending Quick Clip type is not supported."
+            );
+          }
+
+          sendResponse({
+            ok:
+              true
+          });
+        } catch (error) {
+          sendResponse({
+            ok:
+              false,
+
+            error: {
+              message:
+                error?.message ||
+                String(error)
+            }
+          });
+        } finally {
+          if (intent) {
+            await chrome.storage.session.remove([
+              QUICK_CLIP_ACCESS_INTENT_KEY
+            ]);
+          }
+        }
+      }
+    )();
+
+    return true;
+  }
+);
+
+
 async function quickClipSelectedText(
   info,
   tab
@@ -178,6 +540,18 @@ async function quickClipSelectedText(
       "notion"
         ? "notion"
         : "obsidian";
+
+    const quickAccessReady =
+      await ensureQuickClipContextAccess(
+        "selection",
+        info,
+        tab,
+        destination
+      );
+
+    if (!quickAccessReady) {
+      return;
+    }
 
     const tags =
       [];
@@ -934,6 +1308,17 @@ async function quickClipArticle(
   }
 
   try {
+    const quickAccessReady =
+      await ensureQuickClipContextAccess(
+        "article",
+        info,
+        tab
+      );
+
+    if (!quickAccessReady) {
+      return;
+    }
+
     await showQuickClipToast(
       tabId,
       "Clipping article…",
@@ -1164,19 +1549,30 @@ async function getObsidianFolders(
   if (
     !forceRefresh &&
     current &&
-    Array.isArray(current.folders) &&
-    (
-      Date.now() -
-      Number(current.updatedAt || 0)
-    ) < OBSIDIAN_FOLDER_CACHE_TTL
+    Array.isArray(
+      current.folders
+    )
   ) {
+    const updatedAt =
+      Number(
+        current.updatedAt ||
+        0
+      );
+
     return {
-      folders: current.folders,
+      folders:
+        current.folders,
+
       activeVaultId,
-      updatedAt:
-        Number(
-          current.updatedAt || 0
-        )
+
+      updatedAt,
+
+      stale:
+        (
+          Date.now() -
+          updatedAt
+        ) >=
+          OBSIDIAN_FOLDER_CACHE_TTL
     };
   }
 
@@ -1372,6 +1768,9 @@ chrome.runtime.onMessage.addListener(
     return true;
   }
 );
+
+
+
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "clipper.areaSelected") {
@@ -3323,7 +3722,7 @@ async function quickSaveToObsidian(
 
   if (permission !== "granted") {
     throw new Error(
-      "Chrome needs vault permission again. Open the extension Settings and reconnect the vault."
+      "Quick Clip needs persistent vault access. Open ClipNest Settings, click Enable Quick Clip access, and choose Allow on every visit."
     );
   }
 
@@ -4625,9 +5024,21 @@ chrome.runtime.onMessage.addListener(
               )
           };
 
+          /*
+           * BODY IMAGE LOCAL CAPTURE - 1.9.6
+           *
+           * Both Notion and Obsidian body-image picks
+           * must use a local screenshot crop.
+           *
+           * Remote page-image URLs may be protected,
+           * temporary, lazy-loaded, or unsuitable for
+           * direct reuse in the popup/save pipeline.
+           *
+           * Database-property image selection keeps
+           * its existing URL-based behavior.
+           */
           if (
-            message.purpose ===
-              "body-obsidian"
+            bodyPurpose
           ) {
             const windowId =
               sender.tab?.windowId;

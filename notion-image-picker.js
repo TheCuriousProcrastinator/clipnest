@@ -1915,6 +1915,7 @@
   function create({
     detectedImage = "",
     initialValue = "",
+    propertyId = "",
     onChange =
       () => {}
   } = {}) {
@@ -2020,6 +2021,7 @@
           "Starting picker…";
 
         try {
+
           const resumePresetId =
             String(
               document
@@ -2030,9 +2032,26 @@
               ""
             ).trim();
 
+
           if (resumePresetId) {
-            await chrome.storage.local.set({
-              clipnestNotionCaptureResume: {
+            /*
+             * Preserve every other in-progress Notion
+             * field. Exclude this Files & media property
+             * because the image the user is about to pick
+             * must replace its previous value.
+             */
+            const resume =
+              globalThis
+                .ClipNestNotionCaptureResume
+                ?.snapshot?.(
+                  resumePresetId,
+                  "",
+                  {
+                    excludePropertyId:
+                      propertyId
+                  }
+                ) ||
+              {
                 presetId:
                   resumePresetId,
 
@@ -2046,8 +2065,14 @@
 
                 createdAt:
                   Date.now()
-              }
+              };
+
+            await chrome.storage.local.set({
+              clipnestNotionCaptureResume:
+                resume
             });
+
+          } else {
           }
 
           await startClipNestPageImageSelection();

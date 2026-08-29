@@ -43,6 +43,17 @@
   let currentPageUrl =
     "";
 
+  /*
+   * PENDING NOTION PRESET RESUME - 1.9.8
+   *
+   * Body media already survives popup closes in IndexedDB.
+   * Keep the owning Notion preset with that draft so a
+   * manual reopen can return directly to the unfinished clip.
+   */
+  let currentNotionPresetId =
+    "";
+
+
   let busy =
     false;
 
@@ -182,6 +193,9 @@
 
                 updatedAt:
                   Date.now(),
+
+                notionPresetId:
+                  currentNotionPresetId,
 
                 items
               },
@@ -482,6 +496,187 @@
     };
   }
 
+  function dataUrlByteSize(
+    value
+  ) {
+    const source =
+      String(
+        value ||
+        ""
+      );
+
+    const comma =
+      source.indexOf(
+        ","
+      );
+
+    if (comma < 0) {
+      return 0;
+    }
+
+    const encoded =
+      source.slice(
+        comma + 1
+      );
+
+    if (!encoded) {
+      return 0;
+    }
+
+    const padding =
+      encoded.endsWith("==")
+        ? 2
+        : encoded.endsWith("=")
+          ? 1
+          : 0;
+
+    return Math.max(
+      0,
+      Math.floor(
+        encoded.length *
+        3 /
+        4
+      ) -
+      padding
+    );
+  }
+
+  function formatMediaSize(
+    bytes
+  ) {
+    const value =
+      Number(
+        bytes ||
+        0
+      );
+
+    if (
+      !Number.isFinite(value) ||
+      value <= 0
+    ) {
+      return "";
+    }
+
+    if (value < 1024) {
+      return `${Math.round(value)} B`;
+    }
+
+    if (
+      value <
+      1024 * 1024
+    ) {
+      return `${
+        Math.round(
+          value /
+          1024
+        )
+      } KB`;
+    }
+
+    return `${
+      (
+        value /
+        1024 /
+        1024
+      ).toFixed(
+        value <
+          10 *
+          1024 *
+          1024
+          ? 1
+          : 0
+      )
+    } MB`;
+  }
+
+  function mediaTypeLabel(
+    item
+  ) {
+    const mime =
+      String(
+        item?.mimeType ||
+        ""
+      ).toLowerCase();
+
+    if (
+      mime.includes(
+        "png"
+      )
+    ) {
+      return "PNG";
+    }
+
+    if (
+      mime.includes(
+        "webp"
+      )
+    ) {
+      return "WebP";
+    }
+
+    if (
+      mime.includes(
+        "gif"
+      )
+    ) {
+      return "GIF";
+    }
+
+    if (
+      mime.includes(
+        "jpeg"
+      ) ||
+      mime.includes(
+        "jpg"
+      )
+    ) {
+      return "JPEG";
+    }
+
+    const filename =
+      String(
+        item?.filename ||
+        ""
+      ).toLowerCase();
+
+    if (
+      filename.endsWith(
+        ".png"
+      )
+    ) {
+      return "PNG";
+    }
+
+    if (
+      filename.endsWith(
+        ".webp"
+      )
+    ) {
+      return "WebP";
+    }
+
+    if (
+      filename.endsWith(
+        ".gif"
+      )
+    ) {
+      return "GIF";
+    }
+
+    if (
+      filename.endsWith(
+        ".jpg"
+      ) ||
+      filename.endsWith(
+        ".jpeg"
+      )
+    ) {
+      return "JPEG";
+    }
+
+    return "Image";
+  }
+
   function setLocalStatus(
     message = "",
     isError = false
@@ -543,6 +738,27 @@
 
     previews.replaceChildren();
 
+    if (items.length) {
+      const heading =
+        document.createElement(
+          "div"
+        );
+
+      heading.className =
+        "notion-body-media-preview-heading";
+
+      heading.textContent =
+        `Attached image${
+          items.length === 1
+            ? ""
+            : "s"
+        } (${items.length})`;
+
+      previews.append(
+        heading
+      );
+    }
+
     for (
       const item of
         items
@@ -572,6 +788,68 @@
 
       image.referrerPolicy =
         "no-referrer";
+
+      const copy =
+        document.createElement(
+          "div"
+        );
+
+      copy.className =
+        "notion-body-media-thumb-copy";
+
+      const title =
+        document.createElement(
+          "div"
+        );
+
+      title.className =
+        "notion-body-media-thumb-title";
+
+      title.textContent =
+        String(
+          item.label ||
+          "Image"
+        );
+
+      title.title =
+        String(
+          item.filename ||
+          item.label ||
+          "Image"
+        );
+
+      const meta =
+        document.createElement(
+          "div"
+        );
+
+      meta.className =
+        "notion-body-media-thumb-meta";
+
+      const size =
+        item.kind ===
+          "data"
+          ? formatMediaSize(
+              dataUrlByteSize(
+                item.dataUrl
+              )
+            )
+          : "";
+
+      meta.textContent =
+        [
+          mediaTypeLabel(
+            item
+          ),
+          size
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+      copy.append(
+        title,
+        meta
+      );
 
       const remove =
         document.createElement(
@@ -616,6 +894,7 @@
 
       card.append(
         image,
+        copy,
         remove
       );
 
@@ -1121,7 +1400,13 @@
                   window.innerWidth,
 
                 viewportHeight:
-                  window.innerHeight
+                  window.innerHeight,
+
+                pixelRatio:
+                  Number(
+                    window.devicePixelRatio ||
+                    1
+                  )
               };
             }
 
@@ -1146,7 +1431,13 @@
                   window.innerWidth,
 
                 viewportHeight:
-                  window.innerHeight
+                  window.innerHeight,
+
+                pixelRatio:
+                  Number(
+                    window.devicePixelRatio ||
+                    1
+                  )
               };
             }
 
@@ -1180,6 +1471,12 @@
 
               viewportHeight:
                 best.element.clientHeight,
+
+              pixelRatio:
+                Number(
+                  window.devicePixelRatio ||
+                  1
+                ),
 
               rect: {
                 left:
@@ -1225,15 +1522,76 @@
       );
     }
 
-    const outputWidth =
-      Math.min(
-        metrics.pageWidth,
-        1200
+    /*
+     * FULL PAGE RESOLUTION - 1.9.5
+     *
+     * captureVisibleTab can provide substantially
+     * more pixels than the page's CSS dimensions,
+     * especially on Retina displays.
+     *
+     * The old implementation flattened the final
+     * canvas to at most 1200 CSS pixels wide, which
+     * discarded that source resolution before the
+     * image reached Notion or Obsidian.
+     *
+     * Preserve the available capture density while
+     * keeping canvas dimensions and memory bounded.
+     */
+
+    const captureScale =
+      Math.max(
+        .1,
+        Number(
+          metrics.pixelRatio ||
+          1
+        )
+      );
+
+    const maxOutputWidth =
+      2800;
+
+    const maxOutputHeight =
+      30000;
+
+    /*
+     * Keep the worst-case raw canvas allocation
+     * roughly within the range the previous
+     * implementation could already reach.
+     */
+    const maxCanvasPixels =
+      28000000;
+
+    const widthScale =
+      maxOutputWidth /
+      metrics.pageWidth;
+
+    const heightScale =
+      maxOutputHeight /
+      metrics.pageHeight;
+
+    const areaScale =
+      Math.sqrt(
+        maxCanvasPixels /
+        (
+          metrics.pageWidth *
+          metrics.pageHeight
+        )
       );
 
     const outputScale =
-      outputWidth /
-      metrics.pageWidth;
+      Math.max(
+        .01,
+        Math.min(
+          captureScale,
+          widthScale,
+          heightScale,
+          areaScale
+        )
+      );
+
+    const outputWidth =
+      metrics.pageWidth *
+      outputScale;
 
     const canvas =
       document.createElement(
@@ -1267,6 +1625,12 @@
         "Could not create the full-page screenshot."
       );
     }
+
+    context.imageSmoothingEnabled =
+      true;
+
+    context.imageSmoothingQuality =
+      "high";
 
     const lastTop =
       Math.max(
@@ -2187,7 +2551,9 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
     const tab =
       await getActiveTab();
 
+
     await writeDraft();
+
 
     const resumePresetId =
       String(
@@ -2199,9 +2565,19 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
         ""
       ).trim();
 
+
     if (resumePresetId) {
-      await chrome.storage.local.set({
-        clipnestNotionCaptureResume: {
+      const resume =
+        globalThis
+          .ClipNestNotionCaptureResume
+          ?.snapshot?.(
+            resumePresetId,
+            String(
+              tab.url ||
+              ""
+            )
+          ) ||
+        {
           presetId:
             resumePresetId,
 
@@ -2221,8 +2597,14 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
 
           createdAt:
             Date.now()
-        }
+        };
+
+      await chrome.storage.local.set({
+        clipnestNotionCaptureResume:
+          resume
       });
+
+    } else {
     }
 
     await chrome.storage.local.set({
@@ -2655,6 +3037,7 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
   }
 
   async function startImageSelection() {
+
     if (
       !globalThis
         .ClipNestImagePicker
@@ -2668,7 +3051,9 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
     const tab =
       await getActiveTab();
 
+
     await writeDraft();
+
 
     const resumePresetId =
       String(
@@ -2680,9 +3065,19 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
         ""
       ).trim();
 
+
     if (resumePresetId) {
-      await chrome.storage.local.set({
-        clipnestNotionCaptureResume: {
+      const resume =
+        globalThis
+          .ClipNestNotionCaptureResume
+          ?.snapshot?.(
+            resumePresetId,
+            String(
+              tab.url ||
+              ""
+            )
+          ) ||
+        {
           presetId:
             resumePresetId,
 
@@ -2702,8 +3097,14 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
 
           createdAt:
             Date.now()
-        }
+        };
+
+      await chrome.storage.local.set({
+        clipnestNotionCaptureResume:
+          resume
       });
+
+    } else {
     }
 
     const pickerPurpose =
@@ -2714,11 +3115,13 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
         ? "body-obsidian"
         : "body";
 
+
     await globalThis
       .ClipNestImagePicker
       .startPageSelection(
         pickerPurpose
       );
+
 
     window.close();
   }
@@ -2790,8 +3193,215 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
     }
   }
 
+  function createCaptureMenuIcon(
+    iconName
+  ) {
+    const namespace =
+      "http://www.w3.org/2000/svg";
+
+    const svg =
+      document.createElementNS(
+        namespace,
+        "svg"
+      );
+
+    svg.classList.add(
+      "notion-body-media-menu-icon-svg"
+    );
+
+    svg.setAttribute(
+      "viewBox",
+      "0 0 24 24"
+    );
+
+    svg.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+
+    svg.setAttribute(
+      "focusable",
+      "false"
+    );
+
+    const definitions = {
+      visible: [
+        [
+          "rect",
+          {
+            x: "3",
+            y: "5",
+            width: "18",
+            height: "13",
+            rx: "2"
+          }
+        ],
+        [
+          "path",
+          {
+            d: "M8 21h8"
+          }
+        ],
+        [
+          "path",
+          {
+            d: "M12 18v3"
+          }
+        ]
+      ],
+
+      area: [
+        [
+          "path",
+          {
+            d: "M8 3H3v5"
+          }
+        ],
+        [
+          "path",
+          {
+            d: "M16 3h5v5"
+          }
+        ],
+        [
+          "path",
+          {
+            d: "M21 16v5h-5"
+          }
+        ],
+        [
+          "path",
+          {
+            d: "M8 21H3v-5"
+          }
+        ],
+        [
+          "rect",
+          {
+            x: "8",
+            y: "8",
+            width: "8",
+            height: "8",
+            rx: "1"
+          }
+        ]
+      ],
+
+      page: [
+        [
+          "path",
+          {
+            d: "M6 3h8l4 4v14H6z"
+          }
+        ],
+        [
+          "path",
+          {
+            d: "M14 3v5h5"
+          }
+        ],
+        [
+          "path",
+          {
+            d: "M9 12h6"
+          }
+        ],
+        [
+          "path",
+          {
+            d: "M9 16h6"
+          }
+        ]
+      ],
+
+      image: [
+        [
+          "rect",
+          {
+            x: "3",
+            y: "5",
+            width: "18",
+            height: "14",
+            rx: "2"
+          }
+        ],
+        [
+          "circle",
+          {
+            cx: "9",
+            cy: "10",
+            r: "1.5"
+          }
+        ],
+        [
+          "path",
+          {
+            d: "M5 17l4-4 3 3 2-2 5 5"
+          }
+        ]
+      ]
+    };
+
+    const definition =
+      definitions[
+        iconName
+      ] ||
+      [];
+
+    for (
+      const [
+        tag,
+        attributes
+      ] of definition
+    ) {
+      const element =
+        document.createElementNS(
+          namespace,
+          tag
+        );
+
+      for (
+        const [
+          name,
+          value
+        ] of Object.entries(
+          attributes
+        )
+      ) {
+        element.setAttribute(
+          name,
+          value
+        );
+      }
+
+      svg.append(
+        element
+      );
+    }
+
+    const wrapper =
+      document.createElement(
+        "span"
+      );
+
+    wrapper.className =
+      "notion-body-media-menu-icon";
+
+    wrapper.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+
+    wrapper.append(
+      svg
+    );
+
+    return wrapper;
+  }
+
   function createMenuButton(
     label,
+    iconName,
     handler
   ) {
     const button =
@@ -2805,21 +3415,41 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
     button.className =
       "notion-body-media-menu-button";
 
+    const icon =
+      createCaptureMenuIcon(
+        iconName
+      );
+
     const copy =
       document.createElement(
         "span"
       );
 
+    copy.className =
+      "notion-body-media-menu-copy";
+
     copy.textContent =
       label;
 
     button.append(
+      icon,
       copy
     );
 
     button.addEventListener(
       "click",
-      handler
+      () => {
+        menu?.classList.add(
+          "hidden"
+        );
+
+        addButton?.setAttribute(
+          "aria-expanded",
+          "false"
+        );
+
+        handler();
+      }
     );
 
     menuButtons.push(
@@ -2882,7 +3512,7 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
       "notion-body-content-toggle";
 
     includeContentToggle.title =
-      "Include the clipped article text in the saved page body";
+      "Include page text in the saved note";
 
     const includeContentText =
       document.createElement(
@@ -2893,7 +3523,7 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
       "notion-body-content-toggle-text";
 
     includeContentText.textContent =
-      "Include clipped page text";
+      "Include page text";
 
     const includeContentInput =
       document.createElement(
@@ -2991,6 +3621,16 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
     addButton.textContent =
       "+ Capture image";
 
+    addButton.setAttribute(
+      "aria-expanded",
+      "false"
+    );
+
+    addButton.setAttribute(
+      "aria-controls",
+      "clipnestBodyMediaMenu"
+    );
+
     menu =
       document.createElement(
         "div"
@@ -2999,9 +3639,18 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
     menu.className =
       "notion-body-media-menu hidden";
 
+    menu.id =
+      "clipnestBodyMediaMenu";
+
+    menu.setAttribute(
+      "role",
+      "menu"
+    );
+
     const selectImage =
       createMenuButton(
-        "Select Image",
+        "Select image from page",
+        "image",
         () =>
           runAction(
             startImageSelection,
@@ -3011,7 +3660,8 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
 
     const visibleArea =
       createMenuButton(
-        "Capture Visible Area",
+        "Visible area",
+        "visible",
         () =>
           runAction(
             captureVisibleArea,
@@ -3021,7 +3671,8 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
 
     const selectArea =
       createMenuButton(
-        "Select Area to Capture",
+        "Select area",
+        "area",
         () =>
           runAction(
             startAreaCapture,
@@ -3031,7 +3682,8 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
 
     const entirePage =
       createMenuButton(
-        "Capture Entire Page",
+        "Capture whole page",
+        "page",
         () =>
           runAction(
             captureEntirePage,
@@ -3043,11 +3695,35 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
           )
       );
 
+    /*
+     * CAPTURE MENU ORDER - 1.9.31
+     *
+     * Keep the most immediate and targeted capture choices
+     * together, with whole-page capture last.
+     *
+     * Visible area
+     * Select area
+     * Select image from page
+     * Capture whole page
+     */
     menu.append(
-      selectImage,
       visibleArea,
       selectArea,
+      selectImage,
       entirePage
+    );
+
+    const actionWrap =
+      document.createElement(
+        "div"
+      );
+
+    actionWrap.className =
+      "notion-body-media-action-wrap";
+
+    actionWrap.append(
+      addButton,
+      menu
     );
 
     status =
@@ -3058,11 +3734,73 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
     status.className =
       "notion-body-media-status hidden";
 
+    const setMenuOpen = (
+      open
+    ) => {
+      const next =
+        Boolean(open);
+
+      menu.classList.remove(
+        "open-up"
+      );
+
+      menu.classList.toggle(
+        "hidden",
+        !next
+      );
+
+      addButton.setAttribute(
+        "aria-expanded",
+        next
+          ? "true"
+          : "false"
+      );
+
+      if (!next) {
+        return;
+      }
+
+      const buttonRect =
+        addButton.getBoundingClientRect();
+
+      const menuHeight =
+        menu.getBoundingClientRect()
+          .height;
+
+      const viewportHeight =
+        document.documentElement
+          .clientHeight;
+
+      const spaceBelow =
+        viewportHeight -
+        buttonRect.bottom -
+        12;
+
+      const spaceAbove =
+        buttonRect.top -
+        12;
+
+      if (
+        menuHeight > spaceBelow &&
+        spaceAbove > spaceBelow
+      ) {
+        menu.classList.add(
+          "open-up"
+        );
+      }
+    };
+
     addButton.addEventListener(
       "click",
       () => {
-        menu.classList.toggle(
-          "hidden"
+        const open =
+          addButton.getAttribute(
+            "aria-expanded"
+          ) ===
+            "true";
+
+        setMenuOpen(
+          !open
         );
 
         setLocalStatus(
@@ -3071,12 +3809,56 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
       }
     );
 
+    document.addEventListener(
+      "click",
+      (event) => {
+        if (
+          menu.classList.contains(
+            "hidden"
+          ) ||
+          actionWrap.contains(
+            event.target
+          )
+        ) {
+          return;
+        }
+
+        setMenuOpen(
+          false
+        );
+      }
+    );
+
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (
+          event.key !==
+            "Escape" ||
+          menu.classList.contains(
+            "hidden"
+          )
+        ) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        setMenuOpen(
+          false
+        );
+
+        addButton.focus();
+      },
+      true
+    );
+
     root.append(
       label,
       includeContentToggle,
       previews,
-      addButton,
-      menu,
+      actionWrap,
       status
     );
 
@@ -3110,6 +3892,9 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
     items =
       [];
 
+    currentNotionPresetId =
+      "";
+
     if (
       currentPageUrl
     ) {
@@ -3141,6 +3926,12 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
                 0,
                 MAX_ITEMS
               );
+
+          currentNotionPresetId =
+            String(
+              draft.notionPresetId ||
+              ""
+            ).trim();
         }
       } catch {
       }
@@ -3151,8 +3942,36 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
         .get([
           "clipnestPickedBodyImage",
           "clipnestPickedBodyArea",
-          "clipnestBodyAreaError"
+          "clipnestBodyAreaError",
+          "clipnestNotionCaptureResume"
         ]);
+
+    const notionCaptureResume =
+      stored
+        .clipnestNotionCaptureResume;
+
+
+    if (
+      document.body
+        ?.dataset
+        ?.destination ===
+          "notion" &&
+      notionCaptureResume &&
+      typeof notionCaptureResume ===
+        "object"
+    ) {
+      const resumePresetId =
+        String(
+          notionCaptureResume
+            .presetId ||
+          ""
+        ).trim();
+
+      if (resumePresetId) {
+        currentNotionPresetId =
+          resumePresetId;
+      }
+    }
 
     const areaError =
       stored
@@ -3376,12 +4195,80 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
       );
   }
 
+  /*
+   * AUTHORITATIVE NOTION PRESET OWNER - 1.9.11
+   *
+   * The visible Notion preset screen is the authoritative
+   * source of body-media draft ownership.
+   *
+   * Previously currentNotionPresetId was only populated by
+   * restorePending() from an older IndexedDB draft or from a
+   * temporary capture-resume token. On a fresh page this left
+   * the first body-media draft with notionPresetId: "".
+   *
+   * showNotionPresetClip() now explicitly supplies the real
+   * open preset ID here.
+   */
+  async function setNotionPresetId(
+    presetId
+  ) {
+    const normalizedPresetId =
+      String(
+        presetId ||
+        ""
+      ).trim();
+
+    if (!normalizedPresetId) {
+      return;
+    }
+
+    currentNotionPresetId =
+      normalizedPresetId;
+
+    /*
+     * No media yet means there is no IndexedDB draft to update.
+     * Keep the owner in memory and addItem() will persist it
+     * together with the first captured image.
+     */
+    if (
+      !items.length ||
+      !currentPageUrl
+    ) {
+      return;
+    }
+
+    /*
+     * Media already exists. This also repairs older drafts that
+     * contain images but were persisted without a preset owner.
+     */
+    try {
+      await writeDraft();
+    } catch {
+    }
+  }
+
+  function getPendingNotionPresetId() {
+    if (
+      !items.length
+    ) {
+      return "";
+    }
+
+    return String(
+      currentNotionPresetId ||
+      ""
+    ).trim();
+  }
+
   async function clear() {
     const pageUrl =
       currentPageUrl;
 
     items =
       [];
+
+    currentNotionPresetId =
+      "";
 
     render();
 
@@ -3406,7 +4293,9 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
     Object.freeze({
       setVisible,
       restorePending,
+      setNotionPresetId,
       getItems,
+      getPendingNotionPresetId,
       clear
     });
 

@@ -3735,7 +3735,7 @@ body[data-destination="notion"]
   top: calc(100% + 7px);
   left: 0;
 
-  width: 264px;
+  width: 306px;
   padding: 8px;
 
   border:
@@ -3799,15 +3799,16 @@ body[data-destination="notion"]
 .notion-builder-icon-grid {
   display: grid;
   grid-template-columns:
-    repeat(7, 1fr);
-  gap: 3px;
+    repeat(7, 38px);
+  justify-content: center;
+  gap: 4px;
 }
 
 .notion-builder-icon-option {
-  width: 32px !important;
-  min-width: 32px !important;
-  height: 32px !important;
-  min-height: 32px !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
 
   padding: 0 !important;
 
@@ -3851,6 +3852,16 @@ body[data-destination="notion"]
     );
 }
 
+.notion-builder-icon-option:focus-visible {
+  outline: 2px solid #9027db;
+  outline-offset: 1px;
+}
+
+.notion-builder-icon-default:focus-visible {
+  outline: 2px solid #9027db;
+  outline-offset: 1px;
+}
+
 .notion-preset-card-icon {
   font-size: 18px;
   line-height: 1;
@@ -3889,15 +3900,16 @@ body[data-destination="notion"]
   height: 22px;
 }
 
-.notion-builder-icon-option:hover
-.clipnest-preset-svg {
-  transform: scale(1.06);
-}
-
+/*
+ * PRESET ICON INTERACTION CONSISTENCY - 1.9.19
+ *
+ * Keep glyph geometry completely stable across interaction
+ * states. Hover, selection, and keyboard focus belong to
+ * the button surface rather than resizing the artwork.
+ */
 .notion-builder-icon-option
 .clipnest-preset-svg {
-  transition:
-    transform 100ms ease;
+  transform: none !important;
 }
 
 
@@ -4558,11 +4570,11 @@ body[data-destination="notion"].notion-preset-open .notion-custom-select-search 
   font-size: 12px !important;
 }
 
-body[data-destination="notion"].notion-preset-open .notion-custom-select-menu:not(
-  :has(
-    .notion-custom-select-option:nth-child(7)
-  )
-) .notion-custom-select-search {
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-menu:not(
+  .notion-custom-select-search-enabled
+)
+.notion-custom-select-search {
   display: none !important;
 }
 
@@ -5664,4 +5676,1916 @@ body[data-destination="notion"].notion-preset-open #saveButton {
   display: block;
   width: 100%;
   margin-bottom: 0 !important;
+}
+
+
+/* OBSIDIAN POPUP POLISH - REFERENCE PASS */
+
+/*
+ * Keep this pass scoped to Obsidian.
+ * Notion has its own preset/property layout and should
+ * not inherit these structural spacing changes.
+ */
+
+body[data-destination="obsidian"] .field > span,
+body[data-destination="obsidian"] .content-mode legend {
+  font-weight: 600 !important;
+}
+
+/* Slightly tighten the regular capture fields. */
+
+body[data-destination="obsidian"] #vaultField,
+body[data-destination="obsidian"] #folderField,
+body[data-destination="obsidian"] #tagsField {
+  margin-bottom: 6px !important;
+}
+
+body[data-destination="obsidian"] #vaultSelect,
+body[data-destination="obsidian"] #folderSelect,
+body[data-destination="obsidian"] #tagsInput {
+  min-height: 36px !important;
+  height: 36px !important;
+}
+
+/* Keep Content close to the controls that belong to it. */
+
+body[data-destination="obsidian"] .content-mode {
+  margin-top: 4px !important;
+  margin-bottom: 4px !important;
+}
+
+body[data-destination="obsidian"]
+.clipper-ux-mode-segmented {
+  margin-bottom: 7px !important;
+}
+
+/*
+ * Page body is now treated as part of Content rather
+ * than as a separate section.
+ */
+
+body[data-destination="obsidian"]
+.notion-body-media {
+  margin: 5px 0 7px !important;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-label {
+  display: none !important;
+}
+
+/* Full-width page-text setting row. */
+
+body[data-destination="obsidian"]
+.notion-body-content-toggle {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+
+  width: 100% !important;
+  min-height: 42px !important;
+  box-sizing: border-box !important;
+
+  margin: 0 0 9px !important;
+  padding: 8px 11px !important;
+
+  border: 1px solid
+    color-mix(
+      in srgb,
+      CanvasText 18%,
+      transparent
+    ) !important;
+
+  border-radius: 9px !important;
+
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 3%,
+      Canvas
+    ) !important;
+}
+
+body[data-destination="obsidian"]
+.notion-body-content-toggle-text,
+body[data-destination="obsidian"]
+.notion-body-media:has(
+  #notionIncludePageContent:checked
+)
+.notion-body-content-toggle-text,
+body[data-destination="obsidian"]
+.notion-body-content-toggle:hover
+.notion-body-content-toggle-text,
+body[data-destination="obsidian"]
+.notion-body-media:has(
+  #notionIncludePageContent:checked
+)
+.notion-body-content-toggle:hover
+.notion-body-content-toggle-text {
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 82%,
+      transparent
+    ) !important;
+
+  font-size: 13px !important;
+  font-weight: 550 !important;
+  line-height: 1.2 !important;
+}
+
+/* Match the scale of the Open-after-saving switch. */
+
+body[data-destination="obsidian"]
+.notion-body-content-toggle-track {
+  width: 34px !important;
+  height: 20px !important;
+}
+
+body[data-destination="obsidian"]
+.notion-body-content-toggle-track::after {
+  top: 2px !important;
+  left: 2px !important;
+  width: 14px !important;
+  height: 14px !important;
+}
+
+body[data-destination="obsidian"]
+.notion-body-content-toggle
+input:checked +
+.notion-body-content-toggle-track::after {
+  transform: translateX(16px) !important;
+}
+
+/* Image action belongs directly under the page-text setting. */
+
+body[data-destination="obsidian"]
+.notion-body-media-add {
+  display: block !important;
+  margin: 1px 0 4px !important;
+  padding: 4px 0 !important;
+
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+
+/* Keep captured thumbnails compact but clearly separated. */
+
+body[data-destination="obsidian"]
+.notion-body-media-previews {
+  gap: 8px !important;
+  margin: 3px 0 7px !important;
+}
+
+/* Add note visually belongs to the same secondary-action group. */
+
+body[data-destination="obsidian"]
+.notes-compact {
+  margin: 0 0 5px !important;
+}
+
+body[data-destination="obsidian"]
+.notes-toggle {
+  padding: 4px 0 5px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+
+/* Full-width Open after saving row, matching Include page text. */
+
+body[data-destination="obsidian"]
+#obsidianOpenAfterSaveField {
+  min-height: 42px !important;
+  box-sizing: border-box !important;
+
+  margin: 3px 0 0 !important;
+  padding: 8px 11px !important;
+
+  border: 1px solid
+    color-mix(
+      in srgb,
+      CanvasText 18%,
+      transparent
+    ) !important;
+
+  border-radius: 9px !important;
+
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 3%,
+      Canvas
+    ) !important;
+
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 82%,
+      transparent
+    ) !important;
+
+  font-size: 13px !important;
+  font-weight: 550 !important;
+}
+
+/* Keep the main action visually separated, but not far away. */
+
+body[data-destination="obsidian"]
+.actions {
+  margin-top: 8px !important;
+}
+
+body[data-destination="obsidian"]
+#saveButton {
+  margin-top: 0 !important;
+}
+
+/* END OBSIDIAN POPUP POLISH - REFERENCE PASS */
+
+
+/* OBSIDIAN REDESIGN PHASE 1 - HIDE CONTENT MODE */
+
+/*
+ * Article remains the normal internal default.
+ * Text/area modes remain available to explicit
+ * browser-side workflows, but the popup no longer
+ * asks the user to choose a clip mode.
+ */
+body[data-destination="obsidian"]
+.content-mode {
+  display: none !important;
+}
+
+/*
+ * The generated segmented control lives inside the
+ * content fieldset, but hide it explicitly as well
+ * so future DOM movement cannot expose it.
+ */
+body[data-destination="obsidian"]
+#clipperUxModeSegmented {
+  display: none !important;
+}
+
+/*
+ * With Content removed, pull the page-text/media
+ * controls upward into the main capture flow.
+ */
+body[data-destination="obsidian"]
+.notion-body-media {
+  margin-top: 3px !important;
+}
+
+/* END OBSIDIAN REDESIGN PHASE 1 */
+
+
+/* OBSIDIAN REDESIGN PHASE 2 - SAVE TO */
+
+.obsidian-save-to {
+  margin-bottom: 7px;
+}
+
+.obsidian-save-to-label {
+  display: block;
+  margin-bottom: 3px;
+
+  color: CanvasText;
+
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.obsidian-save-to-button {
+  appearance: none;
+
+  width: 100%;
+  min-height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  box-sizing: border-box;
+
+  padding: 7px 10px;
+
+  border: 1px solid
+    color-mix(
+      in srgb,
+      CanvasText 20%,
+      transparent
+    );
+
+  border-radius: 8px;
+
+  background: Canvas;
+  color: CanvasText;
+
+  font: inherit;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.obsidian-save-to-button:hover {
+  border-color:
+    color-mix(
+      in srgb,
+      CanvasText 34%,
+      transparent
+    );
+
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 4%,
+      Canvas
+    );
+}
+
+.obsidian-save-to-button:focus-visible {
+  outline: none !important;
+
+  border-color:
+    var(
+      --clipper-purple,
+      #9027db
+    ) !important;
+
+  box-shadow:
+    0 0 0 2px
+    color-mix(
+      in srgb,
+      #9027db 20%,
+      transparent
+    ) !important;
+}
+
+.obsidian-save-to-summary {
+  min-width: 0;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.obsidian-save-to-chevron {
+  flex: 0 0 auto;
+
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 72%,
+      transparent
+    );
+
+  font-size: 20px;
+  line-height: 1;
+
+  transition:
+    transform 120ms ease;
+}
+
+.obsidian-save-to-button[
+  aria-expanded="true"
+]
+.obsidian-save-to-chevron {
+  transform: rotate(90deg);
+}
+
+.obsidian-save-to-details {
+  margin-top: 6px;
+  padding: 9px 10px 5px;
+
+  border: 1px solid
+    color-mix(
+      in srgb,
+      CanvasText 16%,
+      transparent
+    );
+
+  border-radius: 9px;
+
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 3%,
+      Canvas
+    );
+}
+
+body[data-destination="obsidian"]
+.obsidian-save-to-details
+.field {
+  margin-bottom: 7px !important;
+}
+
+body[data-destination="obsidian"]
+.obsidian-save-to-details
+#vaultSelect,
+body[data-destination="obsidian"]
+.obsidian-save-to-details
+#folderSelect,
+body[data-destination="obsidian"]
+.obsidian-save-to-details
+#templateSelect {
+  min-height: 34px !important;
+  height: 34px !important;
+}
+
+body[data-destination="obsidian"]
+.obsidian-save-to-details
+#obsidianOpenAfterSaveField {
+  min-height: 34px !important;
+
+  margin: 2px 0 0 !important;
+  padding: 6px 0 !important;
+
+  border: 0 !important;
+  border-radius: 0 !important;
+
+  background: transparent !important;
+}
+
+body[data-destination="notion"]
+#obsidianSaveTo {
+  display: none !important;
+}
+
+/* END OBSIDIAN REDESIGN PHASE 2 */
+
+
+/* OBSIDIAN REDESIGN PHASE 2B - SAVE TO INLINE EXPANSION */
+
+/*
+ * Save-to details participate in normal document flow.
+ *
+ * Opening the panel therefore increases the popup's
+ * natural content height instead of floating over or
+ * outside the popup.
+ */
+body[data-destination="obsidian"]
+#obsidianSaveTo {
+  position: static;
+  z-index: auto;
+}
+
+body[data-destination="obsidian"]
+#obsidianSaveToDetails {
+  position: static !important;
+
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+
+  width: auto !important;
+  max-height: none !important;
+
+  overflow: visible !important;
+
+  margin:
+    6px 0
+    0 !important;
+
+  padding:
+    10px !important;
+
+  border: 1px solid
+    color-mix(
+      in srgb,
+      CanvasText 22%,
+      transparent
+    ) !important;
+
+  border-radius:
+    10px !important;
+
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 4%,
+      Canvas
+    ) !important;
+
+  box-shadow: none !important;
+}
+
+body[data-destination="obsidian"]
+#obsidianSaveToDetails.hidden {
+  display: none !important;
+}
+
+body[data-destination="obsidian"]
+#obsidianSaveToDetails
+.field {
+  margin-bottom:
+    8px !important;
+}
+
+body[data-destination="obsidian"]
+#obsidianSaveToDetails
+.field > span {
+  margin-bottom:
+    4px !important;
+
+  font-size:
+    12px !important;
+}
+
+body[data-destination="obsidian"]
+#obsidianSaveToDetails
+select {
+  min-height:
+    34px !important;
+
+  height:
+    34px !important;
+}
+
+/* END OBSIDIAN REDESIGN PHASE 2B */
+
+
+/* OBSIDIAN REDESIGN 1.8.7 - SAVE TO LABEL CLOSE */
+
+body[data-destination="obsidian"]
+.obsidian-save-to-label {
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* END OBSIDIAN REDESIGN 1.8.7 */
+
+
+/* OBSIDIAN REDESIGN PHASE 3A - CAPTURE MENU */
+
+body[data-destination="obsidian"]
+.notion-body-media-action-wrap {
+  position: relative;
+
+  width: fit-content;
+  max-width: 100%;
+
+  z-index: 40;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-menu {
+  position: absolute !important;
+
+  top: 100% !important;
+  left: 0 !important;
+
+  z-index: 1100 !important;
+
+  width: 250px !important;
+  max-width:
+    calc(100vw - 56px) !important;
+
+  margin: 6px 0 0 !important;
+  padding: 5px !important;
+
+  border: 1px solid
+    color-mix(
+      in srgb,
+      CanvasText 20%,
+      transparent
+    ) !important;
+
+  border-radius: 10px !important;
+
+  background: #1b1b1b !important;
+
+  box-shadow:
+    0 14px 30px
+    rgba(0, 0, 0, .48) !important;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-menu.hidden {
+  display: none !important;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-menu-button {
+  min-height: 36px !important;
+
+  padding:
+    7px 10px !important;
+
+  border-radius: 7px !important;
+
+  color:
+    rgba(
+      255,
+      255,
+      255,
+      .82
+    ) !important;
+
+  font-size: 13px !important;
+  font-weight: 550 !important;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-menu-button:hover {
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      .075
+    ) !important;
+
+  color: #fff !important;
+}
+
+/*
+ * Opening the menu must not consume vertical
+ * popup space. It floats over the content below.
+ */
+body[data-destination="obsidian"]
+.notion-body-media-action-wrap:has(
+  .notion-body-media-menu:not(.hidden)
+) {
+  z-index: 1200;
+}
+
+/* END OBSIDIAN REDESIGN PHASE 3A */
+
+
+/* OBSIDIAN REDESIGN 1.8.9 - ADAPTIVE CAPTURE MENU */
+
+body[data-destination="obsidian"]
+.notion-body-media-menu.open-up {
+  top: auto !important;
+  bottom: calc(100% + 6px) !important;
+}
+
+/*
+ * Keep the complete four-item menu compact enough
+ * to fit comfortably inside a Chrome popup.
+ */
+body[data-destination="obsidian"]
+.notion-body-media-menu-button {
+  min-height: 32px !important;
+  padding: 6px 10px !important;
+}
+
+/* END OBSIDIAN REDESIGN 1.8.9 */
+
+
+/* OBSIDIAN REDESIGN 1.8.10 - CAPTURE MENU POLISH */
+
+body[data-destination="obsidian"]
+.notion-body-media-menu {
+  width: 218px !important;
+  max-width:
+    calc(100vw - 56px) !important;
+
+  padding: 4px !important;
+
+  border-radius: 9px !important;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-menu-button {
+  min-height: 30px !important;
+
+  padding:
+    5px 9px !important;
+
+  border-radius: 6px !important;
+
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+/* END OBSIDIAN REDESIGN 1.8.10 */
+
+
+/* OBSIDIAN REDESIGN PHASE 3B - IMAGE CARDS */
+
+/*
+ * New descriptive copy is Obsidian-specific.
+ * Keep existing Notion thumbnail presentation.
+ */
+
+.notion-body-media-preview-heading,
+.notion-body-media-thumb-copy {
+  display: none;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-previews {
+  display: grid !important;
+
+  grid-template-columns:
+    minmax(
+      0,
+      1fr
+    ) !important;
+
+  gap: 6px !important;
+
+  margin:
+    2px 0
+    7px !important;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-preview-heading {
+  display: block;
+
+  margin:
+    0 0
+    1px;
+
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 76%,
+      transparent
+    );
+
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-thumb {
+  position: relative;
+
+  display: grid !important;
+
+  grid-template-columns:
+    64px
+    minmax(
+      0,
+      1fr
+    )
+    28px;
+
+  align-items: center;
+
+  gap: 9px;
+
+  width: 100% !important;
+  height: 58px !important;
+
+  box-sizing: border-box;
+
+  padding:
+    5px 6px !important;
+
+  overflow: hidden;
+
+  border: 1px solid
+    color-mix(
+      in srgb,
+      CanvasText 16%,
+      transparent
+    ) !important;
+
+  border-radius: 9px !important;
+
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 4%,
+      Canvas
+    ) !important;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-thumb
+> img {
+  width: 64px !important;
+  height: 46px !important;
+
+  border-radius: 6px;
+
+  object-fit: cover;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-thumb-copy {
+  display: block;
+
+  min-width: 0;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-thumb-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 90%,
+      transparent
+    );
+
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-thumb-meta {
+  margin-top: 3px;
+
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 50%,
+      transparent
+    );
+
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-remove {
+  position: static !important;
+
+  width: 26px !important;
+  min-width: 26px !important;
+  height: 26px !important;
+  min-height: 26px !important;
+
+  padding: 0 !important;
+
+  justify-self: end;
+
+  border-color:
+    color-mix(
+      in srgb,
+      CanvasText 18%,
+      transparent
+    ) !important;
+
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 7%,
+      Canvas
+    ) !important;
+
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 76%,
+      transparent
+    ) !important;
+
+  font-size: 16px !important;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-remove:hover {
+  border-color:
+    #db5b27 !important;
+
+  background:
+    #db5b27 !important;
+
+  color:
+    #fff !important;
+}
+
+/* END OBSIDIAN REDESIGN PHASE 3B */
+
+/* OBSIDIAN REDESIGN PHASE 3C - NOTE STATE */
+
+body[data-destination="obsidian"]
+.notes-compact {
+  margin:
+    0 0
+    5px !important;
+}
+
+body[data-destination="obsidian"]
+#notesField {
+  margin:
+    4px 0
+    6px !important;
+}
+
+body[data-destination="obsidian"]
+#notesField > span {
+  margin-bottom:
+    4px !important;
+
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 76%,
+      transparent
+    );
+
+  font-size:
+    11px !important;
+
+  font-weight:
+    650 !important;
+}
+
+body[data-destination="obsidian"]
+#notesInput {
+  width:
+    100% !important;
+
+  min-height:
+    68px !important;
+
+  height:
+    68px !important;
+
+  max-height:
+    120px !important;
+
+  box-sizing:
+    border-box !important;
+
+  padding:
+    8px 10px !important;
+
+  border-radius:
+    9px !important;
+
+  font-size:
+    12px !important;
+
+  line-height:
+    1.4 !important;
+
+  resize:
+    vertical;
+}
+
+body[data-destination="obsidian"]
+.notes-toggle {
+  margin:
+    0 !important;
+
+  padding:
+    4px 0 !important;
+}
+
+/* END OBSIDIAN REDESIGN PHASE 3C */
+
+
+/* OBSIDIAN REDESIGN 1.8.18 - COMBINED NOTE FIT */
+
+/*
+ * In the tall image + Note state, recover space only
+ * from the Note field itself.
+ *
+ * Never alter:
+ * - Capture image / Capture another image
+ * - Add note / Hide note
+ * - their parent spacing
+ */
+body[data-destination="obsidian"]:has(
+  .notion-body-media-previews:not(.hidden)
+):has(
+  #notesField:not(.hidden)
+)
+#notesInput {
+  min-height: 48px !important;
+  height: 48px !important;
+  max-height: 96px !important;
+}
+
+body[data-destination="obsidian"]:has(
+  .notion-body-media-previews:not(.hidden)
+):has(
+  #notesField:not(.hidden)
+)
+#notesField {
+  margin-top: 2px !important;
+  margin-bottom: 2px !important;
+}
+
+/* END OBSIDIAN REDESIGN 1.8.18 */
+
+
+
+/* OBSIDIAN REDESIGN 1.8.22 - FIXED OPTIONAL ACTION ANCHORS */
+
+/*
+ * Positional invariant:
+ *
+ * + Capture image / + Capture another image
+ * + Add note / - Hide note
+ *
+ * must occupy exactly the same positions before and
+ * after either control is clicked.
+ *
+ * Expanded UI is rendered around/below these anchors,
+ * never by changing their spacing.
+ */
+
+body[data-destination="obsidian"]
+.notion-body-media {
+  margin: 5px 0 6px !important;
+}
+
+body[data-destination="obsidian"]
+.notion-body-media-add {
+  margin: 0 !important;
+  padding: 3px 0 !important;
+}
+
+body[data-destination="obsidian"]
+.notes-compact {
+  margin: 0 0 5px !important;
+}
+
+body[data-destination="obsidian"]
+.notes-toggle {
+  margin: 0 !important;
+  padding: 3px 0 4px !important;
+}
+
+/*
+ * The Note field appears below the toggle.
+ * It must not alter the toggle's own box.
+ */
+body[data-destination="obsidian"]
+#notesField {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* END OBSIDIAN REDESIGN 1.8.22 */
+
+
+/* PHASE 4A - NOTION FLOATING CAPTURE MENU - 1.9 */
+
+/*
+ * Notion uses the same shared Capture image menu logic
+ * as Obsidian, including the JS-driven open-up class.
+ *
+ * Keep the Notion visual language, but make the menu
+ * float instead of increasing popup height.
+ */
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-media-action-wrap {
+  position: relative;
+
+  width: fit-content;
+  max-width: 100%;
+
+  z-index: 40;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-media-menu {
+  position: absolute !important;
+
+  top: 100% !important;
+  left: 0 !important;
+
+  z-index: 1100 !important;
+
+  width: 218px !important;
+  max-width:
+    calc(100vw - 56px) !important;
+
+  margin:
+    6px 0
+    0 !important;
+
+  padding:
+    4px !important;
+
+  border:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      .16
+    ) !important;
+
+  border-radius:
+    9px !important;
+
+  background:
+    #1b1b1b !important;
+
+  box-shadow:
+    0 14px 30px
+    rgba(
+      0,
+      0,
+      0,
+      .48
+    ) !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-media-menu.hidden {
+  display: none !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-media-menu.open-up {
+  top: auto !important;
+
+  bottom:
+    calc(100% + 6px) !important;
+
+  margin:
+    0 !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-media-menu-button {
+  min-height:
+    30px !important;
+
+  padding:
+    5px 9px !important;
+
+  border-radius:
+    6px !important;
+
+  font-size:
+    12px !important;
+
+  font-weight:
+    600 !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-media-action-wrap:has(
+  .notion-body-media-menu:not(.hidden)
+) {
+  z-index: 1200;
+}
+
+/* END PHASE 4A - NOTION FLOATING CAPTURE MENU */
+
+
+/* PHASE 4A - NOTION OPTIONAL ACTION ALIGNMENT - 1.9.1 */
+
+/*
+ * Match the Obsidian secondary-action rhythm:
+ *
+ * + Capture image
+ * + Add note
+ *
+ * Same font size, weight, padding and vertical anchors.
+ */
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-media {
+  margin:
+    5px 0
+    6px !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-media-add {
+  margin:
+    0 !important;
+
+  padding:
+    3px 0 !important;
+
+  font-size:
+    14px !important;
+
+  font-weight:
+    700 !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notes-compact {
+  margin:
+    0 0
+    5px !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notes-toggle {
+  margin:
+    0 !important;
+
+  padding:
+    3px 0
+    4px !important;
+
+  font-size:
+    14px !important;
+
+  font-weight:
+    700 !important;
+}
+
+/* END PHASE 4A - NOTION OPTIONAL ACTION ALIGNMENT */
+
+
+/* PHASE 4A - NOTION PAGE TEXT ALIGNMENT - 1.9.2 */
+
+/*
+ * Match the Obsidian treatment:
+ * - hide the redundant Page body heading
+ * - use one full-width Include page text row
+ * - label left, switch right
+ */
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-media-label {
+  display: none !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-content-toggle {
+  display: flex !important;
+
+  align-items: center !important;
+  justify-content: space-between !important;
+
+  gap: 12px !important;
+
+  width: 100% !important;
+  min-height: 42px !important;
+
+  box-sizing: border-box !important;
+
+  margin:
+    0 0
+    9px !important;
+
+  padding:
+    8px 11px !important;
+
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      CanvasText 18%,
+      transparent
+    ) !important;
+
+  border-radius:
+    9px !important;
+
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 3%,
+      Canvas
+    ) !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-content-toggle-text,
+body[data-destination="notion"].notion-preset-open
+.notion-body-media:has(
+  #notionIncludePageContent:checked
+)
+.notion-body-content-toggle-text,
+body[data-destination="notion"].notion-preset-open
+.notion-body-content-toggle:hover
+.notion-body-content-toggle-text,
+body[data-destination="notion"].notion-preset-open
+.notion-body-media:has(
+  #notionIncludePageContent:checked
+)
+.notion-body-content-toggle:hover
+.notion-body-content-toggle-text {
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 82%,
+      transparent
+    ) !important;
+
+  font-size:
+    13px !important;
+
+  font-weight:
+    550 !important;
+
+  line-height:
+    1.2 !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-content-toggle-track {
+  width:
+    34px !important;
+
+  height:
+    20px !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-content-toggle-track::after {
+  top:
+    2px !important;
+
+  left:
+    2px !important;
+
+  width:
+    14px !important;
+
+  height:
+    14px !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-body-content-toggle
+input:checked +
+.notion-body-content-toggle-track::after {
+  transform:
+    translateX(
+      16px
+    ) !important;
+}
+
+/* END PHASE 4A - NOTION PAGE TEXT ALIGNMENT */
+
+
+/* PHASE 4A - NOTION NOTE STATE ALIGNMENT - 1.9.3 */
+
+/*
+ * Match the Obsidian Note treatment without changing
+ * any Notion save behavior.
+ */
+
+body[data-destination="notion"].notion-preset-open
+.notes-compact {
+  margin:
+    0 0
+    5px !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+#notesField {
+  margin:
+    4px 0
+    6px !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+#notesField > span {
+  margin-bottom:
+    4px !important;
+
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 76%,
+      transparent
+    ) !important;
+
+  font-size:
+    11px !important;
+
+  font-weight:
+    650 !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+#notesInput {
+  width:
+    100% !important;
+
+  min-height:
+    68px !important;
+
+  height:
+    68px !important;
+
+  max-height:
+    120px !important;
+
+  box-sizing:
+    border-box !important;
+
+  padding:
+    8px 10px !important;
+
+  border-radius:
+    9px !important;
+
+  font-size:
+    12px !important;
+
+  line-height:
+    1.4 !important;
+
+  resize:
+    vertical;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notes-toggle {
+  margin:
+    0 !important;
+
+  padding:
+    3px 0
+    4px !important;
+
+  font-size:
+    14px !important;
+
+  font-weight:
+    700 !important;
+}
+
+/*
+ * When images and Note are both expanded, recover
+ * vertical space from the Note field only.
+ */
+body[data-destination="notion"].notion-preset-open:has(
+  .notion-body-media-previews:not(.hidden)
+):has(
+  #notesField:not(.hidden)
+)
+#notesInput {
+  min-height:
+    48px !important;
+
+  height:
+    48px !important;
+
+  max-height:
+    96px !important;
+}
+
+body[data-destination="notion"].notion-preset-open:has(
+  .notion-body-media-previews:not(.hidden)
+):has(
+  #notesField:not(.hidden)
+)
+#notesField {
+  margin-top:
+    2px !important;
+
+  margin-bottom:
+    2px !important;
+}
+
+/* END PHASE 4A - NOTION NOTE STATE ALIGNMENT */
+
+
+/* SHARED CAPTURE MENU ICONS - 1.9.4 */
+
+/*
+ * One shared icon treatment for both destinations.
+ * Icons improve scanning but never replace labels.
+ */
+
+.notion-body-media-menu-button {
+  justify-content:
+    flex-start !important;
+
+  gap:
+    10px !important;
+}
+
+.notion-body-media-menu-icon {
+  display:
+    inline-flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  width:
+    18px;
+
+  min-width:
+    18px;
+
+  height:
+    18px;
+
+  flex:
+    0 0 18px;
+
+  color:
+    rgba(
+      255,
+      255,
+      255,
+      .56
+    );
+
+  transition:
+    color
+    120ms
+    ease;
+}
+
+.notion-body-media-menu-icon-svg {
+  display:
+    block;
+
+  width:
+    17px;
+
+  height:
+    17px;
+
+  fill:
+    none;
+
+  stroke:
+    currentColor;
+
+  stroke-width:
+    1.8;
+
+  stroke-linecap:
+    round;
+
+  stroke-linejoin:
+    round;
+
+  pointer-events:
+    none;
+}
+
+.notion-body-media-menu-copy {
+  min-width:
+    0;
+
+  flex:
+    1 1 auto;
+
+  text-align:
+    left;
+}
+
+.notion-body-media-menu-button:hover
+.notion-body-media-menu-icon,
+.notion-body-media-menu-button:focus-visible
+.notion-body-media-menu-icon {
+  color:
+    rgba(
+      255,
+      255,
+      255,
+      .88
+    );
+}
+
+/* END SHARED CAPTURE MENU ICONS */
+
+
+/* NOTION TALL POPUP SAFE BOTTOM - 1.9.8 */
+
+/*
+ * Chrome's extension-popup ceiling is effectively around
+ * 600 CSS pixels. Stay slightly below that boundary so
+ * Chromium does not crop the final row at the window edge.
+ *
+ * The popup remains naturally sized until it becomes tall,
+ * then scrolls normally. Save is intentionally NOT sticky.
+ */
+
+body[data-destination="notion"].notion-preset-open {
+  max-height:
+    588px !important;
+
+  overflow-y:
+    auto !important;
+
+  overflow-x:
+    hidden !important;
+
+  overscroll-behavior:
+    contain;
+
+  scroll-padding-bottom:
+    18px;
+}
+
+body[data-destination="notion"].notion-preset-open
+.app {
+  padding-bottom:
+    18px !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.actions {
+  padding-bottom:
+    6px !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+#saveButton {
+  margin-bottom:
+    2px !important;
+}
+
+/* END NOTION TALL POPUP SAFE BOTTOM */
+
+
+/* PRE-ROUTE STARTUP GUARD - 1.9.29 */
+
+/*
+ * The popup document exists before init() has finished reading
+ * the remembered destination from extension storage.
+ *
+ * During that brief unresolved phase, the generic capture form
+ * used to be paintable. On a Notion startup it could therefore
+ * appear for a frame before setDestination() collapsed it and
+ * mounted the final chooser/preset route.
+ *
+ * Keep the ClipNest top bar as the stable paint anchor, but
+ * preserve the rest of the startup geometry invisibly until the
+ * destination is known.
+ *
+ * visibility is intentional here. Do not use display:none and
+ * do not hide the whole popup.
+ */
+
+body[
+  data-notion-startup="pending"
+]:not(
+  [data-destination]
+)
+.destination,
+
+body[
+  data-notion-startup="pending"
+]:not(
+  [data-destination]
+)
+.app > :not(
+  .topbar
+):not(
+  .destination
+) {
+  visibility:
+    hidden !important;
+}
+
+/*
+ * For Notion, keep the destination switch hidden for the
+ * remainder of the startup transaction as well. The existing
+ * Notion reveal guard already keeps the resolved route hidden.
+ *
+ * This makes the destination state and final route appear
+ * together instead of exposing an intermediate selected-tab
+ * frame.
+ */
+
+body[
+  data-destination="notion"
+][
+  data-notion-startup="pending"
+]
+.destination {
+  visibility:
+    hidden !important;
+}
+
+/* NOTION STARTUP REVEAL GUARD - 1.9.9 */
+
+/*
+ * The final Notion screen is resolved asynchronously:
+ *
+ * - capture resume
+ * - pending clip
+ * - preset builder
+ * - preset chooser
+ *
+ * Keep the working area invisible until that decision is
+ * complete so an old/chooser screen cannot flash briefly.
+ *
+ * The ClipNest top bar remains visible as the stable
+ * startup paint anchor. The destination switch is revealed
+ * only once the destination state is resolved.
+ */
+
+body[
+  data-destination="notion"
+][
+  data-notion-startup="pending"
+]
+.notion-preset-chooser,
+
+body[
+  data-destination="notion"
+][
+  data-notion-startup="pending"
+]
+.notion-clip-header,
+
+body[
+  data-destination="notion"
+][
+  data-notion-startup="pending"
+]
+.notion-destination-picker,
+
+body[
+  data-destination="notion"
+][
+  data-notion-startup="pending"
+]
+.notion-preset-config-screen,
+
+body[
+  data-destination="notion"
+][
+  data-notion-startup="pending"
+]
+.notion-connection-gate,
+
+body[
+  data-destination="notion"
+][
+  data-notion-startup="pending"
+]
+#notionDynamicFields,
+
+body[
+  data-destination="notion"
+][
+  data-notion-startup="pending"
+]
+.notion-body-media,
+
+body[
+  data-destination="notion"
+][
+  data-notion-startup="pending"
+]
+#notesField,
+
+body[
+  data-destination="notion"
+][
+  data-notion-startup="pending"
+]
+#toggleNotes,
+
+body[
+  data-destination="notion"
+][
+  data-notion-startup="pending"
+]
+.actions {
+  visibility:
+    hidden !important;
+}
+
+/* END NOTION STARTUP REVEAL GUARD */
+
+
+/* NOTION CHOOSER STARTUP HEIGHT PARITY - 1.9.30 */
+
+/*
+ * Startup measurement after the route/flicker fixes:
+ *
+ * unresolved startup shell = 366px
+ * hydrated Notion chooser   = 360px
+ *
+ * Chrome autosizes the native extension popup to document
+ * geometry, so that final 6px difference still produces a
+ * small visible shrink.
+ *
+ * Keep the chooser's normal content-driven layout. Add only
+ * the measured 6px of bottom breathing room when the chooser
+ * is actually visible.
+ *
+ * This is deliberately scoped to the chooser. Do not apply
+ * a fixed/minimum height to the popup, preset clip screen,
+ * builder, or Obsidian UI.
+ */
+
+body[data-destination="notion"]
+.notion-preset-chooser:not(.hidden) {
+  padding-bottom:
+    6px;
+}
+
+/* END NOTION CHOOSER STARTUP HEIGHT PARITY */
+
+
+/* QUICK CLIP FIRST-USE ACCESS POPUP - 1.9.34 */
+
+body.quick-clip-access-open
+.app > :not(.topbar):not(.quick-clip-access-gate) {
+  display: none !important;
+}
+
+body.quick-clip-access-open
+.quick-clip-access-gate {
+  display: block !important;
+  visibility: visible !important;
+}
+
+.quick-clip-access-gate {
+  margin: 4px 0 2px;
+  padding: 22px 18px 18px;
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      CanvasText 14%,
+      transparent
+    );
+  border-radius: 14px;
+  text-align: center;
+}
+
+.quick-clip-access-gate.hidden {
+  display: none !important;
+}
+
+.quick-clip-access-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin: 0 auto 12px;
+  border-radius: 11px;
+  background:
+    color-mix(
+      in srgb,
+      #9027db 18%,
+      transparent
+    );
+  color: #c982ff;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.quick-clip-access-gate h2 {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.quick-clip-access-gate p {
+  max-width: 310px;
+  margin: 8px auto 0;
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 68%,
+      transparent
+    );
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.quick-clip-access-gate
+.quick-clip-access-hint {
+  margin-top: 6px;
+  margin-bottom: 16px;
+}
+
+.quick-clip-access-cancel {
+  margin-top: 9px;
+  padding: 7px 12px;
+  border: 0;
+  background: transparent;
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 60%,
+      transparent
+    );
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.quick-clip-access-cancel:hover {
+  color: CanvasText;
+}
+
+.quick-clip-access-gate
+.status {
+  margin-top: 8px;
 }

@@ -6,7 +6,7 @@
   <title>ClipNest</title>
   <link rel="stylesheet" href="popup.css" />
 </head>
-<body>
+<body data-notion-startup="pending">
   <main class="app">
     <div class="topbar">
       <div>
@@ -15,6 +15,53 @@
       </div>
       <button id="settingsButton" class="icon-button" type="button" title="Settings">⚙</button>
     </div>
+
+    <section
+      id="quickClipAccessGate"
+      class="quick-clip-access-gate hidden"
+      aria-labelledby="quickClipAccessTitle"
+    >
+      <div
+        class="quick-clip-access-icon"
+        aria-hidden="true"
+      >
+        C
+      </div>
+
+      <h2 id="quickClipAccessTitle">
+        Enable Quick Clip
+      </h2>
+
+      <p>
+        Quick Clip needs access to your Obsidian vault while ClipNest is closed.
+      </p>
+
+      <p class="quick-clip-access-hint">
+        Continue in Settings, then choose <strong>Allow on every visit</strong> when Chrome asks.
+      </p>
+
+      <button
+        id="quickClipAccessButton"
+        class="primary"
+        type="button"
+      >
+        Continue setup
+      </button>
+
+      <button
+        id="quickClipAccessCancel"
+        class="quick-clip-access-cancel"
+        type="button"
+      >
+        Not now
+      </button>
+
+      <div
+        id="quickClipAccessStatus"
+        class="status"
+        aria-live="polite"
+      ></div>
+    </section>
 
     <div class="destination" role="group" aria-label="Destination">
       <button class="destination-button" data-destination="obsidian" type="button">Obsidian</button>
@@ -33,27 +80,76 @@
       <input id="titleInput" type="text" autocomplete="off" />
     </label>
 
-    <label id="vaultField" class="field hidden">
-      <span>Vault</span>
-      <select id="vaultSelect">
-        <option value="">No vault connected</option>
-      </select>
-    </label>
+    <div
+      id="obsidianSaveTo"
+      class="obsidian-save-to hidden"
+    >
+      <div class="obsidian-save-to-label">
+        Save to
+      </div>
 
-    <label id="folderField" class="field hidden">
-      <span>Folder</span>
-      <select id="folderSelect">
-        <option value="">Vault root</option>
-      </select>
-    </label>
+      <button
+        id="obsidianSaveToButton"
+        class="obsidian-save-to-button"
+        type="button"
+        aria-expanded="false"
+        aria-controls="obsidianSaveToDetails"
+      >
+        <span
+          id="obsidianSaveToSummary"
+          class="obsidian-save-to-summary"
+        >
+          Choose a vault
+        </span>
 
-    <label id="templateField" class="field hidden">
-      <span>Template</span>
-      <select id="templateSelect">
-        <option value="">None</option>
-      </select>
-      <small id="templateMeta">Detected from Obsidian</small>
-    </label>
+        <span
+          class="obsidian-save-to-chevron"
+          aria-hidden="true"
+        >
+          ›
+        </span>
+      </button>
+
+      <div
+        id="obsidianSaveToDetails"
+        class="obsidian-save-to-details hidden"
+      >
+        <label id="vaultField" class="field hidden">
+          <span>Vault</span>
+          <select id="vaultSelect">
+            <option value="">No vault connected</option>
+          </select>
+        </label>
+
+        <label id="folderField" class="field hidden">
+          <span>Folder</span>
+          <select id="folderSelect">
+            <option value="">Vault root</option>
+          </select>
+        </label>
+
+        <label id="templateField" class="field hidden">
+          <span>Template</span>
+          <select id="templateSelect">
+            <option value="">None</option>
+          </select>
+          <small id="templateMeta">Detected from Obsidian</small>
+        </label>
+
+        <label
+          id="obsidianOpenAfterSaveField"
+          class="popup-toggle-row"
+        >
+          <span>Open after saving</span>
+
+          <input
+            id="obsidianOpenAfterSave"
+            type="checkbox"
+            aria-label="Open in Obsidian after saving"
+          />
+        </label>
+      </div>
+    </div>
 
     <label id="tagsField" class="field">
       <span>Tags</span>
@@ -87,23 +183,10 @@
       <button id="toggleNotes" class="notes-toggle" type="button">+ Add note</button>
 
       <label id="notesField" class="field hidden">
-        <span>Notes</span>
+        <span>Note</span>
         <textarea id="notesInput" rows="3" placeholder="Optional note…"></textarea>
       </label>
     </div>
-
-    <label
-      id="obsidianOpenAfterSaveField"
-      class="popup-toggle-row"
-    >
-      <span>Open after saving</span>
-
-      <input
-        id="obsidianOpenAfterSave"
-        type="checkbox"
-        aria-label="Open in Obsidian after saving"
-      />
-    </label>
 
     <div class="actions">
       <button id="saveButton" class="primary" type="button" disabled>Save</button>

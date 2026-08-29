@@ -76,6 +76,7 @@ async function init() {
     "notionTagsProperty",
     "notionStatus",
     "chooseVault",
+    "enableQuickClipAccess",
     "vaultSelect",
     "vaultName",
     "disconnectVault",
@@ -257,6 +258,11 @@ async function init() {
     chooseVault
   );
 
+  els.enableQuickClipAccess.addEventListener(
+    "click",
+    enableQuickClipAccess
+  );
+
   els.disconnectVault.addEventListener(
     "click",
     disconnectVault
@@ -299,6 +305,8 @@ async function init() {
 
   notionOptionsReady =
     true;
+
+  await preparePendingQuickClipAccessInSettings();
 
   await handleNotionOptionsIntent();
 }
@@ -5300,6 +5308,316 @@ async function removeNotionPreset() {
 }
 
 
+/*
+ * QUICK CLIP SETTINGS HANDOFF - 1.9.35
+ *
+ * The action popup can detect that Quick Clip needs access,
+ * but Chrome only exposes the persistent "Allow on every
+ * visit" choice from the full extension Settings page.
+ *
+ * Preserve the original Quick Clip intent in session storage.
+ * When Settings opens, highlight the persistent-access button.
+ * After access is granted, resume the original clip through
+ * the existing background handoff.
+ */
+
+const QUICK_CLIP_ACCESS_INTENT_KEY =
+  "clipnestQuickClipAccessIntentV1";
+
+const QUICK_CLIP_ACCESS_INTENT_TTL =
+  5 * 60 * 1000;
+
+function isFreshSettingsQuickClipIntent(
+  intent
+) {
+  if (
+    !intent ||
+    typeof intent !== "object" ||
+    !intent.id ||
+    !intent.vaultId
+  ) {
+    return false;
+  }
+
+  const createdAt =
+    Number(
+      intent.createdAt ||
+      0
+    );
+
+  return Boolean(
+    createdAt &&
+    (
+      Date.now() -
+      createdAt
+    ) <
+      QUICK_CLIP_ACCESS_INTENT_TTL
+  );
+}
+
+async function getPendingQuickClipIntentForSettings() {
+  const stored =
+    await chrome.storage.session.get([
+      QUICK_CLIP_ACCESS_INTENT_KEY
+    ]);
+
+  const intent =
+    stored[
+      QUICK_CLIP_ACCESS_INTENT_KEY
+    ];
+
+  if (
+    !isFreshSettingsQuickClipIntent(
+      intent
+    )
+  ) {
+    if (intent) {
+      await chrome.storage.session.remove([
+        QUICK_CLIP_ACCESS_INTENT_KEY
+      ]);
+    }
+
+    return null;
+  }
+
+  return intent;
+}
+
+async function preparePendingQuickClipAccessInSettings() {
+  const intent =
+    await getPendingQuickClipIntentForSettings();
+
+  if (!intent) {
+    return;
+  }
+
+  const info =
+    await ClipNestVaultStore
+      .listVaults();
+
+  const vault =
+    Array.isArray(
+      info?.vaults
+    )
+      ? info.vaults.find(
+          (candidate) =>
+            candidate.id ===
+            intent.vaultId
+        )
+      : null;
+
+  if (!vault) {
+    showStatus(
+      els.obsidianStatus,
+      "The vault for the pending Quick Clip is no longer connected.",
+      "error"
+    );
+
+    return;
+  }
+
+  if (els.vaultSelect) {
+    els.vaultSelect.value =
+      intent.vaultId;
+  }
+
+  if (els.enableQuickClipAccess) {
+    els.enableQuickClipAccess.textContent =
+      "Allow Quick Clip access";
+  }
+
+  showStatus(
+    els.obsidianStatus,
+    `Quick Clip is waiting for access to "${vault.name}". Click Allow Quick Clip access and choose Allow on every visit.`,
+    ""
+  );
+
+  setTimeout(
+    () => {
+      els.enableQuickClipAccess
+        ?.scrollIntoView({
+          behavior:
+            "smooth",
+
+          block:
+            "center"
+        });
+
+      els.enableQuickClipAccess
+        ?.focus({
+          preventScroll:
+            true
+        });
+    },
+    80
+  );
+}
+
+
+/*
+ * PERSISTENT QUICK CLIP ACCESS - 1.9.33
+ *
+ * Chrome keeps ordinary File System Access grants active
+ * only while the extension origin is active.
+ *
+ * Quick Clip runs from the background service worker, so
+ * reliable one-click saving requires Chrome's extended
+ * permission. The native restore prompt exposes this as
+ * "Allow on every visit".
+ *
+ * queryPermission() reports "granted" for both an active
+ * grant and an extended grant, so ClipNest must not claim
+ * that "granted" alone proves persistence.
+ */
+
+async function enableQuickClipAccess() {
+  showStatus(
+    els.obsidianStatus,
+    "Checking vault access…"
+  );
+
+  try {
+    const pendingIntent =
+      await getPendingQuickClipIntentForSettings();
+
+    const activeVaultId =
+      await ClipNestVaultStore
+        .getActiveVaultId();
+
+    const targetVaultId =
+      String(
+        pendingIntent?.vaultId ||
+        activeVaultId ||
+        ""
+      );
+
+    if (!targetVaultId) {
+      throw new Error(
+        "Connect an Obsidian vault first."
+      );
+    }
+
+    const handle =
+      await ClipNestVaultStore
+        .getVaultHandle(
+          targetVaultId
+        );
+
+    if (!handle) {
+      throw new Error(
+        "The stored vault connection is missing. Connect the vault again."
+      );
+    }
+
+    const before =
+      await handle.queryPermission({
+        mode:
+          "readwrite"
+      });
+
+    /*
+     * If this Settings page was opened specifically for a
+     * pending Quick Clip, it should normally arrive here in
+     * "prompt" state.
+     *
+     * A plain "granted" result cannot prove that Chrome gave
+     * persistent access, so do not pretend otherwise.
+     */
+
+    if (
+      before ===
+        "granted"
+    ) {
+      if (pendingIntent) {
+        showStatus(
+          els.obsidianStatus,
+          "Chrome currently reports vault access as granted, so it cannot show the persistent-access choice right now. Close ClipNest Settings, wait a few seconds, and try Quick Clip again.",
+          "error"
+        );
+
+        return;
+      }
+
+      showStatus(
+        els.obsidianStatus,
+        "Vault access is currently granted. If Quick Clip later asks again, use this button when Chrome's permission has returned to prompt state and choose Allow on every visit."
+      );
+
+      return;
+    }
+
+    if (
+      typeof handle.requestPermission !==
+        "function"
+    ) {
+      throw new Error(
+        "This Chrome build cannot restore vault access from Settings."
+      );
+    }
+
+    const requested =
+      await handle.requestPermission({
+        mode:
+          "readwrite"
+      });
+
+    if (
+      requested !==
+        "granted"
+    ) {
+      throw new Error(
+        "Vault access was not granted. For one-click Quick Clip, choose Allow on every visit in Chrome's permission dialog."
+      );
+    }
+
+    if (!pendingIntent) {
+      showStatus(
+        els.obsidianStatus,
+        "Vault access granted. If you chose Allow on every visit, Quick Clip will keep working when ClipNest is closed and after Chrome restarts.",
+        "success"
+      );
+
+      return;
+    }
+
+    showStatus(
+      els.obsidianStatus,
+      "Access granted. Finishing your Quick Clip…",
+      "success"
+    );
+
+    const response =
+      await chrome.runtime.sendMessage({
+        type:
+          "obsidian.quickClipAccess.resume"
+      });
+
+    if (!response?.ok) {
+      throw new Error(
+        response?.error?.message ||
+        "ClipNest could not finish the pending Quick Clip."
+      );
+    }
+
+    els.enableQuickClipAccess.textContent =
+      "Enable Quick Clip access";
+
+    showStatus(
+      els.obsidianStatus,
+      "Quick Clip saved. If you chose Allow on every visit, future Quick Clips will stay silent.",
+      "success"
+    );
+  } catch (error) {
+    showStatus(
+      els.obsidianStatus,
+      error?.message ||
+        String(error),
+      "error"
+    );
+  }
+}
+
+
 async function chooseVault() {
   showStatus(
     els.obsidianStatus,
@@ -5336,7 +5654,7 @@ async function chooseVault() {
 
     showStatus(
       els.obsidianStatus,
-      `${vault.name} connected.`,
+      `${vault.name} connected. Quick Clip will finish its access setup the first time Chrome requires it.`,
       "success"
     );
   } catch (error) {
@@ -5465,6 +5783,11 @@ async function refreshVaultList() {
 
   if (els.disconnectVault) {
     els.disconnectVault.disabled =
+      !info.activeVaultId;
+  }
+
+  if (els.enableQuickClipAccess) {
+    els.enableQuickClipAccess.disabled =
       !info.activeVaultId;
   }
 
