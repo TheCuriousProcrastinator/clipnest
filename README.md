@@ -8,9 +8,7 @@
 
 A Chrome extension for saving useful things from the web directly into Obsidian or Notion.
 
-Clip the whole article, selected text, or choose an area directly on the page.
-
-ClipNest also supports Quick Clip actions from Chrome's right-click menu.
+Clip articles or selected text, capture images and screenshots, or save with Quick Clip directly from Chrome's right-click menu.
 
 ## What it does
 
@@ -36,6 +34,17 @@ Select text on a webpage before opening the extension and save just that selecti
 Choose a specific part of the webpage visually.
 
 The clipper can also recognize repeated structured content and convert it into a Markdown table when appropriate.
+
+### Image capture
+
+Capture images without leaving the page:
+
+- capture the visible area
+- select an area to capture
+- capture the whole page
+- select an image directly from the webpage
+
+Captured images can be included with clips while preserving the rest of your clipping workflow.
 
 ## Notion
 
@@ -64,9 +73,11 @@ Notion authentication stays local to each computer. Preset configuration can syn
 
 ## Quick Clip
 
-Right-click a webpage or selected text to save without opening the ClipNest popup.
+Right-click a webpage or selected text to save without opening the normal ClipNest popup.
 
 Quick Clip can use its own dedicated Notion preset or your configured Obsidian destination.
+
+For Obsidian, Chrome may ask for one-time persistent vault access setup. Choose **Allow on every visit** to keep future Quick Clips silent, including after Chrome restarts.
 
 ## Obsidian
 
@@ -139,17 +150,23 @@ to save.
 
 ## Installation
 
-Until the Chrome Web Store version is available, install ClipNest from a GitHub release.
+### Chrome Web Store
+
+Install ClipNest from the [Chrome Web Store](https://chromewebstore.google.com/detail/clipnest/bjcapemjamlbdnicmljahhjbakingmln).
+
+### Manual installation
+
+You can also install a packaged GitHub release manually:
 
 1. Open the [ClipNest Releases](https://github.com/TheCuriousProcrastinator/clipnest/releases) page.
-2. Download the `clipnest-x.y.z.zip` release asset.
+2. Download the named `clipnest-x.y.z.zip` release asset.
 3. Unzip it.
 4. Open `chrome://extensions`.
 5. Enable **Developer mode**.
 6. Click **Load unpacked**.
 7. Select the unzipped ClipNest folder.
 
-Use the named `clipnest-x.y.z.zip` release asset rather than GitHub's automatically generated Source code ZIP.
+Use the named release asset rather than GitHub's automatically generated Source code ZIP.
 
 ## Sync and backups
 
@@ -185,4 +202,4 @@ Development-only diagnostics live under `tools/dev/` and are not included in pac
 
 Active development.
 
-Latest packaged release: **1.5.4**
+Latest packaged release: **2.0.0**
