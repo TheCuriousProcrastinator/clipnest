@@ -344,6 +344,245 @@ let notionDynamicFieldValues =
 const NOTION_CAPTURE_RESUME_KEY =
   "clipnestNotionCaptureResume";
 
+const NOTION_PRESET_ROUTE_RESUME_KEY =
+  "clipnestNotionPresetRouteResume";
+
+/*
+ * NOTION PRESET ROUTE RESUME - 2.0.18
+ *
+ * Remember only which normal Notion preset was open.
+ *
+ * This is separate from the full-form capture resume system.
+ * No title, tags, custom field values, or other form state is
+ * persisted here.
+ *
+ * Resume is scoped to the exact Chrome tab and page URL.
+ */
+
+async function getNotionPresetRouteResumeMap() {
+  const stored =
+    await chrome.storage.session.get(
+      NOTION_PRESET_ROUTE_RESUME_KEY
+    );
+
+  const value =
+    stored[
+      NOTION_PRESET_ROUTE_RESUME_KEY
+    ];
+
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return {};
+  }
+
+  return {
+    ...value
+  };
+}
+
+async function setNotionPresetRouteResumeMap(
+  routes
+) {
+  if (
+    !routes ||
+    !Object.keys(routes).length
+  ) {
+    await chrome.storage.session.remove(
+      NOTION_PRESET_ROUTE_RESUME_KEY
+    );
+
+    return;
+  }
+
+  await chrome.storage.session.set({
+    [NOTION_PRESET_ROUTE_RESUME_KEY]:
+      routes
+  });
+}
+
+async function clearNotionPresetRouteResume(
+  tabId = null
+) {
+  let resolvedTabId =
+    Number.isInteger(tabId)
+      ? tabId
+      : null;
+
+  if (resolvedTabId === null) {
+    const [tab] =
+      await chrome.tabs.query({
+        active: true,
+        currentWindow: true
+      });
+
+    resolvedTabId =
+      Number.isInteger(tab?.id)
+        ? tab.id
+        : null;
+  }
+
+  if (resolvedTabId === null) {
+    return;
+  }
+
+  const routes =
+    await getNotionPresetRouteResumeMap();
+
+  const key =
+    String(resolvedTabId);
+
+  if (
+    !Object.prototype
+      .hasOwnProperty.call(
+        routes,
+        key
+      )
+  ) {
+    return;
+  }
+
+  delete routes[key];
+
+  await setNotionPresetRouteResumeMap(
+    routes
+  );
+}
+
+async function rememberNotionPresetRouteResume(
+  presetId
+) {
+  const normalizedPresetId =
+    String(
+      presetId ||
+      ""
+    ).trim();
+
+  if (!normalizedPresetId) {
+    return;
+  }
+
+  const [tab] =
+    await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+
+  const tabId =
+    Number.isInteger(tab?.id)
+      ? tab.id
+      : null;
+
+  const pageUrl =
+    String(
+      tab?.url ||
+      state.capture?.url ||
+      ""
+    ).trim();
+
+  if (
+    tabId === null ||
+    !/^https?:/i.test(
+      pageUrl
+    )
+  ) {
+    return;
+  }
+
+  const routes =
+    await getNotionPresetRouteResumeMap();
+
+  routes[
+    String(tabId)
+  ] = {
+    presetId:
+      normalizedPresetId,
+
+    pageUrl
+  };
+
+  await setNotionPresetRouteResumeMap(
+    routes
+  );
+}
+
+async function getNotionPresetRouteResume(
+  tabId,
+  pageUrl
+) {
+  if (
+    !Number.isInteger(tabId)
+  ) {
+    return "";
+  }
+
+  const currentUrl =
+    String(
+      pageUrl ||
+      ""
+    ).trim();
+
+  const routes =
+    await getNotionPresetRouteResumeMap();
+
+  const entry =
+    routes[
+      String(tabId)
+    ];
+
+  if (!entry) {
+    return "";
+  }
+
+  const presetId =
+    String(
+      entry?.presetId ||
+      ""
+    ).trim();
+
+  const savedUrl =
+    String(
+      entry?.pageUrl ||
+      ""
+    ).trim();
+
+  /*
+   * Navigation in this tab starts a new clipping session.
+   */
+  if (
+    !presetId ||
+    !currentUrl ||
+    savedUrl !== currentUrl
+  ) {
+    await clearNotionPresetRouteResume(
+      tabId
+    );
+
+    return "";
+  }
+
+  /*
+   * Validate locally before allowing the route-first startup
+   * path to use the checkpoint.
+   */
+  const preset =
+    await getNotionPresetById(
+      presetId
+    );
+
+  if (!preset) {
+    await clearNotionPresetRouteResume(
+      tabId
+    );
+
+    return "";
+  }
+
+  return presetId;
+}
+
 /*
  * NOTION FULL FORM CAPTURE RESUME - 1.9.7
  *
@@ -1149,6 +1388,12 @@ async function init() {
             )
           );
 
+        const routePresetId =
+          await getNotionPresetRouteResume(
+            startupTab.id,
+            startupUrl
+          );
+
         const startupPresetId =
           String(
             (
@@ -1159,6 +1404,7 @@ async function init() {
             globalThis
               .ClipNestBodyMedia
               ?.getPendingNotionPresetId?.() ||
+            routePresetId ||
             ""
           ).trim();
 
@@ -2198,8 +2444,9 @@ function createNotionClipHeader() {
 
   back.addEventListener(
     "click",
-    () => {
-      void showNotionPresetChooser();
+    async () => {
+      await clearNotionPresetRouteResume();
+      await showNotionPresetChooser();
     }
   );
 
@@ -3184,6 +3431,351 @@ function createNotionBuilderIconPicker() {
   return picker;
 }
 
+let notionPresetChooserDraggedPresetId =
+  "";
+
+async function commitNotionPresetChooserOrder() {
+  const list =
+    document.getElementById(
+      "notionPresetChooserList"
+    );
+
+  const draggedPresetId =
+    notionPresetChooserDraggedPresetId;
+
+  if (
+    !list ||
+    !draggedPresetId
+  ) {
+    return;
+  }
+
+  /*
+   * Claim this drag immediately so drop + dragend cannot
+   * persist the same order twice.
+   */
+  notionPresetChooserDraggedPresetId =
+    "";
+
+  const order =
+    [
+      ...list.querySelectorAll(
+        ".notion-preset-card-row"
+      )
+    ]
+      .map(
+        (row) =>
+          String(
+            row.dataset.presetId ||
+            ""
+          )
+      )
+      .filter(Boolean);
+
+  if (!order.length) {
+    return;
+  }
+
+  try {
+    const info =
+      await ClipNestNotionStore
+        .listPresets();
+
+    const presets =
+      Array.isArray(
+        info?.presets
+      )
+        ? info.presets
+        : [];
+
+    const currentOrder =
+      presets.map(
+        (preset) =>
+          String(
+            preset.id ||
+            ""
+          )
+      );
+
+    /*
+     * Avoid a storage/sync write when nothing actually moved.
+     */
+    if (
+      currentOrder.length ===
+        order.length &&
+      currentOrder.every(
+        (id, index) =>
+          id === order[index]
+      )
+    ) {
+      return;
+    }
+
+    const byId =
+      new Map(
+        presets.map(
+          (preset) => [
+            String(
+              preset.id ||
+              ""
+            ),
+            preset
+          ]
+        )
+      );
+
+    const reordered =
+      order
+        .map(
+          (id) =>
+            byId.get(id)
+        )
+        .filter(Boolean);
+
+    /*
+     * Preserve any preset that may have appeared in storage
+     * while the chooser was open.
+     */
+    for (
+      const preset of
+        presets
+    ) {
+      const id =
+        String(
+          preset.id ||
+          ""
+        );
+
+      if (
+        !order.includes(id)
+      ) {
+        reordered.push(
+          preset
+        );
+      }
+    }
+
+    await ClipNestNotionStore
+      .replacePresets(
+        reordered,
+        info?.activePresetId ||
+          ""
+      );
+  } catch (error) {
+    setStatus(
+      error?.message ||
+        String(error),
+      "error"
+    );
+
+    /*
+     * If persistence failed, restore the chooser from the
+     * authoritative stored order.
+     */
+    await renderNotionPresetChooser();
+  }
+}
+
+function setupNotionPresetChooserDrag(
+  row,
+  handle,
+  preset
+) {
+  handle.draggable =
+    true;
+
+  let dragGhost =
+    null;
+
+  handle.addEventListener(
+    "dragstart",
+    (event) => {
+      const presetId =
+        String(
+          preset?.id ||
+          ""
+        );
+
+      if (!presetId) {
+        event.preventDefault();
+        return;
+      }
+
+      notionPresetChooserDraggedPresetId =
+        presetId;
+
+      row.classList.add(
+        "notion-preset-card-dragging"
+      );
+
+      if (
+        event.dataTransfer
+      ) {
+        event.dataTransfer.effectAllowed =
+          "move";
+
+        event.dataTransfer.setData(
+          "text/plain",
+          presetId
+        );
+
+        dragGhost =
+          document.createElement(
+            "div"
+          );
+
+        dragGhost.className =
+          "notion-builder-drag-ghost";
+
+        const grip =
+          document.createElement(
+            "span"
+          );
+
+        grip.textContent =
+          "⠿";
+
+        const label =
+          document.createElement(
+            "strong"
+          );
+
+        label.textContent =
+          preset?.name ||
+          "Untitled preset";
+
+        dragGhost.append(
+          grip,
+          label
+        );
+
+        document.body.append(
+          dragGhost
+        );
+
+        try {
+          event.dataTransfer
+            .setDragImage(
+              dragGhost,
+              14,
+              20
+            );
+        } catch {
+          // Fall back to Chrome's normal drag image.
+        }
+      }
+    }
+  );
+
+  row.addEventListener(
+    "dragover",
+    (event) => {
+      if (
+        !notionPresetChooserDraggedPresetId
+      ) {
+        return;
+      }
+
+      const list =
+        document.getElementById(
+          "notionPresetChooserList"
+        );
+
+      const dragged =
+        list?.querySelector(
+          `.notion-preset-card-row[data-preset-id="${CSS.escape(
+            notionPresetChooserDraggedPresetId
+          )}"]`
+        );
+
+      if (
+        !list ||
+        !dragged
+      ) {
+        return;
+      }
+
+      /*
+       * Accept the drop before checking dragged === row.
+       * This prevents Chrome's native snap-back animation
+       * after live DOM movement.
+       */
+      event.preventDefault();
+
+      if (
+        event.dataTransfer
+      ) {
+        event.dataTransfer.dropEffect =
+          "move";
+      }
+
+      if (
+        dragged === row
+      ) {
+        return;
+      }
+
+      const rect =
+        row.getBoundingClientRect();
+
+      const insertAfter =
+        event.clientY >
+        rect.top +
+          rect.height / 2;
+
+      if (insertAfter) {
+        row.after(
+          dragged
+        );
+      } else {
+        row.before(
+          dragged
+        );
+      }
+    }
+  );
+
+  row.addEventListener(
+    "drop",
+    (event) => {
+      if (
+        !notionPresetChooserDraggedPresetId
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      void commitNotionPresetChooserOrder();
+    }
+  );
+
+  handle.addEventListener(
+    "dragend",
+    () => {
+      row.classList.remove(
+        "notion-preset-card-dragging"
+      );
+
+      dragGhost?.remove();
+
+      dragGhost =
+        null;
+
+      /*
+       * Handles mouse-up after live movement even when Chrome
+       * does not dispatch drop on a different row.
+       */
+      if (
+        notionPresetChooserDraggedPresetId
+      ) {
+        void commitNotionPresetChooserOrder();
+      }
+    }
+  );
+}
+
 async function renderNotionPresetChooser() {
   const list =
     document.getElementById(
@@ -3233,6 +3825,45 @@ async function renderNotionPresetChooser() {
     const preset of
       info.presets
   ) {
+    const row =
+      document.createElement(
+        "div"
+      );
+
+    row.className =
+      "notion-preset-card-row";
+
+    row.dataset.presetId =
+      String(
+        preset.id ||
+        ""
+      );
+
+    const handle =
+      document.createElement(
+        "button"
+      );
+
+    handle.type =
+      "button";
+
+    handle.className =
+      "notion-preset-card-handle";
+
+    handle.textContent =
+      "⠿";
+
+    handle.setAttribute(
+      "aria-label",
+      `Drag ${
+        preset.name ||
+        "preset"
+      } to reorder`
+    );
+
+    handle.title =
+      "Drag to reorder";
+
     const button =
       document.createElement(
         "button"
@@ -3359,8 +3990,19 @@ async function renderNotionPresetChooser() {
       }
     );
 
-    list.append(
+    row.append(
+      handle,
       button
+    );
+
+    setupNotionPresetChooserDrag(
+      row,
+      handle,
+      preset
+    );
+
+    list.append(
+      row
     );
   }
 }
@@ -9292,7 +9934,7 @@ function notionPresetOptionLabel(
 }
 
 const NOTION_FIELD_MENU_MAX_HEIGHT =
-  168;
+  260;
 
 const NOTION_POPUP_SAFE_BOTTOM =
   592;
@@ -9386,11 +10028,13 @@ function fitNotionFieldMenuToPopup(
    * collapse their own option lists merely to keep Save
    * inside the initial viewport.
    *
-   * Multi-select retains the adaptive fitting behavior.
+   * Multi-select uses the same behavior so its option list
+   * keeps useful vertical space and scrolls internally.
    */
   if (
     menu.closest(
-      ".notion-custom-select"
+      ".notion-custom-select, " +
+      ".notion-custom-multiselect"
     )
   ) {
     return;
@@ -12270,6 +12914,10 @@ async function showNotionPresetClip(
       "Notion preset";
   }
 
+  await rememberNotionPresetRouteResume(
+    notionOpenPresetId
+  );
+
   /*
    * Do not synthetically focus the shared Tags / Multi-select
    * input while mounting a preset. Focus opens its suggestions
@@ -13544,6 +14192,9 @@ async function save() {
           payload
         });
       if (!response?.ok) throw new Error(response?.error?.message || "Notion save failed.");
+
+      await clearNotionPresetRouteResume();
+
       setStatus("Saved to Notion.", "success");
     } else {
       const obsidianResult =
