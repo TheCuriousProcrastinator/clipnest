@@ -361,6 +361,72 @@
     );
   }
 
+  function normalizeGeneratedImageFormat(
+    value
+  ) {
+    return String(
+      value ||
+      ""
+    ).toLowerCase() ===
+      "webp"
+      ? "webp"
+      : "jpeg";
+  }
+
+  async function getGeneratedImageFormat() {
+    const stored =
+      await chrome.storage.local.get(
+        "defaultImageFormat"
+      );
+
+    return normalizeGeneratedImageFormat(
+      stored.defaultImageFormat
+    );
+  }
+
+  function generatedImageMimeType(
+    format
+  ) {
+    return normalizeGeneratedImageFormat(
+      format
+    ) ===
+      "webp"
+      ? "image/webp"
+      : "image/jpeg";
+  }
+
+  function generatedImageExtension(
+    format
+  ) {
+    return normalizeGeneratedImageFormat(
+      format
+    ) ===
+      "webp"
+      ? ".webp"
+      : ".jpg";
+  }
+
+  function encodeGeneratedCanvas(
+    canvas,
+    format,
+    jpegQuality = .92
+  ) {
+    const normalized =
+      normalizeGeneratedImageFormat(
+        format
+      );
+
+    return canvas.toDataURL(
+      generatedImageMimeType(
+        normalized
+      ),
+      normalized ===
+        "webp"
+        ? .90
+        : jpegQuality
+    );
+  }
+
   function filenameFromUrl(
     value
   ) {
@@ -994,9 +1060,79 @@
     );
   }
 
+  async function transcodeGeneratedImage(
+    dataUrl,
+    format
+  ) {
+    const normalized =
+      normalizeGeneratedImageFormat(
+        format
+      );
+
+    if (
+      normalized ===
+        "jpeg" &&
+      /^data:image\/jpeg/i.test(
+        String(
+          dataUrl ||
+          ""
+        )
+      )
+    ) {
+      return dataUrl;
+    }
+
+    const image =
+      await loadImage(
+        dataUrl
+      );
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+    canvas.width =
+      Math.max(
+        1,
+        image.naturalWidth
+      );
+
+    canvas.height =
+      Math.max(
+        1,
+        image.naturalHeight
+      );
+
+    const context =
+      canvas.getContext(
+        "2d"
+      );
+
+    if (!context) {
+      throw new Error(
+        "Could not convert screenshot."
+      );
+    }
+
+    context.drawImage(
+      image,
+      0,
+      0
+    );
+
+    return encodeGeneratedCanvas(
+      canvas,
+      normalized,
+      .92
+    );
+  }
+
   async function cropScreenshot(
     dataUrl,
-    info
+    info,
+    format =
+      "jpeg"
   ) {
     const image =
       await loadImage(
@@ -1159,8 +1295,9 @@
       canvas.height
     );
 
-    return canvas.toDataURL(
-      "image/jpeg",
+    return encodeGeneratedCanvas(
+      canvas,
+      format,
       .92
     );
   }
@@ -1199,23 +1336,46 @@
     const tab =
       await getActiveTab();
 
-    const dataUrl =
-      await chrome.tabs
-        .captureVisibleTab(
-          tab.windowId,
-          {
+    const outputFormat =
+      await getGeneratedImageFormat();
+
+    const captureOptions =
+      outputFormat ===
+        "webp"
+        ? {
+            format:
+              "png"
+          }
+        : {
             format:
               "jpeg",
 
             quality:
               92
-          }
+          };
+
+    let dataUrl =
+      await chrome.tabs
+        .captureVisibleTab(
+          tab.windowId,
+          captureOptions
         );
 
     if (!dataUrl) {
       throw new Error(
         "Could not capture the visible page."
       );
+    }
+
+    if (
+      outputFormat ===
+        "webp"
+    ) {
+      dataUrl =
+        await transcodeGeneratedImage(
+          dataUrl,
+          outputFormat
+        );
     }
 
     await addItem({
@@ -1225,10 +1385,14 @@
       dataUrl,
 
       mimeType:
-        "image/jpeg",
+        generatedImageMimeType(
+          outputFormat
+        ),
 
       filename:
-        `clipnest-visible-${Date.now()}.jpg`,
+        `clipnest-visible-${Date.now()}${generatedImageExtension(
+          outputFormat
+        )}`,
 
       label:
         "Visible area"
@@ -1250,6 +1414,9 @@
   async function captureEntirePage() {
     const tab =
       await getActiveTab();
+
+    const outputFormat =
+      await getGeneratedImageFormat();
 
     const marker =
       `clipnest-${Date.now()}-${Math.random()
@@ -2525,8 +2692,9 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
     }
 
     const dataUrl =
-      canvas.toDataURL(
-        "image/jpeg",
+      encodeGeneratedCanvas(
+        canvas,
+        outputFormat,
         .90
       );
 
@@ -2537,10 +2705,14 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
       dataUrl,
 
       mimeType:
-        "image/jpeg",
+        generatedImageMimeType(
+          outputFormat
+        ),
 
       filename:
-        `clipnest-full-page-${Date.now()}.jpg`,
+        `clipnest-full-page-${Date.now()}${generatedImageExtension(
+          outputFormat
+        )}`,
 
       label:
         "Entire page"
@@ -2550,6 +2722,16 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
   async function startAreaCapture() {
     const tab =
       await getActiveTab();
+
+    await globalThis
+      .ClipNestContentScopeResume
+      ?.snapshot?.(
+        String(
+          tab.url ||
+          ""
+        )
+      );
+
 
 
     await writeDraft();
@@ -2892,7 +3074,7 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
           };
 
         const onMouseUp =
-          (
+          async (
             event
           ) => {
             if (
@@ -2960,6 +3142,20 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
               }
             };
 
+            /*
+             * Remove ClipNest's capture UI before the
+             * browser takes the screenshot, then wait
+             * for Chrome to composite a clean frame.
+             */
+            overlay.style.display =
+              "none";
+
+            selection.style.display =
+              "none";
+
+            tip.style.display =
+              "none";
+
             cleanup();
 
             if (
@@ -2968,6 +3164,16 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
             ) {
               return;
             }
+
+            await new Promise(
+              (resolve) =>
+                requestAnimationFrame(
+                  () =>
+                    requestAnimationFrame(
+                      resolve
+                    )
+                )
+            );
 
             void chrome.runtime
               .sendMessage(
@@ -3050,6 +3256,16 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
 
     const tab =
       await getActiveTab();
+
+    await globalThis
+      .ClipNestContentScopeResume
+      ?.snapshot?.(
+        String(
+          tab.url ||
+          ""
+        )
+      );
+
 
 
     await writeDraft();
@@ -4000,6 +4216,9 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
         );
     }
 
+    const outputFormat =
+      await getGeneratedImageFormat();
+
     const pickedImage =
       stored
         .clipnestPickedBodyImage;
@@ -4031,7 +4250,8 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
         const cropped =
           await cropScreenshot(
             pickedImage.dataUrl,
-            pickedImage
+            pickedImage,
+            outputFormat
           );
 
         await addItem({
@@ -4042,10 +4262,14 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
             cropped,
 
           mimeType:
-            "image/jpeg",
+            generatedImageMimeType(
+              outputFormat
+            ),
 
           filename:
-            `clipnest-image-${Date.now()}.jpg`,
+            `clipnest-image-${Date.now()}${generatedImageExtension(
+              outputFormat
+            )}`,
 
           label:
             "Selected image"
@@ -4097,7 +4321,8 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
       const cropped =
         await cropScreenshot(
           pickedArea.dataUrl,
-          pickedArea
+          pickedArea,
+          outputFormat
         );
 
       await addItem({
@@ -4108,10 +4333,14 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
           cropped,
 
         mimeType:
-          "image/jpeg",
+          generatedImageMimeType(
+            outputFormat
+          ),
 
         filename:
-          `clipnest-area-${Date.now()}.jpg`,
+          `clipnest-area-${Date.now()}${generatedImageExtension(
+            outputFormat
+          )}`,
 
         label:
           "Selected area"

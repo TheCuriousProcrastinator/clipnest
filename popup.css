@@ -6374,8 +6374,8 @@ body[data-destination="obsidian"]
 /* OBSIDIAN REDESIGN PHASE 3B - IMAGE CARDS */
 
 /*
- * New descriptive copy is Obsidian-specific.
- * Keep existing Notion thumbnail presentation.
+ * Shared captured-image presentation.
+ * Obsidian and Notion use the same attachment-row layout.
  */
 
 .notion-body-media-preview-heading,
@@ -6383,7 +6383,6 @@ body[data-destination="obsidian"]
   display: none;
 }
 
-body[data-destination="obsidian"]
 .notion-body-media-previews {
   display: grid !important;
 
@@ -6400,7 +6399,6 @@ body[data-destination="obsidian"]
     7px !important;
 }
 
-body[data-destination="obsidian"]
 .notion-body-media-preview-heading {
   display: block;
 
@@ -6420,7 +6418,6 @@ body[data-destination="obsidian"]
   line-height: 1.2;
 }
 
-body[data-destination="obsidian"]
 .notion-body-media-thumb {
   position: relative;
 
@@ -6465,7 +6462,6 @@ body[data-destination="obsidian"]
     ) !important;
 }
 
-body[data-destination="obsidian"]
 .notion-body-media-thumb
 > img {
   width: 64px !important;
@@ -6476,14 +6472,12 @@ body[data-destination="obsidian"]
   object-fit: cover;
 }
 
-body[data-destination="obsidian"]
 .notion-body-media-thumb-copy {
   display: block;
 
   min-width: 0;
 }
 
-body[data-destination="obsidian"]
 .notion-body-media-thumb-title {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6501,7 +6495,6 @@ body[data-destination="obsidian"]
   line-height: 1.25;
 }
 
-body[data-destination="obsidian"]
 .notion-body-media-thumb-meta {
   margin-top: 3px;
 
@@ -6517,7 +6510,6 @@ body[data-destination="obsidian"]
   line-height: 1.2;
 }
 
-body[data-destination="obsidian"]
 .notion-body-media-remove {
   position: static !important;
 
@@ -6554,7 +6546,6 @@ body[data-destination="obsidian"]
   font-size: 16px !important;
 }
 
-body[data-destination="obsidian"]
 .notion-body-media-remove:hover {
   border-color:
     #db5b27 !important;
@@ -7589,3 +7580,243 @@ body.quick-clip-access-open
 .status {
   margin-top: 8px;
 }
+
+
+/* CLIPNEST 2.0.9 - SHARED NOTION MULTI-SELECT HARDENING */
+
+body[data-destination="notion"].notion-preset-open
+.notion-tags-editor {
+  box-sizing: border-box !important;
+  min-height: 38px !important;
+  height: auto !important;
+
+  padding:
+    5px 8px !important;
+
+  gap:
+    5px !important;
+
+  align-items:
+    center !important;
+
+  align-content:
+    center !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+#tagsInput {
+  flex:
+    1 1 72px !important;
+
+  width:
+    auto !important;
+
+  min-width:
+    56px !important;
+
+  min-height:
+    24px !important;
+
+  height:
+    24px !important;
+
+  margin:
+    0 !important;
+
+  padding:
+    0 2px !important;
+}
+
+body[data-destination="notion"].notion-preset-open
+.notion-selected-tag-chip {
+  min-height:
+    24px !important;
+
+  box-sizing:
+    border-box !important;
+}
+
+/* END CLIPNEST 2.0.9 - SHARED NOTION MULTI-SELECT HARDENING */
+
+
+/* ==========================================
+   CLIPNEST CONTENT SCOPE - 2.0.12
+   ========================================== */
+
+/*
+ * The old Include page text checkbox remains in the DOM
+ * only as a compatibility bridge for older stored state.
+ */
+.clipnest-content-scope-legacy {
+  display: none !important;
+}
+
+.clipnest-content-scope {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 9px;
+}
+
+.clipnest-content-scope-label {
+  display: block;
+  margin: 0 0 5px;
+
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 82%,
+      transparent
+    );
+
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.clipnest-content-scope-segmented {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  height: 38px;
+
+  box-sizing: border-box;
+  gap: 3px;
+  padding: 3px;
+
+  border-radius: 10px;
+
+  background:
+    color-mix(
+      in srgb,
+      CanvasText 7%,
+      Canvas
+    );
+}
+
+.clipnest-content-scope-button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 32px;
+  height: 32px;
+
+  appearance: none;
+  border: 0;
+  border-radius: 7px;
+
+  padding: 4px 7px;
+
+  background: transparent;
+
+  color:
+    color-mix(
+      in srgb,
+      CanvasText 70%,
+      transparent
+    );
+
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  white-space: nowrap;
+  cursor: pointer;
+
+  transition:
+    background 100ms ease,
+    color 100ms ease;
+}
+
+.clipnest-content-scope-button:hover {
+  color: CanvasText;
+}
+
+.clipnest-content-scope-button.active {
+  background:
+    var(
+      --clipper-purple,
+      #9027db
+    );
+
+  color: #fff;
+}
+
+.clipnest-content-scope-button:focus-visible {
+  outline:
+    2px solid
+    var(
+      --clipper-purple,
+      #9027db
+    ) !important;
+
+  outline-offset: 2px;
+}
+
+.clipnest-content-scope-button[hidden] {
+  display: none !important;
+}
+
+/* END CLIPNEST CONTENT SCOPE - 2.0.12 */
+
+
+/* ==========================================
+   CLIPNEST 2.0.13 - HIDE LEGACY CONTENT TOGGLE
+   ========================================== */
+
+/*
+ * The old Include page text control is retained only
+ * as an internal compatibility bridge.
+ *
+ * Earlier destination-specific rules use higher
+ * specificity plus !important, so hide it here with
+ * matching destination specificity.
+ */
+
+body[data-destination="obsidian"]
+.notion-body-content-toggle.clipnest-content-scope-legacy,
+
+body[data-destination="notion"]
+.notion-body-content-toggle.clipnest-content-scope-legacy {
+
+  display: none !important;
+}
+
+/* END CLIPNEST 2.0.13 - HIDE LEGACY CONTENT TOGGLE */
+
+
+/* ==========================================
+   CLIPNEST 2.0.14 - CONTENT STARTUP PAINT
+   ========================================== */
+
+/*
+ * Keep the Content to save row in layout during initial page
+ * capture, but do not paint the remembered Page / Title + link
+ * state before ClipNest knows whether Selected should win.
+ *
+ * visibility preserves dimensions, avoiding popup resize.
+ */
+
+.clipnest-content-scope.clipnest-content-scope-pending {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* END CLIPNEST 2.0.14 - CONTENT STARTUP PAINT */
+
+
+/* ==========================================
+   CLIPNEST 2.0.15 - FINAL SCOPE PAINT
+   ========================================== */
+
+/*
+ * Initial scope resolution must not animate from the remembered
+ * Page / Title + link state into Selected. Normal transitions
+ * return immediately after the first correct visible paint.
+ */
+
+.clipnest-content-scope.clipnest-content-scope-no-transition
+.clipnest-content-scope-button {
+  transition: none !important;
+}
+
+/* END CLIPNEST 2.0.15 - FINAL SCOPE PAINT */

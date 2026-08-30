@@ -663,6 +663,499 @@ function extractPage() {
       );
     };
 
+  /*
+   * CLIPNEST RICH SELECTION - 2.0.12
+   *
+   * Snapshot the active browser selection when the popup opens.
+   * Text/formatting becomes Markdown. Meaningful IMG/SVG media is
+   * returned separately so each destination can use its existing
+   * image-save path.
+   */
+  const captureSelection = () => {
+    try {
+      const browserSelection =
+        window.getSelection();
+
+      if (
+        !browserSelection ||
+        browserSelection.rangeCount < 1 ||
+        browserSelection.isCollapsed
+      ) {
+        return {
+          markdown: "",
+          media: []
+        };
+      }
+
+      const range =
+        browserSelection.getRangeAt(0);
+
+      const fragment =
+        range.cloneContents();
+
+      const host =
+        document.createElement("div");
+
+      host.append(
+        fragment
+      );
+
+      /*
+       * Remove containers that are overwhelmingly page chrome,
+       * controls, or presentation-only content before examining
+       * selected media.
+       */
+      host.querySelectorAll([
+        "script",
+        "style",
+        "noscript",
+        "canvas",
+        "form",
+        "button",
+        "nav",
+        "footer",
+        "[aria-hidden='true']",
+        "[role='navigation']",
+        "[role='banner']",
+        "[role='contentinfo']",
+        ".advertisement",
+        ".ads",
+        ".ad",
+        ".cookie",
+        ".newsletter",
+        ".social-share"
+      ].join(","))
+        .forEach(
+          (node) =>
+            node.remove()
+        );
+
+      const isDecorativeMedia =
+        (node) => {
+          if (!node) {
+            return true;
+          }
+
+          const role =
+            String(
+              node.getAttribute(
+                "role"
+              ) ||
+              ""
+            )
+              .trim()
+              .toLowerCase();
+
+          if (
+            role === "presentation" ||
+            role === "none" ||
+            node.getAttribute(
+              "aria-hidden"
+            ) === "true"
+          ) {
+            return true;
+          }
+
+          const identity =
+            [
+              node.id,
+              node.className?.baseVal ??
+                node.className,
+              node.getAttribute(
+                "alt"
+              ),
+              node.getAttribute(
+                "aria-label"
+              )
+            ]
+              .map(
+                (value) =>
+                  String(
+                    value ||
+                    ""
+                  )
+              )
+              .join(" ")
+              .toLowerCase();
+
+          if (
+            /\b(?:avatar|profile[-_\s]?photo|profile[-_\s]?picture|reaction[-_\s]?icon|social[-_\s]?icon|share[-_\s]?icon|emoji[-_\s]?icon|ui[-_\s]?icon)\b/i
+              .test(
+                identity
+              )
+          ) {
+            return true;
+          }
+
+          const width =
+            Number(
+              node.getAttribute(
+                "width"
+              ) ||
+              0
+            );
+
+          const height =
+            Number(
+              node.getAttribute(
+                "height"
+              ) ||
+              0
+            );
+
+          if (
+            width > 0 &&
+            height > 0 &&
+            width <= 24 &&
+            height <= 24
+          ) {
+            return true;
+          }
+
+          return false;
+        };
+
+      const filenameFromSelectionUrl =
+        (
+          value,
+          fallback
+        ) => {
+          try {
+            const parsed =
+              new URL(
+                value
+              );
+
+            const last =
+              parsed.pathname
+                .split("/")
+                .filter(Boolean)
+                .pop();
+
+            if (last) {
+              try {
+                return decodeURIComponent(
+                  last
+                );
+              } catch {
+                return last;
+              }
+            }
+          } catch {
+          }
+
+          return fallback;
+        };
+
+      const media =
+        [];
+
+      let mediaIndex =
+        0;
+
+      const mediaNodes =
+        [
+          ...host.querySelectorAll(
+            "img,svg"
+          )
+        ];
+
+      for (
+        const node of
+          mediaNodes
+      ) {
+        if (
+          media.length >= 6
+        ) {
+          node.remove();
+          continue;
+        }
+
+        if (
+          isDecorativeMedia(
+            node
+          )
+        ) {
+          node.remove();
+          continue;
+        }
+
+        const tag =
+          node.tagName
+            .toLowerCase();
+
+        mediaIndex +=
+          1;
+
+        if (tag === "img") {
+          const rawSource =
+            String(
+              node.currentSrc ||
+              node.getAttribute(
+                "src"
+              ) ||
+              node.getAttribute(
+                "data-src"
+              ) ||
+              node.getAttribute(
+                "data-lazy-src"
+              ) ||
+              node.getAttribute(
+                "data-original"
+              ) ||
+              ""
+            ).trim();
+
+          if (rawSource) {
+            const label =
+              normalizeText(
+                node.getAttribute(
+                  "alt"
+                ) ||
+                ""
+              ) ||
+              "Selected image";
+
+            if (
+              /^data:image\//i.test(
+                rawSource
+              )
+            ) {
+              const mimeMatch =
+                rawSource.match(
+                  /^data:(image\/[^;,]+)/i
+                );
+
+              const mimeType =
+                mimeMatch?.[1] ||
+                "image/png";
+
+              const extension =
+                mimeType.includes(
+                  "jpeg"
+                )
+                  ? ".jpg"
+                  : mimeType.includes(
+                      "webp"
+                    )
+                    ? ".webp"
+                    : mimeType.includes(
+                        "gif"
+                      )
+                      ? ".gif"
+                      : mimeType.includes(
+                          "svg"
+                        )
+                        ? ".svg"
+                        : ".png";
+
+              media.push({
+                kind: "data",
+                dataUrl:
+                  rawSource,
+                mimeType,
+                filename:
+                  `clipnest-selected-${mediaIndex}${extension}`,
+                label
+              });
+            } else {
+              const url =
+                absoluteUrl(
+                  rawSource
+                );
+
+              if (
+                /^https?:\/\//i.test(
+                  url
+                )
+              ) {
+                media.push({
+                  kind:
+                    "external",
+                  url,
+                  filename:
+                    filenameFromSelectionUrl(
+                      url,
+                      `clipnest-selected-${mediaIndex}`
+                    ),
+                  label
+                });
+              }
+            }
+          }
+
+          node.remove();
+          continue;
+        }
+
+        if (tag === "svg") {
+          try {
+            const svg =
+              node.cloneNode(
+                true
+              );
+
+            svg
+              .querySelectorAll(
+                "script,style,foreignObject"
+              )
+              .forEach(
+                (child) =>
+                  child.remove()
+              );
+
+            const svgElements =
+              [
+                svg,
+                ...svg.querySelectorAll(
+                  "*"
+                )
+              ];
+
+            for (
+              const element of
+                svgElements
+            ) {
+              for (
+                const attribute of
+                  [
+                    ...element.attributes
+                  ]
+              ) {
+                const name =
+                  attribute.name
+                    .toLowerCase();
+
+                const value =
+                  String(
+                    attribute.value ||
+                    ""
+                  ).trim();
+
+                if (
+                  name.startsWith(
+                    "on"
+                  )
+                ) {
+                  element.removeAttribute(
+                    attribute.name
+                  );
+
+                  continue;
+                }
+
+                if (
+                  (
+                    name === "href" ||
+                    name === "xlink:href"
+                  ) &&
+                  /^(?:javascript:|https?:)/i.test(
+                    value
+                  )
+                ) {
+                  element.removeAttribute(
+                    attribute.name
+                  );
+                }
+              }
+            }
+
+            if (
+              !svg.getAttribute(
+                "xmlns"
+              )
+            ) {
+              svg.setAttribute(
+                "xmlns",
+                "http://www.w3.org/2000/svg"
+              );
+            }
+
+            const markup =
+              new XMLSerializer()
+                .serializeToString(
+                  svg
+                );
+
+            if (
+              markup &&
+              markup.length <=
+                500000
+            ) {
+              media.push({
+                kind: "data",
+                dataUrl:
+                  "data:image/svg+xml;charset=utf-8," +
+                  encodeURIComponent(
+                    markup
+                  ),
+                mimeType:
+                  "image/svg+xml",
+                filename:
+                  `clipnest-selected-${mediaIndex}.svg`,
+                label:
+                  normalizeText(
+                    node.getAttribute(
+                      "aria-label"
+                    ) ||
+                    node.querySelector(
+                      "title"
+                    )
+                      ?.textContent ||
+                    ""
+                  ) ||
+                  "Selected graphic"
+              });
+            }
+          } catch {
+          }
+
+          /*
+           * SVG is represented through selectionMedia rather than
+           * being emitted as raw markup into Markdown.
+           */
+          node.remove();
+        }
+      }
+
+      const selectedMarkdown =
+        block(
+          host
+        )
+          .replace(
+            /[ \t]+\n/g,
+            "\n"
+          )
+          .replace(
+            /\n{3,}/g,
+            "\n\n"
+          )
+          .trim()
+          .slice(
+            0,
+            200000
+          );
+
+      return {
+        markdown:
+          selectedMarkdown,
+        media:
+          media.slice(
+            0,
+            6
+          )
+      };
+    } catch {
+      return {
+        markdown: "",
+        media: []
+      };
+    }
+  };
+
+  const selectionCapture =
+    captureSelection();
+
   const selection = normalizeText(window.getSelection()?.toString() || "").slice(0, 50000);
   const title = getMeta('meta[property="og:title"]', 'meta[name="twitter:title"]') || document.title || "Untitled";
   const description = getMeta('meta[name="description"]', 'meta[property="og:description"]');
@@ -680,6 +1173,10 @@ function extractPage() {
     description: normalizeText(description),
     image,
     selection,
+    selectionMarkdown:
+      selectionCapture.markdown,
+    selectionMedia:
+      selectionCapture.media,
     markdown
   };
 }

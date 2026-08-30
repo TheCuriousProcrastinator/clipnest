@@ -26,7 +26,7 @@
       <p>Choose where clips go and configure each destination.</p>
     </header>
 
-    <section class="card">
+    <section class="card quick-clip-card">
       <h2>Quick Clip</h2>
 
       <p class="help">
@@ -58,46 +58,29 @@
       </label>
     </section>
 
-    <section class="card backup-card">
-      <h2>Backup</h2>
+    <section class="card image-capture-card">
+      <h2>Image capture</h2>
 
       <p class="help">
-        Export your portable ClipNest settings as a JSON backup.
-        Notion login and Obsidian vault access are never included.
+        Choose the format ClipNest uses for screenshots and cropped captures.
       </p>
 
-      <div class="vault-actions">
-        <button
-          id="exportSettings"
-          class="secondary"
-          type="button"
-        >
-          Export settings
-        </button>
+      <label class="field">
+        <span>Default image format</span>
 
-        <button
-          id="importSettings"
-          class="secondary"
-          type="button"
-        >
-          Import settings
-        </button>
+        <select id="defaultImageFormat">
+          <option value="jpeg">JPEG</option>
+          <option value="webp">WebP</option>
+        </select>
 
-        <input
-          id="importSettingsFile"
-          type="file"
-          accept=".json,application/json"
-          hidden
-        />
-      </div>
-
-      <div
-        id="settingsBackupStatus"
-        class="status"
-      ></div>
+        <small>
+          WebP usually creates smaller files at similar quality.
+          Images taken directly from webpages keep their original format.
+        </small>
+      </label>
     </section>
 
-    <section id="notionSettingsCard" class="card">
+    <section id="notionSettingsCard" class="card notion-card">
       <h2>Notion</h2>
 
       <p class="help notion-popup-management-note">
@@ -303,7 +286,7 @@
       <div id="notionStatus" class="status"></div>
     </section>
 
-    <section class="card">
+    <section class="card obsidian-card">
       <h2>Obsidian</h2>
       <p class="help">Connect the Obsidian vaults ClipNest can access. Vault access stays local to this computer.</p>
 
@@ -327,6 +310,45 @@
       </p>
 
       <div id="obsidianStatus" class="status"></div>
+    </section>
+
+    <section class="card backup-card">
+      <h2>Backup</h2>
+
+      <p class="help">
+        Export your portable ClipNest settings as a JSON backup.
+        Notion login and Obsidian vault access are never included.
+      </p>
+
+      <div class="vault-actions">
+        <button
+          id="exportSettings"
+          class="secondary"
+          type="button"
+        >
+          Export settings
+        </button>
+
+        <button
+          id="importSettings"
+          class="secondary"
+          type="button"
+        >
+          Import settings
+        </button>
+
+        <input
+          id="importSettingsFile"
+          type="file"
+          accept=".json,application/json"
+          hidden
+        />
+      </div>
+
+      <div
+        id="settingsBackupStatus"
+        class="status"
+      ></div>
     </section>
 
     <div id="settingsSavebar" class="savebar" hidden>

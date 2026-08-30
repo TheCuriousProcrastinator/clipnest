@@ -64,7 +64,7 @@ body {
 /* Header */
 
 .settings-header {
-  margin-bottom: 30px;
+  margin-bottom: 26px;
 }
 
 .brand-row {
@@ -111,8 +111,8 @@ body {
 
 .card {
   position: relative;
-  margin-bottom: 18px;
-  padding: 22px;
+  margin-bottom: 16px;
+  padding: 20px;
   overflow: hidden;
 
   border: 1px solid var(--border);
@@ -156,7 +156,7 @@ body {
 
 .help {
   max-width: 680px;
-  margin: 0 0 18px;
+  margin: 0 0 14px;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
@@ -166,7 +166,7 @@ body {
 
 .field {
   display: block;
-  margin-top: 16px;
+  margin-top: 14px;
 }
 
 .field > span {
@@ -1122,3 +1122,121 @@ label:has(#notionDataSourceId),
 .page.settings-dirty .card:last-of-type {
   margin-bottom: 88px;
 }
+
+/* =================================
+   CLIPNEST SETTINGS POLISH - 2.0.10
+   ================================= */
+
+/*
+ * HTML's hidden attribute must win over .field display rules.
+ * Quick Clip's JS already manages this attribute.
+ */
+
+#quickClipNotionPresetField[hidden] {
+  display: none !important;
+}
+
+
+/* Section accent semantics. */
+
+.quick-clip-card::before,
+.image-capture-card::before,
+.obsidian-card::before {
+  background:
+    linear-gradient(
+      90deg,
+      var(--orange),
+      transparent 70%
+    );
+}
+
+#notionSettingsCard::before {
+  background:
+    linear-gradient(
+      90deg,
+      var(--purple),
+      transparent 70%
+    );
+}
+
+.backup-card::before {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(
+        in srgb,
+        CanvasText 28%,
+        transparent
+      ),
+      transparent 70%
+    );
+}
+
+
+/* The one-control Image capture card can be more compact. */
+
+.image-capture-card .help {
+  margin-bottom: 10px;
+}
+
+.image-capture-card .field {
+  margin-top: 10px;
+}
+
+
+/* Backup is a utility section, so keep it compact at the end. */
+
+.backup-card {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.backup-card .help {
+  margin-bottom: 10px;
+}
+
+
+/* END CLIPNEST SETTINGS POLISH - 2.0.10 */
+
+/* =================================
+   CLIPNEST COMPACT SAVEBAR - 2.0.11
+   ================================= */
+
+/*
+ * The Settings Save bar only needs enough room for its
+ * action and status. Keeping it compact prevents the
+ * sticky control from covering the Backup card.
+ */
+
+.savebar {
+  width: fit-content;
+  max-width: 100%;
+
+  margin-top: 16px;
+  margin-left: auto;
+
+  padding: 10px;
+
+  border-radius: 12px;
+}
+
+.savebar .primary {
+  min-width: 140px;
+}
+
+.savebar .status:empty {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  .savebar {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .savebar .primary {
+    width: 100%;
+  }
+}
+
+/* END CLIPNEST COMPACT SAVEBAR - 2.0.11 */

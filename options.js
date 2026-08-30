@@ -52,6 +52,7 @@ chrome.storage.onChanged.addListener(
 async function init() {
   for (const id of [
     "defaultDestination",
+    "defaultImageFormat",
     "quickClipNotionPresetField",
     "quickClipNotionPresetId",
     "notionConnectionTitle",
@@ -101,6 +102,7 @@ async function init() {
   for (
     const field of [
       els.defaultDestination,
+      els.defaultImageFormat,
       els.quickClipNotionPresetId,
       els.notionPresetName
     ]
@@ -414,12 +416,19 @@ async function loadSettings() {
   const settings =
     await chrome.storage.local.get([
       "defaultDestination",
+      "defaultImageFormat",
       "quickClipNotionPresetId"
     ]);
 
   els.defaultDestination.value =
     settings.defaultDestination ||
     "obsidian";
+
+  els.defaultImageFormat.value =
+    settings.defaultImageFormat ===
+      "webp"
+      ? "webp"
+      : "jpeg";
 
 
   const quickClipPresetId =
@@ -539,6 +548,12 @@ async function saveSettings() {
   await chrome.storage.local.set({
     defaultDestination:
       els.defaultDestination.value,
+
+    defaultImageFormat:
+      els.defaultImageFormat.value ===
+        "webp"
+        ? "webp"
+        : "jpeg",
 
     quickClipNotionPresetId:
       els.quickClipNotionPresetId.value ||
@@ -786,6 +801,7 @@ async function exportSettingsBackup() {
     const local =
       await chrome.storage.local.get([
         "defaultDestination",
+        "defaultImageFormat",
         "quickClipNotionPresetId",
         NOTION_FIELD_MEMORY_KEY
       ]);
@@ -806,6 +822,12 @@ async function exportSettingsBackup() {
             "notion"
             ? "notion"
             : "obsidian",
+
+        defaultImageFormat:
+          local.defaultImageFormat ===
+            "webp"
+            ? "webp"
+            : "jpeg",
 
         quickClipNotionPresetId:
           String(
@@ -980,6 +1002,27 @@ function validateSettingsBackup(
     );
   }
 
+  if (
+    settings.defaultImageFormat !==
+      undefined &&
+    ![
+      "jpeg",
+      "webp"
+    ].includes(
+      settings.defaultImageFormat
+    )
+  ) {
+    throw new Error(
+      "The backup has an invalid default image format."
+    );
+  }
+
+  const defaultImageFormat =
+    settings.defaultImageFormat ===
+      "webp"
+      ? "webp"
+      : "jpeg";
+
   const notion =
     settings.notion;
 
@@ -1101,6 +1144,8 @@ function validateSettingsBackup(
     defaultDestination:
       settings.defaultDestination,
 
+    defaultImageFormat,
+
     quickClipNotionPresetId,
 
     notion: {
@@ -1173,6 +1218,9 @@ async function importSettingsBackup() {
     await chrome.storage.local.set({
       defaultDestination:
         settings.defaultDestination,
+
+      defaultImageFormat:
+        settings.defaultImageFormat,
 
       quickClipNotionPresetId:
         settings.quickClipNotionPresetId,

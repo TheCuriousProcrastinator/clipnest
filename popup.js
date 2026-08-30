@@ -454,12 +454,11 @@ function buildNotionCaptureResumeSnapshot(
       ).trim(),
 
     includePageContent:
-      document
-        .getElementById(
-          "notionIncludePageContent"
-        )
-        ?.checked !==
-          false,
+      getContentScope() ===
+        "page",
+
+    contentScope:
+      getContentScope(),
 
     title:
       String(
@@ -667,6 +666,19 @@ async function restoreNotionPresetAfterCapture() {
       resume.includePageContent;
   }
 
+  if (
+    typeof resume.contentScope ===
+      "string"
+  ) {
+    await setContentScope(
+      resume.contentScope,
+      {
+        persist:
+          false
+      }
+    );
+  }
+
   updateUxSaveButtonLabel();
 
   return true;
@@ -722,6 +734,8 @@ async function init() {
   els.destinationButtons = [...document.querySelectorAll(".destination-button")];
 
   setupNotionPresetNavigation();
+
+  await installContentScopeControl();
 
   document.addEventListener(
     "clipnest:notion-page-content-change",
@@ -9579,18 +9593,6 @@ function createNotionChoiceControl(
   propertyId,
   allowCreate
 ) {
-  const memoryStorageKey =
-    "clipnestNotionFieldMemoryV1";
-
-  const memoryKey =
-    `${String(
-      notionOpenPresetId ||
-      ""
-    )}::${String(
-      propertyId ||
-      ""
-    )}`;
-
   const control =
     document.createElement(
       "div"
@@ -9739,132 +9741,6 @@ function createNotionChoiceControl(
       ""
     ).trim();
 
-  let touched =
-    false;
-
-  async function persistRememberedValue(
-    value
-  ) {
-    if (
-      !notionOpenPresetId ||
-      !propertyId
-    ) {
-      return;
-    }
-
-    try {
-      const stored =
-        await chrome.storage.local.get(
-          memoryStorageKey
-        );
-
-      const current =
-        stored[
-          memoryStorageKey
-        ] &&
-        typeof stored[
-          memoryStorageKey
-        ] === "object" &&
-        !Array.isArray(
-          stored[
-            memoryStorageKey
-          ]
-        )
-          ? stored[
-              memoryStorageKey
-            ]
-          : {};
-
-      await chrome.storage.local.set({
-        [memoryStorageKey]: {
-          ...current,
-
-          [memoryKey]:
-            String(
-              value ??
-              ""
-            )
-        }
-      });
-    } catch (error) {
-      console.warn(
-        "ClipNest could not remember Notion field value:",
-        error
-      );
-    }
-  }
-
-  async function restoreRememberedValue() {
-    if (
-      !notionOpenPresetId ||
-      !propertyId
-    ) {
-      return;
-    }
-
-    try {
-      const stored =
-        await chrome.storage.local.get(
-          memoryStorageKey
-        );
-
-      const memory =
-        stored[
-          memoryStorageKey
-        ];
-
-      if (
-        touched ||
-        !memory ||
-        typeof memory !==
-          "object" ||
-        !Object.prototype
-          .hasOwnProperty.call(
-            memory,
-            memoryKey
-          )
-      ) {
-        return;
-      }
-
-      const remembered =
-        String(
-          memory[
-            memoryKey
-          ] ??
-          ""
-        ).trim();
-
-      const valid =
-        !remembered ||
-        options.some(
-          (option) =>
-            option.value
-              .toLowerCase() ===
-            remembered.toLowerCase()
-        );
-
-      if (!valid) {
-        return;
-      }
-
-      selected =
-        remembered;
-
-      notionDynamicFieldValues[
-        propertyId
-      ] =
-        selected;
-
-      updateTrigger();
-    } catch (error) {
-      console.warn(
-        "ClipNest could not restore Notion field value:",
-        error
-      );
-    }
-  }
-
   function closeMenu() {
     menu.classList.add(
       "hidden"
@@ -9939,9 +9815,6 @@ function createNotionChoiceControl(
   function chooseValue(
     value
   ) {
-    touched =
-      true;
-
     selected =
       String(
         value ||
@@ -9955,10 +9828,6 @@ function createNotionChoiceControl(
 
     updateTrigger();
     closeMenu();
-
-    void persistRememberedValue(
-      selected
-    );
   }
 
   function makeOptionButton({
@@ -10253,8 +10122,6 @@ function createNotionChoiceControl(
     selected;
 
   updateTrigger();
-
-  void restoreRememberedValue();
 
   return control;
 }
@@ -12365,6 +12232,29 @@ async function showNotionPresetClip(
     preset
   );
 
+  /*
+   * PRESET MOUNT MENU NORMALIZATION - 2.0.6
+   *
+   * A newly mounted Multi-select input can inherit focus
+   * during DOM reconstruction. Its normal focus handler opens
+   * the options menu, which must never happen just because a
+   * preset was opened.
+   *
+   * Normalize all choice menus to closed after mounting.
+   * If Chrome focused the Multi-select input during the mount,
+   * release only that incidental focus.
+   */
+  closeOtherNotionFieldMenus(
+    null
+  );
+
+  const mountedMultiSelectInput =
+    document.activeElement?.closest?.(
+      ".notion-custom-multiselect-input"
+    );
+
+  mountedMultiSelectInput?.blur();
+
   notionClipHeaderEl?.classList.remove(
     "hidden"
   );
@@ -12380,12 +12270,11 @@ async function showNotionPresetClip(
       "Notion preset";
   }
 
-  els.tagsInput?.focus({
-    preventScroll:
-      true
-  });
-
-  els.tagsInput?.blur();
+  /*
+   * Do not synthetically focus the shared Tags / Multi-select
+   * input while mounting a preset. Focus opens its suggestions
+   * menu, causing a visible startup flash before blur closes it.
+   */
 }
 
 async function choosePopupDestination(
@@ -12504,14 +12393,20 @@ function setDestination(destination) {
       (
         destination ===
           "obsidian" &&
-        getContentMode() ===
-          "article"
+        getContentMode() !==
+          "selection"
       )
     );
 
+  /*
+   * The legacy "selection" mode means Select Area.
+   * It is still not a normal Notion popup mode.
+   * Rich browser selection uses the separate "text" mode
+   * and is valid for both destinations.
+   */
   if (
     destination === "notion" &&
-    getContentMode() !== "article"
+    getContentMode() === "selection"
   ) {
     setContentMode(
       "article"
@@ -13214,19 +13109,25 @@ async function captureCurrentPage() {
     state.articleEnhancementPromise = null;
     state.articleEnhancementDone = false;
 
-    const hasTextSelection =
-      Boolean(String(capture.selection || "").trim());
-
-    els.selectedTextModeRow?.classList.toggle(
-      "hidden",
-      !hasTextSelection
+    /*
+     * Selected content is contextual.
+     *
+     * A fresh valid browser selection wins for this popup session,
+     * but does not overwrite the remembered Title + link / Page
+     * preference. A one-time capture resume can then override this
+     * when an image picker temporarily closed the popup.
+     */
+    await applyContentScopeForCapture(
+      capture
     );
 
-    /*
-     * A webpage selection makes Text mode available,
-     * but must never silently replace the user's
-     * Article mode.
-     */
+    await restoreContentScopeAfterCapture(
+      tab,
+      capture
+    );
+
+    revealContentScopeControl();
+
     refreshUxPass1();
 
     await restoreQuickClipDraft(tab, capture);
@@ -13563,7 +13464,10 @@ async function save() {
     }
 
     if (
-      getContentMode() === "article" &&
+      getContentScope() ===
+        "page" &&
+      getContentMode() ===
+        "article" &&
       !state.articleEnhancementDone
     ) {
       setStatus(
@@ -13599,6 +13503,10 @@ async function save() {
     }
 
     const payload = buildPayload();
+
+    await preparePayloadSvgMedia(
+      payload
+    );
 
     /*
      * Notion keeps its existing privacy behavior:
@@ -13719,96 +13627,176 @@ async function save() {
 }
 
 function buildPayload() {
-  const title = els.titleInput.value.trim() || state.capture.title || "Untitled";
-  const tags = getCurrentTags();
-  const notes = els.notesInput.value.trim();
-  const contentMode =
-    state.destination === "notion"
-      ? "article"
-      : getContentMode();
+  const title =
+    els.titleInput.value.trim() ||
+    state.capture.title ||
+    "Untitled";
 
-  const pageBodyTextEnabled =
-    document.getElementById(
-      "notionIncludePageContent"
-    )?.checked !==
-      false;
+  const tags =
+    getCurrentTags();
+
+  const notes =
+    els.notesInput.value.trim();
+
+  const contentScope =
+    getContentScope();
+
+  const nativeContentMode =
+    getContentMode();
+
+  /*
+   * Keep the old internal area-selection mode isolated.
+   * Normal popup content now maps as:
+   *
+   * minimal  -> article internally, no article body
+   * selected -> text internally
+   * page     -> article internally, full article body
+   */
+  const contentMode =
+    nativeContentMode ===
+      "selection"
+      ? "selection"
+      : contentScope ===
+          "selected"
+        ? "text"
+        : "article";
 
   const includePageContent =
-    state.destination ===
-      "notion"
-      ? pageBodyTextEnabled
-      : contentMode ===
-          "article"
-        ? pageBodyTextEnabled
-        : true;
+    contentScope ===
+      "page";
 
-  const sections = [];
+  const sections =
+    [];
 
   if (notes) {
-    sections.push(`## Notes\n\n${notes}`);
+    sections.push(
+      `## Notes
+
+${notes}`
+    );
   }
 
   if (
-    contentMode === "article" &&
+    contentMode ===
+      "article" &&
     includePageContent
   ) {
     const articleMarkdown =
-      ClipNestArticleEngine.cleanArticleMarkdown(
-        state.capture.structuredMarkdown ||
-          state.capture.markdown ||
-          "",
-        title
-      );
+      ClipNestArticleEngine
+        .cleanArticleMarkdown(
+          state.capture
+            .structuredMarkdown ||
+            state.capture
+              .markdown ||
+            "",
+          title
+        );
 
     if (articleMarkdown) {
       sections.push(
-        `## Article\n\n${articleMarkdown}`
+        `## Article
+
+${articleMarkdown}`
       );
     }
   }
 
-  if (contentMode === "text") {
-    const selectedText =
-      String(state.capture.selection || "").trim();
+  const selectedMarkdown =
+    String(
+      clipnestSelectionSnapshot
+        .markdown ||
+      ""
+    ).trim();
 
-    if (!selectedText) {
+  const selectedMedia =
+    contentMode ===
+      "text"
+      ? sanitizeSelectedContentMedia(
+          clipnestSelectionSnapshot
+            .media
+        )
+      : [];
+
+  if (
+    contentMode ===
+      "text"
+  ) {
+    if (
+      !selectedMarkdown &&
+      !selectedMedia.length
+    ) {
       throw new Error(
-        "Select some text on the webpage first."
+        "The selected content is no longer available. Select it again and reopen ClipNest."
+      );
+    }
+
+    if (selectedMarkdown) {
+      sections.push(
+        `## Selected content
+
+${selectedMarkdown}`
+      );
+    }
+  }
+
+  if (
+    contentMode ===
+      "selection"
+  ) {
+    if (
+      !state.areaSelection
+        ?.markdown
+    ) {
+      throw new Error(
+        "Choose an area from the page first."
       );
     }
 
     sections.push(
-      `## Selected text\n\n${quoteMarkdown(selectedText)}`
+      `## Clipped content
+
+${state.areaSelection.markdown}`
     );
   }
 
-  if (contentMode === "selection") {
-    if (!state.areaSelection?.markdown) {
-      throw new Error("Choose an area from the page first.");
-    }
-
-    sections.push(`## Clipped content\n\n${state.areaSelection.markdown}`);
-  }
-
+  /*
+   * Notion page destinations do not necessarily have a URL
+   * property, so keep the source link in the page body for all
+   * three scopes. Obsidian keeps source in frontmatter.
+   */
   const sourceLine =
-    state.destination === "notion" &&
-    includePageContent
+    state.destination ===
+      "notion"
       ? `[Source](${state.capture.url})`
       : "";
 
-  const markdown = [sourceLine, ...sections]
-    .filter(Boolean)
-    .join("\n\n")
-    .trim();
+  const markdown =
+    [
+      sourceLine,
+      ...sections
+    ]
+      .filter(Boolean)
+      .join(
+        "\n\n"
+      )
+      .trim();
 
   const templatePath =
-    els.templateSelect?.value || "";
+    els.templateSelect
+      ?.value ||
+    "";
 
   const template =
-    Array.isArray(state.obsidianTemplates)
-      ? state.obsidianTemplates.find(
-          (item) => item.path === templatePath
-        ) || null
+    Array.isArray(
+      state.obsidianTemplates
+    )
+      ? state.obsidianTemplates
+          .find(
+            (item) =>
+              item.path ===
+                templatePath
+          ) ||
+        null
       : null;
 
   if (
@@ -13822,23 +13810,36 @@ function buildPayload() {
     );
   }
 
-  const bodyMedia =
+  const manuallyCapturedMedia =
     globalThis
       .ClipNestBodyMedia
       ?.getItems?.() ||
     [];
 
+  const bodyMedia =
+    mergeContentMedia(
+      selectedMedia,
+      manuallyCapturedMedia
+    );
+
   return {
     title,
-    url: state.capture.url,
-    hostname: state.capture.hostname,
-    siteName: state.capture.siteName,
-    author: state.capture.author,
-    description: state.capture.description,
-    image: state.capture.image,
+    url:
+      state.capture.url,
+    hostname:
+      state.capture.hostname,
+    siteName:
+      state.capture.siteName,
+    author:
+      state.capture.author,
+    description:
+      state.capture.description,
+    image:
+      state.capture.image,
     tags,
     notes,
     contentMode,
+    contentScope,
     includePageContent,
     markdown,
     template,
@@ -13860,8 +13861,8 @@ function buildPayload() {
     obsidianBodyMedia:
       state.destination ===
           "obsidian" &&
-        contentMode ===
-          "article"
+        contentMode !==
+          "selection"
         ? bodyMedia
         : []
   };
@@ -14128,6 +14129,1070 @@ function quoteMarkdown(text) {
     .join("\n");
 }
 
+/* ==================================================
+   CLIPNEST CONTENT SCOPE - 2.0.12
+   ================================================== */
+
+const CLIPNEST_CONTENT_SCOPE_KEY =
+  "clipnestLastNonSelectedContentScope";
+
+const CLIPNEST_CONTENT_SCOPE_RESUME_KEY =
+  "clipnestContentScopeResumeV1";
+
+let clipnestContentScope =
+  "page";
+
+let clipnestRememberedContentScope =
+  "page";
+
+let clipnestSelectionSnapshot = {
+  markdown: "",
+  media: []
+};
+
+function sanitizeSelectedContentMedia(
+  rawItems
+) {
+  const result =
+    [];
+
+  for (
+    const raw of
+      (
+        Array.isArray(
+          rawItems
+        )
+          ? rawItems
+          : []
+      )
+  ) {
+    if (
+      result.length >=
+        6 ||
+      !raw ||
+      typeof raw !==
+        "object"
+    ) {
+      continue;
+    }
+
+    if (
+      raw.kind ===
+        "external"
+    ) {
+      const url =
+        String(
+          raw.url ||
+          ""
+        ).trim();
+
+      if (
+        !/^https?:\/\//i.test(
+          url
+        )
+      ) {
+        continue;
+      }
+
+      result.push({
+        kind:
+          "external",
+        url,
+        filename:
+          String(
+            raw.filename ||
+            "selected-image"
+          ),
+        label:
+          String(
+            raw.label ||
+            "Selected image"
+          )
+      });
+
+      continue;
+    }
+
+    if (
+      raw.kind ===
+        "data"
+    ) {
+      const dataUrl =
+        String(
+          raw.dataUrl ||
+          ""
+        );
+
+      if (
+        !/^data:image\//i.test(
+          dataUrl
+        )
+      ) {
+        continue;
+      }
+
+      result.push({
+        kind:
+          "data",
+        dataUrl,
+        mimeType:
+          String(
+            raw.mimeType ||
+            "image/png"
+          ),
+        filename:
+          String(
+            raw.filename ||
+            "selected-image.png"
+          ),
+        label:
+          String(
+            raw.label ||
+            "Selected image"
+          )
+      });
+    }
+  }
+
+  return result;
+}
+
+function hasSelectedContent() {
+  return Boolean(
+    String(
+      clipnestSelectionSnapshot
+        .markdown ||
+      ""
+    ).trim() ||
+    sanitizeSelectedContentMedia(
+      clipnestSelectionSnapshot
+        .media
+    ).length
+  );
+}
+
+function getContentScope() {
+  return [
+    "minimal",
+    "selected",
+    "page"
+  ].includes(
+    clipnestContentScope
+  )
+    ? clipnestContentScope
+    : clipnestRememberedContentScope;
+}
+
+function syncLegacyPageContentInput(
+  scope
+) {
+  const legacy =
+    document.getElementById(
+      "notionIncludePageContent"
+    );
+
+  if (legacy) {
+    legacy.checked =
+      scope ===
+        "page";
+  }
+}
+
+function renderContentScopeControl() {
+  const root =
+    document.getElementById(
+      "clipnestContentScope"
+    );
+
+  if (!root) {
+    return;
+  }
+
+  const selectionAvailable =
+    hasSelectedContent();
+
+  for (
+    const button of
+      root.querySelectorAll(
+        "[data-content-scope]"
+      )
+  ) {
+    const scope =
+      button.dataset
+        .contentScope;
+
+    if (
+      scope ===
+        "selected"
+    ) {
+      button.hidden =
+        !selectionAvailable;
+    }
+
+    const active =
+      scope ===
+        getContentScope();
+
+    button.classList.toggle(
+      "active",
+      active
+    );
+
+    button.setAttribute(
+      "aria-pressed",
+      active
+        ? "true"
+        : "false"
+    );
+  }
+}
+
+async function persistNonSelectedContentScope(
+  scope
+) {
+  if (
+    scope !==
+      "minimal" &&
+    scope !==
+      "page"
+  ) {
+    return;
+  }
+
+  clipnestRememberedContentScope =
+    scope;
+
+  await chrome.storage.local.set({
+    [CLIPNEST_CONTENT_SCOPE_KEY]:
+      scope,
+
+    /*
+     * Keep the old boolean synchronized for downgrade /
+     * capture-resume compatibility. It no longer drives
+     * the 2.0.12 UI.
+     */
+    clipnestNotionIncludePageContent:
+      scope ===
+        "page"
+  });
+}
+
+async function setContentScope(
+  requestedScope,
+  {
+    persist =
+      false,
+    syncMode =
+      true
+  } = {}
+) {
+  let next =
+    [
+      "minimal",
+      "selected",
+      "page"
+    ].includes(
+      requestedScope
+    )
+      ? requestedScope
+      : clipnestRememberedContentScope;
+
+  if (
+    next ===
+      "selected" &&
+    !hasSelectedContent()
+  ) {
+    next =
+      clipnestRememberedContentScope;
+  }
+
+  clipnestContentScope =
+    next;
+
+  syncLegacyPageContentInput(
+    next
+  );
+
+  if (syncMode) {
+    if (
+      next ===
+        "selected"
+    ) {
+      setContentMode(
+        "text"
+      );
+    } else if (
+      getContentMode() !==
+        "selection"
+    ) {
+      setContentMode(
+        "article"
+      );
+    }
+  }
+
+  renderContentScopeControl();
+
+  if (
+    persist &&
+    (
+      next ===
+        "minimal" ||
+      next ===
+        "page"
+    )
+  ) {
+    await persistNonSelectedContentScope(
+      next
+    );
+  }
+
+  document.dispatchEvent(
+    new CustomEvent(
+      "clipnest:notion-page-content-change"
+    )
+  );
+}
+
+async function installContentScopeControl() {
+  const legacy =
+    document.querySelector(
+      ".notion-body-content-toggle"
+    );
+
+  if (!legacy) {
+    return;
+  }
+
+  legacy.classList.add(
+    "clipnest-content-scope-legacy"
+  );
+
+  let root =
+    document.getElementById(
+      "clipnestContentScope"
+    );
+
+  if (!root) {
+    root =
+      document.createElement(
+        "div"
+      );
+
+    root.id =
+      "clipnestContentScope";
+
+    root.className =
+      "clipnest-content-scope";
+
+    const label =
+      document.createElement(
+        "div"
+      );
+
+    label.className =
+      "clipnest-content-scope-label";
+
+    label.textContent =
+      "Content to save";
+
+    const segmented =
+      document.createElement(
+        "div"
+      );
+
+    segmented.className =
+      "clipnest-content-scope-segmented";
+
+    segmented.setAttribute(
+      "role",
+      "group"
+    );
+
+    segmented.setAttribute(
+      "aria-label",
+      "Content to save"
+    );
+
+    const definitions = [
+      [
+        "minimal",
+        "Title + link"
+      ],
+      [
+        "selected",
+        "Selected"
+      ],
+      [
+        "page",
+        "Page"
+      ]
+    ];
+
+    for (
+      const [
+        scope,
+        text
+      ] of definitions
+    ) {
+      const button =
+        document.createElement(
+          "button"
+        );
+
+      button.type =
+        "button";
+
+      button.className =
+        "clipnest-content-scope-button";
+
+      button.dataset
+        .contentScope =
+        scope;
+
+      button.textContent =
+        text;
+
+      button.setAttribute(
+        "aria-pressed",
+        "false"
+      );
+
+      button.addEventListener(
+        "click",
+        () => {
+          if (
+            state?.saving
+          ) {
+            return;
+          }
+
+          void setContentScope(
+            scope,
+            {
+              persist:
+                scope !==
+                  "selected"
+            }
+          );
+        }
+      );
+
+      segmented.append(
+        button
+      );
+    }
+
+    root.append(
+      label,
+      segmented
+    );
+
+    legacy.before(
+      root
+    );
+  }
+
+  /*
+   * CLIPNEST 2.0.14
+   *
+   * The remembered non-selected scope is loaded before the page
+   * capture knows whether a browser selection exists. Keep the
+   * control's layout space reserved, but do not paint a temporary
+   * active state that may immediately change to Selected.
+   */
+  root.classList.add(
+    "clipnest-content-scope-pending",
+    "clipnest-content-scope-no-transition"
+  );
+
+  const stored =
+    await chrome.storage.local.get([
+      CLIPNEST_CONTENT_SCOPE_KEY,
+      "clipnestNotionIncludePageContent"
+    ]);
+
+  const remembered =
+    stored[
+      CLIPNEST_CONTENT_SCOPE_KEY
+    ];
+
+  if (
+    remembered ===
+      "minimal" ||
+    remembered ===
+      "page"
+  ) {
+    clipnestRememberedContentScope =
+      remembered;
+  } else {
+    clipnestRememberedContentScope =
+      stored
+        .clipnestNotionIncludePageContent ===
+        false
+        ? "minimal"
+        : "page";
+  }
+
+  clipnestContentScope =
+    clipnestRememberedContentScope;
+
+  syncLegacyPageContentInput(
+    clipnestContentScope
+  );
+
+  /*
+   * 2.0.15
+   *
+   * Do not render an active scope yet.
+   * captureCurrentPage() resolves whether Selected exists
+   * and renders the first visible state.
+   */
+}
+
+function revealContentScopeControl() {
+  const root =
+    document.getElementById(
+      "clipnestContentScope"
+    );
+
+  if (!root) {
+    return;
+  }
+
+  /*
+   * The final active/hidden button state has already been
+   * rendered by applyContentScopeForCapture() and any
+   * one-time capture resume.
+   *
+   * Reveal it with transitions disabled. Two animation
+   * frames guarantee one complete visible paint before
+   * normal button transitions are restored.
+   */
+  root.classList.remove(
+    "clipnest-content-scope-pending"
+  );
+
+  requestAnimationFrame(
+    () => {
+      requestAnimationFrame(
+        () => {
+          root.classList.remove(
+            "clipnest-content-scope-no-transition"
+          );
+        }
+      );
+    }
+  );
+}
+
+async function applyContentScopeForCapture(
+  capture
+) {
+  const plainSelection =
+    String(
+      capture?.selection ||
+      ""
+    ).trim();
+
+  const richSelection =
+    String(
+      capture
+        ?.selectionMarkdown ||
+      ""
+    ).trim();
+
+  clipnestSelectionSnapshot = {
+    markdown:
+      richSelection ||
+      plainSelection,
+
+    media:
+      sanitizeSelectedContentMedia(
+        capture
+          ?.selectionMedia
+      )
+  };
+
+  const available =
+    hasSelectedContent();
+
+  els.selectedTextModeRow
+    ?.classList.toggle(
+      "hidden",
+      !available
+    );
+
+  await setContentScope(
+    available
+      ? "selected"
+      : clipnestRememberedContentScope,
+    {
+      persist:
+        false
+    }
+  );
+}
+
+async function snapshotContentScopeForCapture(
+  pageUrl
+) {
+  const url =
+    String(
+      pageUrl ||
+      state.capture?.url ||
+      ""
+    ).trim();
+
+  await chrome.storage.session.set({
+    [CLIPNEST_CONTENT_SCOPE_RESUME_KEY]:
+      {
+        pageUrl:
+          url,
+
+        createdAt:
+          Date.now(),
+
+        scope:
+          getContentScope(),
+
+        selectionMarkdown:
+          String(
+            clipnestSelectionSnapshot
+              .markdown ||
+            ""
+          ),
+
+        selectionMedia:
+          sanitizeSelectedContentMedia(
+            clipnestSelectionSnapshot
+              .media
+          )
+      }
+  });
+}
+
+globalThis
+  .ClipNestContentScopeResume =
+  Object.freeze({
+    snapshot:
+      snapshotContentScopeForCapture
+  });
+
+async function restoreContentScopeAfterCapture(
+  tab,
+  capture
+) {
+  const stored =
+    await chrome.storage.session.get(
+      CLIPNEST_CONTENT_SCOPE_RESUME_KEY
+    );
+
+  const resume =
+    stored[
+      CLIPNEST_CONTENT_SCOPE_RESUME_KEY
+    ];
+
+  if (!resume) {
+    return false;
+  }
+
+  await chrome.storage.session.remove(
+    CLIPNEST_CONTENT_SCOPE_RESUME_KEY
+  );
+
+  const createdAt =
+    Number(
+      resume.createdAt ||
+      0
+    );
+
+  const currentUrl =
+    String(
+      capture?.url ||
+      tab?.url ||
+      ""
+    ).trim();
+
+  const resumeUrl =
+    String(
+      resume.pageUrl ||
+      ""
+    ).trim();
+
+  if (
+    !createdAt ||
+    Date.now() -
+      createdAt >
+      5 * 60 * 1000 ||
+    (
+      resumeUrl &&
+      currentUrl &&
+      resumeUrl !==
+        currentUrl
+    )
+  ) {
+    return false;
+  }
+
+  const resumedMarkdown =
+    String(
+      resume
+        .selectionMarkdown ||
+      ""
+    ).trim();
+
+  const resumedMedia =
+    sanitizeSelectedContentMedia(
+      resume
+        .selectionMedia
+    );
+
+  if (
+    resumedMarkdown ||
+    resumedMedia.length
+  ) {
+    clipnestSelectionSnapshot = {
+      markdown:
+        resumedMarkdown,
+      media:
+        resumedMedia
+    };
+  }
+
+  renderContentScopeControl();
+
+  const requestedScope =
+    [
+      "minimal",
+      "selected",
+      "page"
+    ].includes(
+      resume.scope
+    )
+      ? resume.scope
+      : clipnestRememberedContentScope;
+
+  await setContentScope(
+    requestedScope,
+    {
+      persist:
+        false
+    }
+  );
+
+  return true;
+}
+
+function mergeContentMedia(
+  ...groups
+) {
+  const result =
+    [];
+
+  const seen =
+    new Set();
+
+  for (
+    const group of
+      groups
+  ) {
+    for (
+      const item of
+        sanitizeSelectedContentMedia(
+          group
+        )
+    ) {
+      const key =
+        item.kind ===
+          "external"
+          ? `external:${item.url}`
+          : `data:${item.dataUrl}`;
+
+      if (
+        seen.has(
+          key
+        )
+      ) {
+        continue;
+      }
+
+      seen.add(
+        key
+      );
+
+      result.push(
+        item
+      );
+
+      if (
+        result.length >=
+          6
+      ) {
+        return result;
+      }
+    }
+  }
+
+  return result;
+}
+
+function loadPopupImage(
+  source
+) {
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+      const image =
+        new Image();
+
+      image.onload =
+        () =>
+          resolve(
+            image
+          );
+
+      image.onerror =
+        reject;
+
+      image.src =
+        source;
+    }
+  );
+}
+
+async function rasterizeSelectedSvgMedia(
+  item
+) {
+  if (
+    item?.kind !==
+      "data" ||
+    !(
+      String(
+        item.mimeType ||
+        ""
+      )
+        .toLowerCase()
+        .includes(
+          "svg"
+        ) ||
+      /^data:image\/svg\+xml/i.test(
+        String(
+          item.dataUrl ||
+          ""
+        )
+      )
+    )
+  ) {
+    return item;
+  }
+
+  try {
+    const image =
+      await loadPopupImage(
+        item.dataUrl
+      );
+
+    const rawWidth =
+      Math.max(
+        1,
+        Number(
+          image.naturalWidth ||
+          image.width ||
+          0
+        )
+      );
+
+    const rawHeight =
+      Math.max(
+        1,
+        Number(
+          image.naturalHeight ||
+          image.height ||
+          0
+        )
+      );
+
+    if (
+      rawWidth <= 1 ||
+      rawHeight <= 1
+    ) {
+      return item;
+    }
+
+    const maxDimension =
+      1800;
+
+    const scale =
+      Math.min(
+        1,
+        maxDimension /
+          rawWidth,
+        maxDimension /
+          rawHeight
+      );
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+    canvas.width =
+      Math.max(
+        1,
+        Math.round(
+          rawWidth *
+            scale
+        )
+      );
+
+    canvas.height =
+      Math.max(
+        1,
+        Math.round(
+          rawHeight *
+            scale
+        )
+      );
+
+    const context =
+      canvas.getContext(
+        "2d"
+      );
+
+    if (!context) {
+      return item;
+    }
+
+    context.drawImage(
+      image,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    return {
+      kind:
+        "data",
+
+      dataUrl:
+        canvas.toDataURL(
+          "image/png"
+        ),
+
+      mimeType:
+        "image/png",
+
+      filename:
+        String(
+          item.filename ||
+          "selected-graphic.svg"
+        )
+          .replace(
+            /\.svg$/i,
+            ""
+          ) +
+        ".png",
+
+      label:
+        item.label ||
+        "Selected graphic"
+    };
+  } catch {
+    /*
+     * If rasterization fails, preserve the sanitized SVG.
+     * The destination image path can still attempt to use it.
+     */
+    return item;
+  }
+}
+
+async function preparePayloadSvgMedia(
+  payload
+) {
+  const cache =
+    new Map();
+
+  const prepare =
+    async (
+      items
+    ) => {
+      const result =
+        [];
+
+      for (
+        const item of
+          (
+            Array.isArray(
+              items
+            )
+              ? items
+              : []
+          )
+      ) {
+        const key =
+          item?.kind ===
+            "data"
+            ? String(
+                item.dataUrl ||
+                ""
+              )
+            : "";
+
+        if (
+          key &&
+          cache.has(
+            key
+          )
+        ) {
+          result.push(
+            cache.get(
+              key
+            )
+          );
+
+          continue;
+        }
+
+        const prepared =
+          await rasterizeSelectedSvgMedia(
+            item
+          );
+
+        if (key) {
+          cache.set(
+            key,
+            prepared
+          );
+        }
+
+        result.push(
+          prepared
+        );
+      }
+
+      return result;
+    };
+
+  payload.notionBodyMedia =
+    await prepare(
+      payload
+        .notionBodyMedia
+    );
+
+  payload.obsidianBodyMedia =
+    await prepare(
+      payload
+        .obsidianBodyMedia
+    );
+}
+
+/* END CLIPNEST CONTENT SCOPE - 2.0.12 */
+
+
 function setContentMode(mode) {
   const allowed = new Set(["article", "text", "selection"]);
   const next = allowed.has(mode) ? mode : "article";
@@ -14174,8 +15239,8 @@ function updateContentModeUI() {
       (
         state.destination ===
           "obsidian" &&
-        mode ===
-          "article"
+        mode !==
+          "selection"
       )
     );
 }
@@ -14906,7 +15971,25 @@ async function loadNotionTagOptions() {
     }
 
     renderNotionSelectedTags();
-    renderObsidianTagSuggestions();
+
+    /*
+     * NOTION TAG OPTIONS LOAD - 2.0.7
+     *
+     * Loading available Multi-select options must not open
+     * the suggestions dropdown by itself. Only refresh the
+     * dropdown when the user is actually interacting with
+     * the shared Tags / Multi-select input.
+     */
+    if (
+      document.activeElement ===
+        els.tagsInput
+    ) {
+      renderObsidianTagSuggestions();
+    } else {
+      els.tagSuggestions?.classList.add(
+        "hidden"
+      );
+    }
   } catch (error) {
     notionTagOptions =
       [];
@@ -15017,6 +16100,49 @@ function setupObsidianTagAutocomplete() {
   els.tagSyncMeta =
     meta;
 
+  /*
+   * NOTION MULTI-SELECT CLICK TOGGLE - 2.0.8
+   *
+   * The shared Tags / Multi-select field opens suggestions
+   * when its input receives focus. When the input is already
+   * focused and the suggestions are open, clicking the field
+   * again should close them, matching regular Select.
+   *
+   * Use pointerdown so the decision happens before the normal
+   * click/focus behavior.
+   */
+  editor.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (
+        state.destination !==
+          "notion" ||
+        document.activeElement !==
+          els.tagsInput ||
+        !els.tagSuggestions ||
+        els.tagSuggestions.classList.contains(
+          "hidden"
+        )
+      ) {
+        return;
+      }
+
+      if (
+        event.target !== editor &&
+        event.target !==
+          selectedTags &&
+        event.target !==
+          els.tagsInput
+      ) {
+        return;
+      }
+
+      els.tagSuggestions.classList.add(
+        "hidden"
+      );
+    }
+  );
+
   editor.addEventListener(
     "click",
     (event) => {
@@ -15054,27 +16180,14 @@ function setupObsidianTagAutocomplete() {
         return;
       }
 
-      if (
-        state.destination ===
-          "notion" &&
-        event.key ===
-          "Backspace" &&
-        !els.tagsInput.value &&
-        notionSelectedTags.length
-      ) {
-        event.preventDefault();
-
-        const last =
-          notionSelectedTags[
-            notionSelectedTags.length - 1
-          ];
-
-        removeNotionSelectedTag(
-          last.tag
-        );
-
-        return;
-      }
+      /*
+       * MULTI-SELECT EXPLICIT REMOVAL - 2.0.9
+       *
+       * Do not delete chips from an empty-input Backspace.
+       * This shared field moves focus through a nested label/
+       * editor/input structure, so destructive behavior must
+       * require the chip's visible remove button.
+       */
 
       if (
         state.destination ===
