@@ -3776,6 +3776,521 @@ function setupNotionPresetChooserDrag(
   );
 }
 
+let notionPresetChooserActionsMenu =
+  null;
+
+let notionPresetChooserActionsTrigger =
+  null;
+
+function closeNotionPresetChooserActionsMenu() {
+  notionPresetChooserActionsMenu?.remove();
+
+  notionPresetChooserActionsMenu =
+    null;
+
+  if (
+    notionPresetChooserActionsTrigger
+  ) {
+    notionPresetChooserActionsTrigger
+      .setAttribute(
+        "aria-expanded",
+        "false"
+      );
+  }
+
+  notionPresetChooserActionsTrigger =
+    null;
+}
+
+function positionNotionPresetChooserActionsMenu() {
+  const menu =
+    notionPresetChooserActionsMenu;
+
+  const trigger =
+    notionPresetChooserActionsTrigger;
+
+  if (
+    !menu ||
+    !trigger
+  ) {
+    return;
+  }
+
+  const triggerRect =
+    trigger.getBoundingClientRect();
+
+  const menuRect =
+    menu.getBoundingClientRect();
+
+  const edge =
+    8;
+
+  const gap =
+    6;
+
+  const left =
+    Math.max(
+      edge,
+      Math.min(
+        window.innerWidth -
+          menuRect.width -
+          edge,
+        triggerRect.right -
+          menuRect.width
+      )
+    );
+
+  let top =
+    triggerRect.bottom +
+    gap;
+
+  if (
+    top +
+      menuRect.height >
+    window.innerHeight -
+      edge
+  ) {
+    top =
+      triggerRect.top -
+      gap -
+      menuRect.height;
+  }
+
+  menu.style.left =
+    `${Math.round(left)}px`;
+
+  menu.style.top =
+    `${Math.max(
+      edge,
+      Math.round(top)
+    )}px`;
+}
+
+function duplicateNotionPresetName(
+  sourceName,
+  presets
+) {
+  const original =
+    String(
+      sourceName ||
+      "Untitled preset"
+    ).trim() ||
+    "Untitled preset";
+
+  const first =
+    `${original} copy`;
+
+  const names =
+    new Set(
+      (
+        Array.isArray(
+          presets
+        )
+          ? presets
+          : []
+      ).map(
+        (preset) =>
+          String(
+            preset?.name ||
+            ""
+          )
+            .trim()
+            .toLowerCase()
+      )
+    );
+
+  if (
+    !names.has(
+      first.toLowerCase()
+    )
+  ) {
+    return first;
+  }
+
+  let index =
+    2;
+
+  while (
+    names.has(
+      `${first} ${index}`
+        .toLowerCase()
+    )
+  ) {
+    index +=
+      1;
+  }
+
+  return `${first} ${index}`;
+}
+
+async function duplicateNotionPresetFromChooser(
+  presetId
+) {
+  const info =
+    await ClipNestNotionStore
+      .listPresets();
+
+  const presets =
+    Array.isArray(
+      info?.presets
+    )
+      ? info.presets
+      : [];
+
+  const source =
+    presets.find(
+      (preset) =>
+        String(
+          preset.id ||
+          ""
+        ) ===
+        String(
+          presetId ||
+          ""
+        )
+    );
+
+  if (!source) {
+    throw new Error(
+      "That preset no longer exists."
+    );
+  }
+
+  const duplicateName =
+    duplicateNotionPresetName(
+      source.name,
+      presets
+    );
+
+  /*
+   * createPreset() generates a fresh preset ID while
+   * normalization preserves the source configuration.
+   */
+  const duplicate =
+    await ClipNestNotionStore
+      .createPreset({
+        ...source,
+        name:
+          duplicateName
+      });
+
+  const afterCreate =
+    await ClipNestNotionStore
+      .listPresets();
+
+  const afterPresets =
+    Array.isArray(
+      afterCreate?.presets
+    )
+      ? afterCreate.presets
+      : [];
+
+  const duplicateStored =
+    afterPresets.find(
+      (preset) =>
+        preset.id ===
+          duplicate.id
+    );
+
+  if (!duplicateStored) {
+    throw new Error(
+      "ClipNest created the copy but could not find it."
+    );
+  }
+
+  const reordered =
+    afterPresets.filter(
+      (preset) =>
+        preset.id !==
+          duplicate.id
+    );
+
+  const sourceIndex =
+    reordered.findIndex(
+      (preset) =>
+        preset.id ===
+          source.id
+    );
+
+  if (
+    sourceIndex >=
+      0
+  ) {
+    reordered.splice(
+      sourceIndex + 1,
+      0,
+      duplicateStored
+    );
+  } else {
+    reordered.push(
+      duplicateStored
+    );
+  }
+
+  /*
+   * Duplication is a management action, not a preset switch.
+   * createPreset() temporarily activates the copy internally,
+   * so restore the previously active preset while persisting
+   * the new array order.
+   */
+  await ClipNestNotionStore
+    .replacePresets(
+      reordered,
+      info?.activePresetId ||
+        ""
+    );
+
+  await loadNotionPresetPicker();
+
+  /*
+   * Stay on Choose preset. Editing remains an explicit,
+   * separate action from the preset actions menu.
+   */
+  await renderNotionPresetChooser();
+
+  setStatus(
+    "Preset duplicated.",
+    "success"
+  );
+}
+
+async function deleteNotionPresetFromChooser(
+  preset
+) {
+  const presetId =
+    String(
+      preset?.id ||
+      ""
+    ).trim();
+
+  if (!presetId) {
+    throw new Error(
+      "That preset no longer exists."
+    );
+  }
+
+  const name =
+    String(
+      preset?.name ||
+      "Untitled preset"
+    ).trim() ||
+    "Untitled preset";
+
+  const confirmed =
+    window.confirm(
+      `Remove "${name}" from ClipNest?\n\n` +
+      "Nothing will be removed from Notion."
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  await ClipNestNotionStore
+    .removePreset(
+      presetId
+    );
+
+  await loadNotionPresetPicker();
+
+  await renderNotionPresetChooser();
+
+  setStatus(
+    "Preset deleted.",
+    "success"
+  );
+}
+
+function openNotionPresetChooserActionsMenu(
+  trigger,
+  preset
+) {
+  const presetId =
+    String(
+      preset?.id ||
+      ""
+    ).trim();
+
+  if (!presetId) {
+    return;
+  }
+
+  const sameTrigger =
+    notionPresetChooserActionsTrigger ===
+      trigger;
+
+  if (
+    sameTrigger &&
+    notionPresetChooserActionsMenu
+  ) {
+    closeNotionPresetChooserActionsMenu();
+    return;
+  }
+
+  closeNotionPresetChooserActionsMenu();
+
+  const menu =
+    document.createElement(
+      "div"
+    );
+
+  menu.className =
+    "notion-preset-actions-menu";
+
+  menu.dataset.presetId =
+    presetId;
+
+  menu.setAttribute(
+    "role",
+    "menu"
+  );
+
+  const addAction =
+    (
+      label,
+      handler,
+      {
+        destructive =
+          false
+      } = {}
+    ) => {
+      const item =
+        document.createElement(
+          "button"
+        );
+
+      item.type =
+        "button";
+
+      item.className =
+        "notion-preset-actions-item";
+
+      if (destructive) {
+        item.classList.add(
+          "destructive"
+        );
+      }
+
+      item.textContent =
+        label;
+
+      item.setAttribute(
+        "role",
+        "menuitem"
+      );
+
+      item.addEventListener(
+        "click",
+        async (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          closeNotionPresetChooserActionsMenu();
+
+          try {
+            await handler();
+          } catch (error) {
+            setStatus(
+              error?.message ||
+                String(error),
+              "error"
+            );
+          }
+        }
+      );
+
+      menu.append(
+        item
+      );
+    };
+
+  addAction(
+    "Edit preset",
+    async () => {
+      await openNotionPresetInBuilder(
+        presetId
+      );
+    }
+  );
+
+  addAction(
+    "Duplicate preset",
+    async () => {
+      await duplicateNotionPresetFromChooser(
+        presetId
+      );
+    }
+  );
+
+  const divider =
+    document.createElement(
+      "div"
+    );
+
+  divider.className =
+    "notion-preset-actions-divider";
+
+  menu.append(
+    divider
+  );
+
+  addAction(
+    "Delete preset",
+    async () => {
+      await deleteNotionPresetFromChooser(
+        preset
+      );
+    },
+    {
+      destructive:
+        true
+    }
+  );
+
+  document.body.append(
+    menu
+  );
+
+  notionPresetChooserActionsMenu =
+    menu;
+
+  notionPresetChooserActionsTrigger =
+    trigger;
+
+  trigger.setAttribute(
+    "aria-expanded",
+    "true"
+  );
+
+  positionNotionPresetChooserActionsMenu();
+}
+
+document.addEventListener(
+  "pointerdown",
+  (event) => {
+    if (
+      !notionPresetChooserActionsMenu
+    ) {
+      return;
+    }
+
+    if (
+      notionPresetChooserActionsMenu
+        .contains(
+          event.target
+        ) ||
+      notionPresetChooserActionsTrigger
+        ?.contains(
+          event.target
+        )
+    ) {
+      return;
+    }
+
+    closeNotionPresetChooserActionsMenu();
+  }
+);
+
 async function renderNotionPresetChooser() {
   const list =
     document.getElementById(
@@ -3931,21 +4446,57 @@ async function renderNotionPresetChooser() {
       meta
     );
 
-    const arrow =
+    const actions =
       document.createElement(
-        "span"
+        "button"
       );
 
-    arrow.className =
-      "notion-preset-card-arrow";
+    actions.type =
+      "button";
 
-    arrow.textContent =
-      "›";
+    actions.className =
+      "notion-preset-card-actions";
+
+    actions.textContent =
+      "•••";
+
+    actions.title =
+      "Preset actions";
+
+    actions.setAttribute(
+      "aria-label",
+      `Actions for ${
+        preset.name ||
+        "preset"
+      }`
+    );
+
+    actions.setAttribute(
+      "aria-haspopup",
+      "menu"
+    );
+
+    actions.setAttribute(
+      "aria-expanded",
+      "false"
+    );
+
+    actions.addEventListener(
+      "click",
+      (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        openNotionPresetChooserActionsMenu(
+          actions,
+          preset
+        );
+      }
+    );
 
     button.append(
       icon,
-      copy,
-      arrow
+      copy
     );
 
     button.addEventListener(
@@ -3992,7 +4543,8 @@ async function renderNotionPresetChooser() {
 
     row.append(
       handle,
-      button
+      button,
+      actions
     );
 
     setupNotionPresetChooserDrag(

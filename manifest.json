@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ClipNest",
-  "version": "2.0.20",
+  "version": "2.0.23",
   "description": "Web Clipper for Obsidian & Notion",
   "minimum_chrome_version": "122",
   "permissions": [
