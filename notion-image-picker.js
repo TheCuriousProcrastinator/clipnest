@@ -1133,6 +1133,217 @@
     }
   }
 
+  async function cropStoredPropertyImagePreview(
+    capture
+  ) {
+    const dataUrl =
+      String(
+        capture?.dataUrl ||
+          ""
+      );
+
+    const rect =
+      capture?.rect &&
+      typeof capture.rect ===
+        "object"
+        ? capture.rect
+        : null;
+
+    const viewportWidth =
+      Number(
+        capture?.viewportWidth ||
+          0
+      );
+
+    const viewportHeight =
+      Number(
+        capture?.viewportHeight ||
+          0
+      );
+
+    if (
+      !/^data:image\//i.test(
+        dataUrl
+      ) ||
+      !rect ||
+      viewportWidth <= 0 ||
+      viewportHeight <= 0 ||
+      Number(
+        rect.width ||
+          0
+      ) <= 0 ||
+      Number(
+        rect.height ||
+          0
+      ) <= 0
+    ) {
+      return "";
+    }
+
+    try {
+      const screenshot =
+        document.createElement(
+          "img"
+        );
+
+      await new Promise(
+        (
+          resolve,
+          reject
+        ) => {
+          screenshot.onload =
+            resolve;
+
+          screenshot.onerror =
+            reject;
+
+          screenshot.src =
+            dataUrl;
+        }
+      );
+
+      const scaleX =
+        screenshot.naturalWidth /
+        viewportWidth;
+
+      const scaleY =
+        screenshot.naturalHeight /
+        viewportHeight;
+
+      const sourceX =
+        Math.max(
+          0,
+          Math.round(
+            Number(
+              rect.x ||
+                0
+            ) *
+              scaleX
+          )
+        );
+
+      const sourceY =
+        Math.max(
+          0,
+          Math.round(
+            Number(
+              rect.y ||
+                0
+            ) *
+              scaleY
+          )
+        );
+
+      const sourceWidth =
+        Math.min(
+          screenshot.naturalWidth -
+            sourceX,
+          Math.max(
+            1,
+            Math.round(
+              Number(
+                rect.width ||
+                  0
+              ) *
+                scaleX
+            )
+          )
+        );
+
+      const sourceHeight =
+        Math.min(
+          screenshot.naturalHeight -
+            sourceY,
+          Math.max(
+            1,
+            Math.round(
+              Number(
+                rect.height ||
+                  0
+              ) *
+                scaleY
+            )
+          )
+        );
+
+      if (
+        sourceWidth <= 0 ||
+        sourceHeight <= 0
+      ) {
+        return "";
+      }
+
+      const maxDimension =
+        900;
+
+      const outputScale =
+        Math.min(
+          1,
+          maxDimension /
+            sourceWidth,
+          maxDimension /
+            sourceHeight
+        );
+
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
+
+      canvas.width =
+        Math.max(
+          1,
+          Math.round(
+            sourceWidth *
+              outputScale
+          )
+        );
+
+      canvas.height =
+        Math.max(
+          1,
+          Math.round(
+            sourceHeight *
+              outputScale
+          )
+        );
+
+      const context =
+        canvas.getContext(
+          "2d"
+        );
+
+      if (!context) {
+        return "";
+      }
+
+      context.drawImage(
+        screenshot,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      return canvas.toDataURL(
+        "image/jpeg",
+        .86
+      );
+    } catch (error) {
+      console.debug(
+        "ClipNest could not crop the stored property-image preview:",
+        error
+      );
+
+      return "";
+    }
+  }
+
+
   async function startClipNestPageImageSelection(purpose = "property") {
     const tabs =
       await chrome.tabs.query({
@@ -1915,6 +2126,8 @@
   function create({
     detectedImage = "",
     initialValue = "",
+    initialPreviewCapture =
+      null,
     propertyId = "",
     onChange =
       () => {}
@@ -2211,10 +2424,37 @@
             "image-error"
           );
 
-          const fallback =
-            await captureVisibleImagePreview(
-              requestedUrl
+          let fallback =
+            "";
+
+          const storedPreviewUrl =
+            normalizeImageUrl(
+              initialPreviewCapture
+                ?.url
             );
+
+          if (
+            storedPreviewUrl &&
+            requestedUrl ===
+              storedPreviewUrl
+          ) {
+            fallback =
+              await cropStoredPropertyImagePreview(
+                initialPreviewCapture
+              );
+          }
+
+          /*
+           * Preserve the previous DOM-rediscovery fallback
+           * for older picks that do not have a stored local
+           * screenshot.
+           */
+          if (!fallback) {
+            fallback =
+              await captureVisibleImagePreview(
+                requestedUrl
+              );
+          }
 
           if (
             requestedUrl !==

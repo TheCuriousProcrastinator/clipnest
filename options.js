@@ -18,12 +18,6 @@ let notionOptionsReady =
 let notionOptionsIntentHandling =
   false;
 
-let settingsDirty =
-  false;
-
-let settingsSaveHideTimer =
-  null;
-
 document.addEventListener(
   "DOMContentLoaded",
   init
@@ -85,42 +79,40 @@ async function init() {
     "exportSettings",
     "importSettings",
     "importSettingsFile",
-    "settingsBackupStatus",
-    "settingsSavebar",
-    "saveSettings",
-    "saveStatus"
+    "settingsBackupStatus"
   ]) {
     els[id] =
       document.getElementById(id);
   }
 
-  els.saveSettings.addEventListener(
-    "click",
-    saveSettings
-  );
-
-  for (
-    const field of [
-      els.defaultDestination,
-      els.defaultImageFormat,
-      els.quickClipNotionPresetId,
-      els.notionPresetName
-    ]
-  ) {
-    field.addEventListener(
-      "input",
-      markSettingsDirty
-    );
-
-    field.addEventListener(
-      "change",
-      markSettingsDirty
-    );
-  }
-
   els.defaultDestination.addEventListener(
     "change",
-    updateQuickClipPresetVisibility
+    () => {
+      updateQuickClipPresetVisibility();
+
+      void saveImmediateSettings();
+    }
+  );
+
+  els.defaultImageFormat.addEventListener(
+    "change",
+    () => {
+      void saveImmediateSettings();
+    }
+  );
+
+  els.quickClipNotionPresetId.addEventListener(
+    "change",
+    () => {
+      void saveImmediateSettings();
+    }
+  );
+
+  els.notionPresetName.addEventListener(
+    "change",
+    () => {
+      void saveImmediateNotionPresetName();
+    }
   );
 
   els.exportSettings.addEventListener(
@@ -249,7 +241,10 @@ async function init() {
   document.addEventListener(
     "keydown",
     (event) => {
-      if (event.key === "Escape") {
+      if (
+        event.key ===
+          "Escape"
+      ) {
         closeNotionWorkspacePicker();
       }
     }
@@ -541,10 +536,9 @@ async function loadSettings() {
     );
   }
 
-  clearSettingsDirty();
 }
 
-async function saveSettings() {
+async function saveImmediateSettings() {
   await chrome.storage.local.set({
     defaultDestination:
       els.defaultDestination.value,
@@ -559,128 +553,33 @@ async function saveSettings() {
       els.quickClipNotionPresetId.value ||
       ""
   });
+}
 
+async function saveImmediateNotionPresetName() {
   const preset =
     await ClipNestNotionStore
       .getActivePreset();
 
-  if (preset) {
-    await ClipNestNotionStore
-      .updateActivePreset({
-        name:
-          els.notionPresetName.value
-      });
-
-    await refreshNotionPresetList();
+  if (!preset) {
+    return;
   }
 
-  showSettingsSaved();
+  const name =
+    String(
+      els.notionPresetName.value ||
+      ""
+    ).trim();
+
+  await ClipNestNotionStore
+    .updateActivePreset({
+      name:
+        name ||
+        preset.name
+    });
+
+  await refreshNotionPresetList();
 }
 
-function markSettingsDirty() {
-  settingsDirty =
-    true;
-
-  clearTimeout(
-    settingsSaveHideTimer
-  );
-
-  settingsSaveHideTimer =
-    null;
-
-  els.settingsSavebar.hidden =
-    false;
-
-  document
-    .querySelector(
-      ".page"
-    )
-    ?.classList.add(
-      "settings-dirty"
-    );
-
-  els.saveStatus.textContent =
-    "";
-
-  els.saveStatus.className =
-    "status";
-}
-
-function clearSettingsDirty() {
-  settingsDirty =
-    false;
-
-  clearTimeout(
-    settingsSaveHideTimer
-  );
-
-  settingsSaveHideTimer =
-    null;
-
-  els.settingsSavebar.hidden =
-    true;
-
-  document
-    .querySelector(
-      ".page"
-    )
-    ?.classList.remove(
-      "settings-dirty"
-    );
-
-  els.saveStatus.textContent =
-    "";
-
-  els.saveStatus.className =
-    "status";
-}
-
-function showSettingsSaved() {
-  settingsDirty =
-    false;
-
-  clearTimeout(
-    settingsSaveHideTimer
-  );
-
-  els.settingsSavebar.hidden =
-    false;
-
-  document
-    .querySelector(
-      ".page"
-    )
-    ?.classList.add(
-      "settings-dirty"
-    );
-
-  showStatus(
-    els.saveStatus,
-    "Saved.",
-    "success"
-  );
-
-  settingsSaveHideTimer =
-    setTimeout(
-      () => {
-        if (settingsDirty) {
-          return;
-        }
-
-        els.settingsSavebar.hidden =
-          true;
-
-        document
-          .querySelector(
-            ".page"
-          )
-          ?.classList.remove(
-            "settings-dirty"
-          );
-      },
-      900
-    );
-}
 
 function portableObject(
   value
@@ -803,6 +702,7 @@ async function exportSettingsBackup() {
         "defaultDestination",
         "defaultImageFormat",
         "quickClipNotionPresetId",
+        "clipnestTheme",
         NOTION_FIELD_MEMORY_KEY
       ]);
 
@@ -828,6 +728,14 @@ async function exportSettingsBackup() {
             "webp"
             ? "webp"
             : "jpeg",
+
+        theme:
+          globalThis
+            .ClipNestThemes
+            ?.normalizeTheme?.(
+              local.clipnestTheme
+            ) ||
+          "night-shift",
 
         quickClipNotionPresetId:
           String(
@@ -1140,11 +1048,35 @@ function validateSettingsBackup(
     );
   }
 
+  const rawTheme =
+    settings.theme;
+
+  const theme =
+    rawTheme === undefined
+      ? "night-shift"
+      : globalThis
+          .ClipNestThemes
+          ?.normalizeTheme?.(
+            rawTheme
+          ) ||
+        "night-shift";
+
+  if (
+    rawTheme !== undefined &&
+    theme !== rawTheme
+  ) {
+    throw new Error(
+      "The backup has an invalid ClipNest theme."
+    );
+  }
+
   return {
     defaultDestination:
       settings.defaultDestination,
 
     defaultImageFormat,
+
+    theme,
 
     quickClipNotionPresetId,
 
@@ -1221,6 +1153,9 @@ async function importSettingsBackup() {
 
       defaultImageFormat:
         settings.defaultImageFormat,
+
+      clipnestTheme:
+        settings.theme,
 
       quickClipNotionPresetId:
         settings.quickClipNotionPresetId,

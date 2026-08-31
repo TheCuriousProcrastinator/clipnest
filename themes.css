@@ -1,0 +1,2360 @@
+/*
+ * CLIPNEST THEMES - 2.0.24
+ *
+ * Night Shift intentionally has no global visual overrides.
+ * It is the existing ClipNest appearance and remains the
+ * default/fallback theme.
+ */
+
+/* =========================================================
+   Theme palette tokens
+   ========================================================= */
+
+html[data-clipnest-theme="rose-milk"],
+[data-clipnest-theme-preview="rose-milk"] {
+  --cn-bg: #fff7fa;
+  --cn-surface: #ffffff;
+  --cn-surface-hover: #fbe8ef;
+  --cn-border: #f0dce4;
+  --cn-border-strong: #dfbccb;
+  --cn-text: #30242a;
+  --cn-muted: #88737d;
+  --cn-primary: #d13a70;
+  --cn-primary-hover: #bd2f62;
+  --cn-primary-text: #ffffff;
+  --cn-secondary: #b96ad9;
+  --cn-secondary-text: #8d48a8;
+  --cn-soft: #fbe8ef;
+  --cn-danger: #b83255;
+  --cn-shadow: rgba(73, 37, 52, .16);
+}
+
+html[data-clipnest-theme="cherry-cola"],
+[data-clipnest-theme-preview="cherry-cola"] {
+  --cn-bg: #180d12;
+  --cn-surface: #25131b;
+  --cn-surface-hover: #331923;
+  --cn-border: #4a2835;
+  --cn-border-strong: #684052;
+  --cn-text: #fff0f5;
+  --cn-muted: #bd929f;
+  --cn-primary: #d93e72;
+  --cn-primary-hover: #c53264;
+  --cn-primary-text: #ffffff;
+  --cn-secondary: #e96a5b;
+  --cn-secondary-text: #ff9082;
+  --cn-soft: #3c1a28;
+  --cn-danger: #ff7b88;
+  --cn-shadow: rgba(0, 0, 0, .38);
+}
+
+html[data-clipnest-theme="lavender-blush"],
+[data-clipnest-theme-preview="lavender-blush"] {
+  --cn-bg: #faf7ff;
+  --cn-surface: #ffffff;
+  --cn-surface-hover: #f3ecfb;
+  --cn-border: #e0d3ec;
+  --cn-border-strong: #c8b3dc;
+  --cn-text: #2e2433;
+  --cn-muted: #7c6d85;
+  --cn-primary: #8e3fd1;
+  --cn-primary-hover: #7d31bf;
+  --cn-primary-text: #ffffff;
+  --cn-secondary: #d4378a;
+  --cn-secondary-text: #ad276d;
+  --cn-soft: #f1e5fa;
+  --cn-danger: #b83261;
+  --cn-shadow: rgba(59, 41, 76, .15);
+}
+
+html[data-clipnest-theme="strawberry-cream"],
+[data-clipnest-theme-preview="strawberry-cream"] {
+  --cn-bg: #fff7f0;
+  --cn-surface: #fffcf9;
+  --cn-surface-hover: #fff0e6;
+  --cn-border: #efd6c8;
+  --cn-border-strong: #ddb8a4;
+  --cn-text: #352821;
+  --cn-muted: #886f63;
+  --cn-primary: #c94961;
+  --cn-primary-hover: #b83e55;
+  --cn-primary-text: #ffffff;
+  --cn-secondary: #f2a65a;
+  --cn-secondary-text: #b85b16;
+  --cn-soft: #ffe3d4;
+  --cn-danger: #b6384b;
+  --cn-shadow: rgba(73, 50, 37, .15);
+}
+
+html[data-clipnest-theme="berry-night"],
+[data-clipnest-theme-preview="berry-night"] {
+  --cn-bg: #120d18;
+  --cn-surface: #211526;
+  --cn-surface-hover: #2f1b35;
+  --cn-border: #4a2b50;
+  --cn-border-strong: #68406e;
+  --cn-text: #faf5ff;
+  --cn-muted: #c2a9c7;
+  --cn-primary: #b62ac9;
+  --cn-primary-hover: #a71fba;
+  --cn-primary-text: #ffffff;
+  --cn-secondary: #fb7185;
+  --cn-secondary-text: #ff96a5;
+  --cn-soft: #351b3b;
+  --cn-danger: #ff7e91;
+  --cn-shadow: rgba(0, 0, 0, .4);
+}
+
+html[data-clipnest-theme="mint-candy"],
+[data-clipnest-theme-preview="mint-candy"] {
+  --cn-bg: #f5fffb;
+  --cn-surface: #ffffff;
+  --cn-surface-hover: #eafbf5;
+  --cn-border: #cfe9df;
+  --cn-border-strong: #afd4c7;
+  --cn-text: #24302c;
+  --cn-muted: #657a72;
+  --cn-primary: #d43e86;
+  --cn-primary-hover: #bf3276;
+  --cn-primary-text: #ffffff;
+  --cn-secondary: #4ec9a7;
+  --cn-secondary-text: #247f6b;
+  --cn-soft: #e1f7ee;
+  --cn-danger: #b83262;
+  --cn-shadow: rgba(34, 74, 60, .14);
+}
+
+html[data-clipnest-theme="night-signal"],
+[data-clipnest-theme-preview="night-signal"] {
+  --cn-bg: #071321;
+  --cn-surface: #0d1b2d;
+  --cn-surface-hover: #132641;
+  --cn-border: #294a73;
+  --cn-border-strong: #3b6090;
+  --cn-text: #f4f7ff;
+  --cn-muted: #90acd5;
+  --cn-primary: #1769ff;
+  --cn-primary-hover: #0b57e3;
+  --cn-primary-text: #ffffff;
+  --cn-secondary: #ffd21a;
+  --cn-secondary-text: #e8b900;
+  --cn-soft: #10284a;
+  --cn-danger: #ff6978;
+  --cn-shadow: rgba(0, 0, 0, .42);
+}
+
+/* Night Shift preview only. The real Night Shift UI stays untouched. */
+
+[data-clipnest-theme-preview="night-shift"] {
+  --cn-bg: #101010;
+  --cn-surface: #1b1b1b;
+  --cn-surface-hover: #252525;
+  --cn-border: #3a3a3a;
+  --cn-border-strong: #555555;
+  --cn-text: #f4f4f4;
+  --cn-muted: #9b9b9b;
+  --cn-primary: #9027db;
+  --cn-primary-hover: #7d20c1;
+  --cn-primary-text: #ffffff;
+  --cn-secondary: #db5b27;
+  --cn-secondary-text: #db5b27;
+  --cn-soft: #24172c;
+  --cn-shadow: rgba(0, 0, 0, .4);
+}
+
+/* =========================================================
+   Shared non-default theme bridge
+   ========================================================= */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) body {
+  --purple: var(--cn-primary);
+  --orange: var(--cn-secondary-text);
+
+  --clipper-purple: var(--cn-primary);
+  --clipper-orange: var(--cn-secondary-text);
+
+  --border: var(--cn-border);
+  --border-strong: var(--cn-border-strong);
+  --muted: var(--cn-muted);
+  --surface: var(--cn-surface);
+  --surface-hover: var(--cn-surface-hover);
+
+  background: var(--cn-bg);
+  color: var(--cn-text);
+}
+
+/* Core form surfaces */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) :is(
+  input,
+  select,
+  textarea,
+  #templateSelect
+) {
+  border-color: var(--cn-border-strong);
+  background: var(--cn-surface);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) :is(
+  input,
+  select,
+  textarea,
+  button
+)::placeholder {
+  color: var(--cn-muted);
+}
+
+/* Primary actions */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) .primary {
+  border-color: var(--cn-primary) !important;
+  background: var(--cn-primary) !important;
+  color: var(--cn-primary-text) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) .primary:hover {
+  background: var(--cn-primary-hover) !important;
+}
+
+/* Secondary actions */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) .secondary {
+  border-color: var(--cn-border-strong);
+  background: var(--cn-surface-hover);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) .secondary:hover {
+  border-color: var(--cn-primary);
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 9%,
+      var(--cn-surface)
+    );
+}
+
+/* Accent text */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) :is(
+  .text-button,
+  .notes-toggle,
+  .notion-new-preset-button,
+  .notion-body-media-add
+) {
+  color: var(--cn-secondary-text) !important;
+}
+
+/* Muted text */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) :is(
+  .muted,
+  .help,
+  .vault-name,
+  .notion-preset-card-copy small
+) {
+  color: var(--cn-muted);
+}
+
+/* Common surfaces */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) :is(
+  .destination,
+  .selection-box,
+  .card,
+  .notion-preset-card,
+  .notion-preset-actions-menu,
+  .notion-builder-drag-ghost,
+  .notion-custom-select-menu,
+  .notion-custom-multiselect-menu,
+  .notion-custom-date-menu,
+  .tag-suggestions
+) {
+  border-color: var(--cn-border);
+  background: var(--cn-surface);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) :is(
+  .notion-preset-card:hover,
+  .notion-preset-actions-item:hover,
+  .tag-suggestion:hover
+) {
+  background: var(--cn-surface-hover);
+}
+
+/* Selected / active controls */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) .destination-button.active {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 16%,
+      var(--cn-surface)
+    );
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) input:focus,
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) select:focus,
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) textarea:focus {
+  border-color: var(--cn-primary);
+  box-shadow:
+    0 0 0 3px
+    color-mix(
+      in srgb,
+      var(--cn-primary) 18%,
+      transparent
+    );
+}
+
+/* =========================================================
+   PRESET ICON THEME TOKENS - 2.0.28
+
+   These defaults reproduce the original ClipNest / Night Shift
+   icon presentation. Alternate themes can override only these
+   semantic tokens without changing icon geometry or storage.
+   ========================================================= */
+
+:root {
+  --cn-icon-primary: #9027db;
+  --cn-icon-accent: #db5b27;
+
+  --cn-icon-card-bg:
+    rgba(144, 39, 219, .16);
+
+  --cn-icon-card-fg:
+    #c886f4;
+
+  --cn-icon-button-border:
+    color-mix(
+      in srgb,
+      CanvasText 18%,
+      transparent
+    );
+
+  --cn-icon-button-bg:
+    color-mix(
+      in srgb,
+      CanvasText 5%,
+      Canvas
+    );
+
+  --cn-icon-button-hover-border:
+    color-mix(
+      in srgb,
+      CanvasText 30%,
+      transparent
+    );
+
+  --cn-icon-button-hover-bg:
+    color-mix(
+      in srgb,
+      CanvasText 8%,
+      Canvas
+    );
+
+  --cn-icon-picker-border:
+    color-mix(
+      in srgb,
+      CanvasText 18%,
+      transparent
+    );
+
+  --cn-icon-picker-bg:
+    color-mix(
+      in srgb,
+      CanvasText 4%,
+      Canvas
+    );
+
+  --cn-icon-picker-shadow:
+    rgba(0, 0, 0, .34);
+
+  --cn-icon-hover-bg:
+    color-mix(
+      in srgb,
+      CanvasText 8%,
+      transparent
+    );
+
+  --cn-icon-selected-border:
+    color-mix(
+      in srgb,
+      #9027db 68%,
+      transparent
+    );
+
+  --cn-icon-selected-bg:
+    color-mix(
+      in srgb,
+      #9027db 16%,
+      transparent
+    );
+
+  --cn-icon-default-selected-bg:
+    color-mix(
+      in srgb,
+      #9027db 14%,
+      transparent
+    );
+
+  --cn-icon-focus:
+    #9027db;
+}
+
+/*
+ * Route the existing preset-icon surfaces through the token
+ * layer. Geometry, sizing, spacing and interaction behavior
+ * remain untouched.
+ */
+
+.notion-builder-icon-button {
+  border-color:
+    var(--cn-icon-button-border) !important;
+
+  background:
+    var(--cn-icon-button-bg) !important;
+}
+
+.notion-builder-icon-button:hover {
+  border-color:
+    var(--cn-icon-button-hover-border) !important;
+
+  background:
+    var(--cn-icon-button-hover-bg) !important;
+}
+
+.notion-builder-icon-button:focus-visible {
+  outline-color:
+    var(--cn-icon-focus);
+}
+
+.notion-builder-icon-picker {
+  border-color:
+    var(--cn-icon-picker-border);
+
+  background:
+    var(--cn-icon-picker-bg);
+
+  box-shadow:
+    0 16px 42px
+    var(--cn-icon-picker-shadow);
+}
+
+.notion-builder-icon-default:hover,
+.notion-builder-icon-default.selected {
+  background:
+    var(--cn-icon-default-selected-bg);
+}
+
+.notion-builder-icon-option:hover {
+  background:
+    var(--cn-icon-hover-bg);
+}
+
+.notion-builder-icon-option.selected {
+  border-color:
+    var(--cn-icon-selected-border);
+
+  background:
+    var(--cn-icon-selected-bg);
+}
+
+.notion-builder-icon-option:focus-visible,
+.notion-builder-icon-default:focus-visible {
+  outline-color:
+    var(--cn-icon-focus);
+}
+
+.notion-preset-card-icon {
+  background:
+    var(--cn-icon-card-bg);
+
+  color:
+    var(--cn-icon-card-fg);
+}
+
+/* =========================================================
+   FINAL THEMED PRESET ICON SYSTEM - 2.0.31
+
+   Design rule:
+   - monochrome icon glyphs
+   - same geometry in every theme
+   - theme-native selection / hover / focus
+   - no arbitrary two-tone icon details
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   Theme art direction
+   --------------------------------------------------------- */
+
+html[data-clipnest-theme="night-shift"] {
+  --cn-icon-glyph: #c982ff;
+  --cn-icon-interaction: #9027db;
+  --cn-icon-surface: #1b1820;
+  --cn-icon-neutral-border: rgba(201, 130, 255, .28);
+  --cn-icon-theme-shadow: rgba(0, 0, 0, .38);
+}
+
+html[data-clipnest-theme="rose-milk"] {
+  --cn-icon-glyph: #d13a70;
+  --cn-icon-interaction: #d13a70;
+  --cn-icon-surface: #ffffff;
+  --cn-icon-neutral-border: #dfbccb;
+  --cn-icon-theme-shadow: rgba(97, 52, 71, .14);
+}
+
+html[data-clipnest-theme="cherry-cola"] {
+  --cn-icon-glyph: #d93e72;
+  --cn-icon-interaction: #d93e72;
+  --cn-icon-surface: #25131b;
+  --cn-icon-neutral-border: #684052;
+  --cn-icon-theme-shadow: rgba(0, 0, 0, .40);
+}
+
+html[data-clipnest-theme="lavender-blush"] {
+  --cn-icon-glyph: #8e3fd1;
+  --cn-icon-interaction: #8e3fd1;
+  --cn-icon-surface: #ffffff;
+  --cn-icon-neutral-border: #c8b3dc;
+  --cn-icon-theme-shadow: rgba(75, 48, 92, .14);
+}
+
+html[data-clipnest-theme="strawberry-cream"] {
+  --cn-icon-glyph: #c94961;
+  --cn-icon-interaction: #c94961;
+  --cn-icon-surface: #fffcf9;
+  --cn-icon-neutral-border: #ddb8a4;
+  --cn-icon-theme-shadow: rgba(91, 58, 42, .14);
+}
+
+html[data-clipnest-theme="berry-night"] {
+  --cn-icon-glyph: #b62ac9;
+  --cn-icon-interaction: #b62ac9;
+  --cn-icon-surface: #211526;
+  --cn-icon-neutral-border: #68406e;
+  --cn-icon-theme-shadow: rgba(0, 0, 0, .42);
+}
+
+html[data-clipnest-theme="mint-candy"] {
+  --cn-icon-glyph: #d43e86;
+  --cn-icon-interaction: #d43e86;
+  --cn-icon-surface: #ffffff;
+  --cn-icon-neutral-border: #afd4c7;
+  --cn-icon-theme-shadow: rgba(34, 74, 60, .14);
+}
+
+html[data-clipnest-theme="night-signal"] {
+  --cn-icon-glyph: #ffd21a;
+  --cn-icon-interaction: #1769ff;
+  --cn-icon-surface: #0d1b2d;
+  --cn-icon-neutral-border: #3b6090;
+  --cn-icon-theme-shadow: rgba(0, 0, 0, .42);
+}
+
+
+/* ---------------------------------------------------------
+   Shared semantic mapping
+
+   Both SVG path groups intentionally use the same glyph color.
+   The primary/accent path split remains in the icon data so
+   geometry and stored preset values remain untouched.
+   --------------------------------------------------------- */
+
+html[data-clipnest-theme] {
+  --cn-icon-primary:
+    var(--cn-icon-glyph);
+
+  --cn-icon-accent:
+    var(--cn-icon-glyph);
+
+  --cn-icon-card-bg:
+    color-mix(
+      in srgb,
+      var(--cn-icon-glyph) 12%,
+      var(--cn-icon-surface)
+    );
+
+  --cn-icon-card-fg:
+    var(--cn-icon-glyph);
+
+  --cn-icon-button-border:
+    var(--cn-icon-neutral-border);
+
+  --cn-icon-button-bg:
+    color-mix(
+      in srgb,
+      var(--cn-icon-glyph) 4%,
+      var(--cn-icon-surface)
+    );
+
+  --cn-icon-button-hover-border:
+    var(--cn-icon-interaction);
+
+  --cn-icon-button-hover-bg:
+    color-mix(
+      in srgb,
+      var(--cn-icon-interaction) 9%,
+      var(--cn-icon-surface)
+    );
+
+  --cn-icon-picker-border:
+    var(--cn-icon-neutral-border);
+
+  --cn-icon-picker-bg:
+    var(--cn-icon-surface);
+
+  --cn-icon-picker-shadow:
+    var(--cn-icon-theme-shadow);
+
+  --cn-icon-hover-bg:
+    color-mix(
+      in srgb,
+      var(--cn-icon-interaction) 10%,
+      transparent
+    );
+
+  --cn-icon-selected-border:
+    color-mix(
+      in srgb,
+      var(--cn-icon-interaction) 82%,
+      transparent
+    );
+
+  --cn-icon-selected-bg:
+    color-mix(
+      in srgb,
+      var(--cn-icon-interaction) 16%,
+      transparent
+    );
+
+  --cn-icon-default-selected-bg:
+    color-mix(
+      in srgb,
+      var(--cn-icon-interaction) 14%,
+      transparent
+    );
+
+  --cn-icon-focus:
+    var(--cn-icon-interaction);
+}
+
+/* Popup toggle */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.popup-toggle-row input[type="checkbox"]:checked {
+  border-color: var(--cn-primary);
+  background: var(--cn-primary);
+}
+
+/* Notion preset chooser */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-preset-card {
+  border-color: var(--cn-border);
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-surface) 96%,
+      var(--cn-primary) 4%
+    );
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-preset-card:hover {
+  border-color: var(--cn-border-strong);
+  background: var(--cn-surface-hover);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-preset-card-icon {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 16%,
+      var(--cn-surface)
+    );
+  color: var(--cn-primary);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-preset-card-actions:hover,
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-preset-card-actions[aria-expanded="true"] {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 10%,
+      var(--cn-surface)
+    );
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-preset-actions-item.destructive {
+  color: var(--cn-danger);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-preset-actions-divider {
+  background: var(--cn-border);
+}
+
+/* Settings-specific variables already consumed by options.css */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+) .settings-header p {
+  color: var(--cn-muted);
+}
+
+/* =========================================================
+   Final preset-card icon routing
+   ========================================================= */
+
+html[data-clipnest-theme]
+.notion-preset-card-icon {
+  background:
+    var(--cn-icon-card-bg) !important;
+
+  color:
+    var(--cn-icon-card-fg) !important;
+}
+
+/* =========================================================
+   Theme-aware status colors
+   ========================================================= */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.status.error {
+  color: var(--cn-danger) !important;
+}
+
+/* =========================================================
+   Theme picker
+   ========================================================= */
+
+.clipnest-theme-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(150px, 1fr)
+    );
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.clipnest-theme-option {
+  min-width: 0;
+  padding: 8px;
+
+  border: 1px solid var(--border);
+  border-radius: 12px;
+
+  background: var(--surface);
+  color: inherit;
+
+  text-align: left;
+  cursor: pointer;
+}
+
+.clipnest-theme-option:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+.clipnest-theme-option.selected,
+.clipnest-theme-option[aria-pressed="true"] {
+  border-color: var(--purple);
+  box-shadow:
+    0 0 0 2px
+    color-mix(
+      in srgb,
+      var(--purple) 18%,
+      transparent
+    );
+}
+
+.clipnest-theme-option strong,
+.clipnest-theme-option small {
+  display: block;
+}
+
+.clipnest-theme-option strong {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 17px;
+}
+
+.clipnest-theme-option small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.clipnest-theme-preview {
+  display: block;
+  height: 72px;
+  padding: 8px;
+
+  overflow: hidden;
+
+  border: 1px solid var(--cn-border);
+  border-radius: 9px;
+
+  background: var(--cn-bg);
+}
+
+.clipnest-theme-preview-card {
+  display: block;
+  height: 100%;
+  padding: 8px;
+
+  border: 1px solid var(--cn-border);
+  border-radius: 7px;
+
+  background: var(--cn-surface);
+}
+
+.clipnest-theme-preview-line {
+  display: block;
+  width: 62%;
+  height: 5px;
+  margin-bottom: 5px;
+
+  border-radius: 999px;
+
+  background: var(--cn-text);
+  opacity: .78;
+}
+
+.clipnest-theme-preview-line.short {
+  width: 40%;
+  background: var(--cn-muted);
+  opacity: .6;
+}
+
+.clipnest-theme-preview-button {
+  display: block;
+  width: 54%;
+  height: 12px;
+  margin-top: 7px;
+
+  border-radius: 4px;
+
+  background: var(--cn-primary);
+  box-shadow:
+    12px 0 0
+    -8px
+    var(--cn-secondary);
+}
+
+/* Picker must remain readable while previewing any theme */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.clipnest-theme-option {
+  border-color: var(--cn-border);
+  background: var(--cn-surface);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.clipnest-theme-option:hover {
+  border-color: var(--cn-border-strong);
+  background: var(--cn-surface-hover);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.clipnest-theme-option.selected,
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.clipnest-theme-option[aria-pressed="true"] {
+  border-color: var(--cn-primary);
+  box-shadow:
+    0 0 0 2px
+    color-mix(
+      in srgb,
+      var(--cn-primary) 18%,
+      transparent
+    );
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.clipnest-theme-option small {
+  color: var(--cn-muted);
+}
+
+
+
+
+/* =========================================================
+   Theme selection checkmark - 2.0.51
+
+   The selected border remains unchanged.
+   The checkmark adds a clear non-color state indicator.
+   ========================================================= */
+
+.clipnest-theme-option {
+  position: relative;
+}
+
+.clipnest-theme-option.selected::after,
+.clipnest-theme-option[aria-pressed="true"]::after {
+  content: "✓";
+
+  position: absolute;
+  top: 12px;
+  right: 12px;
+
+  width: 21px;
+  height: 21px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 999px;
+
+  background:
+    var(
+      --cn-primary,
+      var(--purple)
+    );
+
+  color:
+    var(
+      --cn-primary-text,
+      #ffffff
+    );
+
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 800;
+
+  box-shadow:
+    0 1px 4px
+    rgba(0, 0, 0, .22);
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   LIVE CONNECTION GATE THEMING - 2.0.54
+
+   Night Shift intentionally keeps the original styling.
+   Alternate themes use their own semantic palette.
+   ========================================================= */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-connection-gate {
+  border-color: var(--cn-border);
+  background: var(--cn-surface);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-connection-icon {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 18%,
+      var(--cn-surface)
+    );
+
+  color: var(--cn-primary);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-connection-gate p {
+  color: var(--cn-muted);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-connection-primary {
+  border-color: var(--cn-primary);
+  background: var(--cn-primary);
+  color: var(--cn-primary-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-connection-primary:hover {
+  background: var(--cn-primary-hover);
+  filter: none;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-connection-secondary {
+  border-color: var(--cn-border-strong);
+  background: var(--cn-surface-hover);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-connection-secondary:hover {
+  border-color: var(--cn-primary);
+
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 9%,
+      var(--cn-surface)
+    );
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-connection-note {
+  color: var(--cn-muted);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-connection-detail {
+  color: var(--cn-secondary-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.quick-clip-access-icon {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 18%,
+      transparent
+    );
+
+  color: var(--cn-primary);
+}
+
+/* END LIVE CONNECTION GATE THEMING - 2.0.54 */
+
+
+/* =========================================================
+   LIVE NOTION MEDIA THEMING - 2.0.55
+
+   Night Shift keeps its original purple/orange treatment.
+   Alternate themes route live media controls through the
+   theme primary, secondary and surface tokens.
+   ========================================================= */
+
+/* Files & media picker */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-image-selected:hover {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 68%,
+      transparent
+    ) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-image-add {
+  color: var(--cn-primary) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-image-add:hover {
+  border-color: var(--cn-primary) !important;
+
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 9%,
+      transparent
+    ) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-image-clear:hover {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-secondary-text) 12%,
+      transparent
+    ) !important;
+
+  color: var(--cn-secondary-text) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-image-option.selected {
+  border-color: var(--cn-primary) !important;
+
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 10%,
+      var(--cn-surface)
+    ) !important;
+
+  box-shadow:
+    inset 0 0 0 1px
+    color-mix(
+      in srgb,
+      var(--cn-primary) 45%,
+      transparent
+    );
+}
+
+
+/* Selected image preview remove control */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-image-preview-wrap
+.notion-image-clear:hover {
+  border-color:
+    var(--cn-secondary-text) !important;
+
+  background:
+    var(--cn-secondary-text) !important;
+}
+
+
+/* Page body media */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-body-media-thumb {
+  border-color: var(--cn-border);
+  background: var(--cn-surface);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-body-media-remove:hover {
+  border-color:
+    var(--cn-secondary-text) !important;
+
+  background:
+    var(--cn-secondary-text) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-body-media-menu {
+  border-color: var(--cn-border);
+  background: var(--cn-surface);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-body-media-menu-button {
+  color: var(--cn-muted);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-body-media-menu-button:hover {
+  background: var(--cn-surface-hover);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-body-media-status {
+  color: var(--cn-muted);
+}
+
+
+/* Include page content toggle */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-body-content-toggle-text {
+  color: var(--cn-muted);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-body-content-toggle-track {
+  background: var(--cn-border-strong);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-body-content-toggle-track::after {
+  background: var(--cn-surface);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-body-content-toggle
+input:checked +
+.notion-body-content-toggle-track {
+  background: var(--cn-primary);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-body-content-toggle
+input:checked +
+.notion-body-content-toggle-track::after {
+  background: var(--cn-primary-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-body-content-toggle:hover
+.notion-body-content-toggle-text {
+  color: var(--cn-text);
+}
+
+/* END LIVE NOTION MEDIA THEMING - 2.0.55 */
+
+
+/* =========================================================
+   LIVE NOTION BUILDER THEMING - 2.0.56
+
+   Night Shift keeps its original builder appearance.
+   Alternate themes route builder surfaces, selection,
+   focus and destructive states through semantic tokens.
+   ========================================================= */
+
+/* Search and filter controls */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+#notionBuilderSearch,
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-filter select,
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-fixed-value
+input:not([type="checkbox"]),
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-fixed-value select {
+  border-color: var(--cn-border-strong) !important;
+  background: var(--cn-surface) !important;
+  color: var(--cn-text) !important;
+  color-scheme: normal;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+#notionBuilderSearch:hover {
+  border-color: var(--cn-border-strong) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+#notionBuilderSearch:focus {
+  border-color: var(--cn-primary) !important;
+
+  box-shadow:
+    0 0 0 2px
+    color-mix(
+      in srgb,
+      var(--cn-primary) 17%,
+      transparent
+    ) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-fixed-value
+input:not([type="checkbox"]):focus,
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-fixed-value select:focus {
+  border-color: var(--cn-primary) !important;
+}
+
+
+/* Search results and workspace choices */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-result:hover {
+  border-color: var(--cn-border) !important;
+  background: var(--cn-surface-hover) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-result.selected {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 58%,
+      var(--cn-border)
+    ) !important;
+
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 11%,
+      var(--cn-surface)
+    ) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+:is(
+  .notion-builder-workspace-option:hover,
+  .notion-builder-workspace-option.selected
+) {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 14%,
+      var(--cn-surface)
+    );
+}
+
+
+/* Add-field picker */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-add-field-picker {
+  border-color: var(--cn-border);
+  background: var(--cn-surface);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-add-field-search {
+  border-color: var(--cn-border-strong) !important;
+  background: var(--cn-surface-hover) !important;
+  color: var(--cn-text) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-property-option:not(:disabled):hover {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 12%,
+      var(--cn-surface)
+    );
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-property-option:not(:disabled)
+.notion-builder-property-action {
+  color: var(--cn-primary);
+}
+
+
+/* Field configuration */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-field-config {
+  border-color: var(--cn-border);
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-surface) 96%,
+      var(--cn-primary) 4%
+    );
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-field-config-modes {
+  background: var(--cn-surface-hover);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-field-mode.active {
+  background: var(--cn-primary);
+  color: var(--cn-primary-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-field-mapping-button:hover {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 14%,
+      var(--cn-surface)
+    );
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-field-order-button {
+  background: var(--cn-surface-hover);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-field-order-button:hover:not(:disabled) {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 18%,
+      var(--cn-surface)
+    );
+}
+
+
+/* Drag states */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-field-dragging {
+  outline-color:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 55%,
+      transparent
+    );
+
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 7%,
+      var(--cn-surface)
+    );
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-drag-ghost {
+  border-color: var(--cn-border);
+  background: var(--cn-surface);
+  color: var(--cn-text);
+}
+
+
+/* Focus and checkbox states */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-field-remove-button:focus-visible {
+  outline-color: var(--cn-primary);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-checkbox-value input {
+  accent-color: var(--cn-primary);
+}
+
+
+/* Destructive builder actions */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+:is(
+  .notion-builder-error,
+  .notion-builder-remove-field
+) {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--cn-danger) 45%,
+      var(--cn-border)
+    );
+
+  color: var(--cn-danger);
+}
+
+
+/* Create preset */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-create-button {
+  border-color: var(--cn-primary) !important;
+  background: var(--cn-primary) !important;
+  color: var(--cn-primary-text) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-create-button:hover:not(:disabled) {
+  background: var(--cn-primary-hover) !important;
+  filter: none;
+}
+
+/* END LIVE NOTION BUILDER THEMING - 2.0.56 */
+
+
+/* =========================================================
+   LIVE NOTION FORM THEMING - 2.0.58
+
+   Night Shift intentionally keeps the original dark form.
+
+   Alternate themes route live Notion fields, custom selects,
+   dates, checkboxes and multi-selects through semantic theme
+   surfaces instead of the old #171717 Night Shift styling.
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   Field labels
+   --------------------------------------------------------- */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-field > span {
+  color: var(--cn-text) !important;
+}
+
+
+/* ---------------------------------------------------------
+   Normal text / URL / number / native field controls
+   --------------------------------------------------------- */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-field
+input:not([type="checkbox"]):not(.notion-custom-multiselect-input),
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-field
+select {
+  border-color: var(--cn-border-strong) !important;
+  background: var(--cn-surface) !important;
+  color: var(--cn-text) !important;
+  color-scheme: normal !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-field
+input:not([type="checkbox"]):not(.notion-custom-multiselect-input)::placeholder {
+  color: var(--cn-muted) !important;
+  opacity: .72;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-field
+input:not([type="checkbox"]):not(.notion-custom-multiselect-input):hover,
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-field
+select:hover {
+  border-color: var(--cn-border-strong) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-field
+input:not([type="checkbox"]):not(.notion-custom-multiselect-input):focus,
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-field
+select:focus {
+  border-color: var(--cn-primary) !important;
+
+  box-shadow:
+    0 0 0 1px
+    var(--cn-primary) !important;
+}
+
+
+/* ---------------------------------------------------------
+   Checkbox field row + toggle
+   --------------------------------------------------------- */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-field:has(
+  .notion-custom-checkbox-control
+) {
+  border-color: var(--cn-border-strong);
+  background: var(--cn-surface);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-field:has(
+  .notion-custom-checkbox-control
+) > span {
+  color: var(--cn-text) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-checkbox-control input {
+  background: var(--cn-border-strong);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-checkbox-control input:checked {
+  background: var(--cn-primary);
+}
+
+
+/* ---------------------------------------------------------
+   Select / Status
+   --------------------------------------------------------- */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-select-trigger {
+  border-color: var(--cn-border-strong);
+  background: var(--cn-surface);
+  color: var(--cn-muted);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-select-trigger:hover {
+  border-color: var(--cn-border-strong);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-select-trigger.has-value {
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-trigger[
+  aria-expanded="true"
+] {
+  border-color: var(--cn-primary) !important;
+
+  box-shadow:
+    0 0 0 1px
+    var(--cn-primary) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-select-menu {
+  border-color: var(--cn-border-strong) !important;
+  background: var(--cn-surface) !important;
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-select-search {
+  border-color: var(--cn-border-strong) !important;
+  background: var(--cn-surface-hover) !important;
+  color: var(--cn-text) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-select-search::placeholder {
+  color: var(--cn-muted) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-select-search:focus {
+  border-color: var(--cn-primary) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-select-option {
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-select-option:hover,
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-select-option.selected {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 10%,
+      var(--cn-surface)
+    );
+}
+
+
+/* ---------------------------------------------------------
+   Date picker
+   --------------------------------------------------------- */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-trigger {
+  border-color: var(--cn-border-strong);
+  background: var(--cn-surface);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-trigger:hover {
+  border-color: var(--cn-border-strong);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-date-trigger[
+  aria-expanded="true"
+] {
+  border-color: var(--cn-primary) !important;
+
+  box-shadow:
+    0 0 0 1px
+    var(--cn-primary) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-menu {
+  border-color: var(--cn-border-strong);
+  background: var(--cn-surface);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-nav {
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-nav:hover,
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-day:hover {
+  background: var(--cn-surface-hover);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-day {
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-day.outside {
+  color: var(--cn-muted);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-day.today {
+  border-color: var(--cn-secondary-text);
+  color: var(--cn-secondary-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-day.selected {
+  border-color: var(--cn-primary);
+  background: var(--cn-primary);
+  color: var(--cn-primary-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-footer {
+  border-color: var(--cn-border);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-footer-button.clear {
+  color: var(--cn-secondary-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-date-footer-button.today {
+  color: var(--cn-primary);
+}
+
+
+/* ---------------------------------------------------------
+   Multi-select
+   --------------------------------------------------------- */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-multiselect-editor {
+  border-color: var(--cn-border-strong);
+  background: var(--cn-surface);
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-multiselect-editor:hover {
+  border-color: var(--cn-border-strong) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect:focus-within
+.notion-custom-multiselect-editor {
+  border-color: var(--cn-primary) !important;
+  box-shadow: none !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-multiselect-input {
+  background: transparent !important;
+  color: var(--cn-text) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-multiselect-input::placeholder {
+  color: var(--cn-muted) !important;
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-menu,
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-multiselect-list {
+  border-color: var(--cn-border-strong) !important;
+  background: var(--cn-surface) !important;
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-multiselect-option {
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-multiselect-option:hover {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 10%,
+      var(--cn-surface)
+    );
+}
+
+
+/* END LIVE NOTION FORM THEMING - 2.0.58 */
+
+
+/* =========================================================
+   FINAL LIVE THEME CLEANUP - 2.0.60
+
+   Final audit cleanup for live controls that still inherited
+   Night Shift purple or dark-theme text in alternate themes.
+
+   Notion option colors with data-color remain untouched.
+   Those colors describe Notion data rather than ClipNest UI.
+   ========================================================= */
+
+
+/* Popup toggle keyboard focus */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.popup-toggle-row
+input[type="checkbox"]:focus-visible {
+  box-shadow:
+    0 0 0 3px
+    color-mix(
+      in srgb,
+      var(--cn-primary) 20%,
+      transparent
+    );
+}
+
+
+/* Preset chooser drag state */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-preset-card-row.notion-preset-card-dragging
+.notion-preset-card {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 8%,
+      var(--cn-surface)
+    );
+}
+
+
+/* Select / Multi-select create actions */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-select-option.create,
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-multiselect-option.create {
+  color: var(--cn-primary);
+}
+
+
+/*
+ * Default chips use the ClipNest theme.
+ *
+ * Chips carrying data-color keep their Notion-defined color,
+ * so database semantics are not replaced by theme colors.
+ */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-select-chip:not([data-color]),
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-multiselect-chip:not([data-color]) {
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-primary) 15%,
+      var(--cn-surface)
+    ) !important;
+
+  color:
+    var(--cn-primary) !important;
+}
+
+
+/* Empty Multi-select state */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"]
+.notion-custom-multiselect-empty {
+  color: var(--cn-muted);
+}
+
+
+/* Obsidian Save to keyboard focus */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.obsidian-save-to-button:focus-visible {
+  border-color:
+    var(--cn-primary) !important;
+
+  box-shadow:
+    0 0 0 2px
+    color-mix(
+      in srgb,
+      var(--cn-primary) 20%,
+      transparent
+    ) !important;
+}
+
+/* END FINAL LIVE THEME CLEANUP - 2.0.60 */
+
+
+/* =========================================================
+   NOTION PRESET CONTROL SPECIFICITY FIX - 2.0.61
+
+   The legacy Unified Notion Property Visuals block uses
+   background:#171717 !important on live Select, Date and
+   Multi-select controls.
+
+   Alternate themes must explicitly beat that rule while
+   Night Shift keeps its original dark controls.
+   ========================================================= */
+
+
+/* Select, Date and Multi-select closed surfaces */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-select-trigger,
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-date-trigger,
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-multiselect-editor {
+  border-color:
+    var(--cn-border-strong) !important;
+
+  background:
+    var(--cn-surface) !important;
+
+  color:
+    var(--cn-text) !important;
+
+  box-shadow:
+    none !important;
+}
+
+
+/* Empty Select uses muted theme text */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-select-value {
+  color:
+    var(--cn-muted) !important;
+}
+
+
+/* Selected Select value uses normal theme text */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-select-trigger.has-value
+.notion-custom-select-value {
+  color:
+    var(--cn-text) !important;
+}
+
+
+/* Date value */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-date-value {
+  color:
+    var(--cn-text) !important;
+}
+
+
+/* Hover borders */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-select-trigger:hover,
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-date-trigger:hover,
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-multiselect-editor:hover {
+  border-color:
+    var(--cn-border-strong) !important;
+}
+
+
+/* Open / focused controls */
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-select-trigger[
+  aria-expanded="true"
+],
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-date-trigger[
+  aria-expanded="true"
+] {
+  border-color:
+    var(--cn-primary) !important;
+
+  box-shadow:
+    0 0 0 1px
+    var(--cn-primary) !important;
+}
+
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+body[data-destination="notion"].notion-preset-open
+.notion-custom-field
+.notion-custom-multiselect:focus-within
+.notion-custom-multiselect-editor {
+  border-color:
+    var(--cn-primary) !important;
+
+  box-shadow:
+    none !important;
+}
+
+
+/* END NOTION PRESET CONTROL SPECIFICITY FIX - 2.0.61 */

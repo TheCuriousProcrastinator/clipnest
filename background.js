@@ -3213,6 +3213,36 @@ async function saveToNotion(
       ? payload.notionFields
       : {};
 
+
+  /*
+   * EDITABLE PAGE URL - 2.0.59
+   *
+   * Keep payload.url as the canonical captured-page URL.
+   * Only the mapped Notion URL property uses the user's
+   * visible field edit when one exists.
+   */
+  const mappedUrlPropertyId =
+    String(
+      preset.propertyIds
+        ?.url ||
+      ""
+    ).trim();
+
+  const resolvedNotionUrl =
+    mappedUrlPropertyId &&
+    Object.prototype
+      .hasOwnProperty.call(
+        dynamicValues,
+        mappedUrlPropertyId
+      )
+      ? String(
+          dynamicValues[
+            mappedUrlPropertyId
+          ] ||
+          ""
+        ).trim()
+      : url;
+
   const customFields =
     (
       Array.isArray(
@@ -3348,7 +3378,8 @@ async function saveToNotion(
       ClipNestNotionSession
         .encodeDatabaseProperties({
           title,
-          url,
+          url:
+            resolvedNotionUrl,
           tags:
             databaseTags,
 
@@ -5025,93 +5056,117 @@ chrome.runtime.onMessage.addListener(
           };
 
           /*
-           * BODY IMAGE LOCAL CAPTURE - 1.9.6
+           * LOCAL IMAGE CAPTURE - 2.0.57
            *
-           * Both Notion and Obsidian body-image picks
-           * must use a local screenshot crop.
+           * Body-image picks require a local screenshot for
+           * the actual body-media save pipeline.
            *
-           * Remote page-image URLs may be protected,
-           * temporary, lazy-loaded, or unsuitable for
-           * direct reuse in the popup/save pipeline.
-           *
-           * Database-property image selection keeps
-           * its existing URL-based behavior.
+           * Files & media property picks remain URL-based for
+           * Notion. For those picks, the screenshot is retained
+           * only as a local thumbnail fallback.
            */
+          const propertyPurpose =
+            message.purpose ===
+              "property";
+
           if (
-            bodyPurpose
+            bodyPurpose ||
+            propertyPurpose
           ) {
-            const windowId =
-              sender.tab?.windowId;
+            try {
+              const windowId =
+                sender.tab?.windowId;
 
-            const rect =
-              message.rect &&
-              typeof message.rect ===
-                "object"
-                ? message.rect
-                : {};
+              const rect =
+                message.rect &&
+                typeof message.rect ===
+                  "object"
+                  ? message.rect
+                  : {};
 
-            if (
-              !Number.isInteger(
-                windowId
-              ) ||
-              Number(
-                rect.width ||
-                0
-              ) <= 0 ||
-              Number(
-                rect.height ||
-                0
-              ) <= 0
-            ) {
-              throw new Error(
-                "ClipNest could not capture the selected image."
+              if (
+                !Number.isInteger(
+                  windowId
+                ) ||
+                Number(
+                  rect.width ||
+                    0
+                ) <= 0 ||
+                Number(
+                  rect.height ||
+                    0
+                ) <= 0
+              ) {
+                throw new Error(
+                  "ClipNest could not capture the selected image."
+                );
+              }
+
+              /*
+               * Give the page two frames plus a short delay to
+               * remove the picker overlay before capture.
+               */
+              await new Promise(
+                (resolve) =>
+                  setTimeout(
+                    resolve,
+                    80
+                  )
               );
-            }
 
-            await new Promise(
-              (resolve) =>
-                setTimeout(
-                  resolve,
-                  80
-                )
-            );
+              const dataUrl =
+                await chrome.tabs
+                  .captureVisibleTab(
+                    windowId,
+                    {
+                      format:
+                        "jpeg",
+                      quality:
+                        92
+                    }
+                  );
 
-            const dataUrl =
-              await chrome.tabs
-                .captureVisibleTab(
-                  windowId,
-                  {
-                    format:
-                      "jpeg",
+              if (!dataUrl) {
+                throw new Error(
+                  "ClipNest could not capture the selected image."
+                );
+              }
 
-                    quality:
-                      92
-                  }
+              pickedImage.dataUrl =
+                dataUrl;
+
+              pickedImage.rect =
+                rect;
+
+              pickedImage.viewportWidth =
+                Number(
+                  message.viewportWidth ||
+                    0
                 );
 
-            if (!dataUrl) {
-              throw new Error(
-                "ClipNest could not capture the selected image."
+              pickedImage.viewportHeight =
+                Number(
+                  message.viewportHeight ||
+                    0
+                );
+            } catch (error) {
+              /*
+               * Body media depends on the local capture, so its
+               * existing failure behavior remains unchanged.
+               *
+               * A Files & media property does not depend on it.
+               * The remote URL remains valid even if we cannot
+               * create the optional local thumbnail.
+               */
+              if (bodyPurpose) {
+                throw error;
+              }
+
+              console.debug(
+                "ClipNest could not capture a local property-image preview:",
+                error
               );
             }
-
-            pickedImage.dataUrl =
-              dataUrl;
-
-            pickedImage.rect =
-              rect;
-
-            pickedImage.viewportWidth =
-              Number(
-                message.viewportWidth ||
-                0
-              );
-
-            pickedImage.viewportHeight =
-              Number(
-                message.viewportHeight ||
-                0
-              );
           }
 
           const storageKey =

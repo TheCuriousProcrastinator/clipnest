@@ -1684,8 +1684,55 @@ async function restorePickedPageImage() {
     }
 
     if (state.capture) {
+      /*
+       * The selected remote URL remains authoritative.
+       * This is the value the Files & media property sends
+       * to Notion.
+       */
       state.capture.image =
         pickedUrl;
+
+      /*
+       * PROPERTY IMAGE PREVIEW - 2.0.57
+       *
+       * Keep the clicked-image screenshot and geometry only
+       * for rendering a reliable local thumbnail if the remote
+       * image refuses to load inside the extension popup.
+       */
+      state.capture.imagePreviewCapture =
+        /^data:image\//i.test(
+          String(
+            picked.dataUrl ||
+              ""
+          )
+        )
+          ? {
+              url:
+                pickedUrl,
+
+              dataUrl:
+                picked.dataUrl,
+
+              rect:
+                picked.rect &&
+                typeof picked.rect ===
+                  "object"
+                  ? picked.rect
+                  : null,
+
+              viewportWidth:
+                Number(
+                  picked.viewportWidth ||
+                    0
+                ),
+
+              viewportHeight:
+                Number(
+                  picked.viewportHeight ||
+                    0
+                )
+            }
+          : null;
 
       /*
        * Distinguish an image the user explicitly
@@ -2522,16 +2569,25 @@ const CLIPNEST_PRESET_ICON_PREFIX =
 
 const NOTION_PRESET_ICON_CHOICES = [
   {
+    id: "knowledge",
+    label: "Square",
+    legacy: "🧠",
+    primary: [
+      "M4.5 4.5h15v15h-15z"
+    ],
+    accent: []
+  },
+  {
     id: "inbox",
     label: "Inbox",
     legacy: "📥",
     primary: [
-      "M4 13v6h16v-6",
-      "M7 13l2 3h6l2-3"
+      "M4.5 13.5v5.5h15v-5.5",
+      "M7 13.5l2.2 2.8h5.6l2.2-2.8"
     ],
     accent: [
-      "M12 3v9",
-      "M9 9l3 3 3-3"
+      "M12 4v8",
+      "M9.5 9.5L12 12l2.5-2.5"
     ]
   },
   {
@@ -2565,11 +2621,11 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "Notes",
     legacy: "✍️",
     primary: [
-      "M5 19l1-4L16 5l3 3L9 18l-4 1z"
+      "M4 20l1.3-5L16.2 4.1l3.7 3.7L9 18.7 4 20z"
     ],
     accent: [
-      "M14.5 6.5l3 3",
-      "M5 19l4-1"
+      "M14.5 5.8l3.7 3.7",
+      "M5.3 15l3.7 3.7"
     ]
   },
   {
@@ -2577,15 +2633,11 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "Ideas",
     legacy: "💡",
     primary: [
-      "M12 3a6 6 0 0 0-3.5 10.9L10 16h4l1.5-2.1A6 6 0 0 0 12 3z",
-      "M10 19h4",
-      "M11 22h2"
+      "M12 3.5a5.5 5.5 0 0 0-3.3 9.9L10 16h4l1.3-2.6A5.5 5.5 0 0 0 12 3.5z",
+      "M10 18.5h4",
+      "M10.8 21h2.4"
     ],
-    accent: [
-      "M12 1v1",
-      "M4.5 4.5l1.2 1.2",
-      "M18.3 5.7l1.2-1.2"
-    ]
+    accent: []
   },
   {
     id: "tasks",
@@ -2603,10 +2655,10 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "Pin",
     legacy: "📌",
     primary: [
-      "M9 3h6l-1 5 3 3v2H7v-2l3-3z"
+      "M7.5 4.5h9l-1.3 4.7 2.5 2.5v1.5H6.8v-1.5l2.5-2.5z"
     ],
     accent: [
-      "M12 13v8"
+      "M12 13.2v6.3"
     ]
   },
   {
@@ -2614,25 +2666,10 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "Projects",
     legacy: "🗂️",
     primary: [
-      "M3 7h7l2 2h9v10H3z"
+      "M3 6.5h6l2 2h10V19H3z"
     ],
     accent: [
-      "M3 7V5h6l2 2"
-    ]
-  },
-  {
-    id: "knowledge",
-    label: "Knowledge",
-    legacy: "🧠",
-    primary: [
-      "M9 4a3 3 0 0 0-3 3v1a3 3 0 0 0-1 5 3 3 0 0 0 3 4h1",
-      "M15 4a3 3 0 0 1 3 3v1a3 3 0 0 1 1 5 3 3 0 0 1-3 4h-1",
-      "M9 4v16",
-      "M15 4v16"
-    ],
-    accent: [
-      "M9 9h2",
-      "M13 14h2"
+      "M3 8.5h18"
     ]
   },
   {
@@ -2653,22 +2690,19 @@ const NOTION_PRESET_ICON_CHOICES = [
     primary: [
       "M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"
     ],
-    accent: [
-      "M12 6v8"
-    ]
+    accent: []
   },
   {
     id: "launch",
     label: "Launch",
     legacy: "🚀",
     primary: [
-      "M14 4c3-1 5-1 6-1 0 1 0 3-1 6l-7 7-4-4z",
-      "M10 10l-4 1-3 3 6 1",
-      "M14 14l-1 6-3 1-1-6"
+      "M12 15l-3-3a22 22 0 0 1 2-3.95A12.87 12.87 0 0 1 22 2c0 2.72-.78 7.5-6.05 11A22.35 22.35 0 0 1 12 15z",
+      "M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0",
+      "M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"
     ],
     accent: [
-      "M7 17l-3 3",
-      "M10 18l-2 3"
+      "M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.3-.09-3.09a2.18 2.18 0 0 0-3.09-.09z"
     ]
   },
   {
@@ -2676,13 +2710,12 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "Goals",
     legacy: "🎯",
     primary: [
-      "M12 3a9 9 0 1 0 9 9",
-      "M12 7a5 5 0 1 0 5 5",
-      "M12 11a1 1 0 1 0 1 1"
+      "M12 4a8 8 0 1 0 0 16a8 8 0 0 0 0-16",
+      "M12 9a3 3 0 1 0 0 6a3 3 0 0 0 0-6"
     ],
     accent: [
-      "M13 11l7-7",
-      "M17 4h3v3"
+      "M12 12l7-7",
+      "M16 5h3v3"
     ]
   },
   {
@@ -2705,12 +2738,12 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "People",
     legacy: "👥",
     primary: [
-      "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
-      "M3 21v-2a6 6 0 0 1 12 0v2"
+      "M8.5 10a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z",
+      "M15.5 10a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"
     ],
     accent: [
-      "M17 11a3 3 0 1 0 0-6",
-      "M17 15a5 5 0 0 1 4 5"
+      "M4.5 20v-.8a4 4 0 0 1 8 0v.8",
+      "M11.5 20v-.8a4 4 0 0 1 8 0v.8"
     ]
   },
   {
@@ -2718,12 +2751,12 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "Discussions",
     legacy: "💬",
     primary: [
-      "M4 5h13v10H9l-5 4z"
+      "M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"
     ],
     accent: [
-      "M8 9h5",
-      "M8 12h3",
-      "M18 8h2v8l-3-2"
+      "M8 11h.01",
+      "M12 11h.01",
+      "M16 11h.01"
     ]
   },
   {
@@ -2756,11 +2789,11 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "Links",
     legacy: "🌐",
     primary: [
-      "M9 15l-2 2a4 4 0 1 1-6-6l3-3a4 4 0 0 1 6 0",
-      "M15 9l2-2a4 4 0 1 1 6 6l-3 3a4 4 0 0 1-6 0"
+      "M10.2 14l-2.1 2.1a3.7 3.7 0 0 1-5.2-5.2l2.3-2.3a3.7 3.7 0 0 1 5.2 0",
+      "M13.8 10l2.1-2.1a3.7 3.7 0 0 1 5.2 5.2l-2.3 2.3a3.7 3.7 0 0 1-5.2 0"
     ],
     accent: [
-      "M8 12h8"
+      "M9 12h6"
     ]
   },
   {
@@ -2772,8 +2805,7 @@ const NOTION_PRESET_ICON_CHOICES = [
       "M8 8V5h8v3"
     ],
     accent: [
-      "M3 12h18",
-      "M10 12v2h4v-2"
+      "M3 12h18"
     ]
   },
   {
@@ -2784,8 +2816,8 @@ const NOTION_PRESET_ICON_CHOICES = [
       "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"
     ],
     accent: [
-      "M15 8h-4a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H9",
-      "M12 6v12"
+      "M14.5 8.5h-3.2a1.8 1.8 0 0 0 0 3.6h1.4a1.8 1.8 0 0 1 0 3.6H9.5",
+      "M12 7v10"
     ]
   },
   {
@@ -2793,12 +2825,12 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "Shopping",
     legacy: "🛒",
     primary: [
-      "M3 4h2l2 11h10l3-7H7",
-      "M9 20a1 1 0 1 0 0-2",
-      "M17 20a1 1 0 1 0 0-2"
+      "M3.5 5h2l1.8 9.5h10.2l2-7H6",
+      "M8.5 18.5a1 1 0 1 0 0 2a1 1 0 0 0 0-2",
+      "M17 18.5a1 1 0 1 0 0 2a1 1 0 0 0 0-2"
     ],
     accent: [
-      "M9 11h8"
+      "M7.5 14.5h10"
     ]
   },
   {
@@ -2806,23 +2838,19 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "Personal",
     legacy: "❤️",
     primary: [
-      "M12 20S4 15 4 9a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 6-6 11-6 11z"
+      "M12 21S4.5 16 4.5 9.8A4.3 4.3 0 0 1 12 7.1a4.3 4.3 0 0 1 7.5 2.7C19.5 16 12 21 12 21z"
     ],
-    accent: [
-      "M8 9c0-1 1-2 2-2"
-    ]
+    accent: []
   },
   {
     id: "media",
     label: "Media",
     legacy: "🎬",
     primary: [
-      "M4 7h16v12H4z",
-      "M4 7l2-4h4l-2 4",
-      "M12 7l2-4h4l-2 4"
+      "M4 6h16v12H4z"
     ],
     accent: [
-      "M10 11l5 3-5 3z"
+      "M10 9l6 3-6 3z"
     ]
   },
   {
@@ -2842,13 +2870,12 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "Web",
     legacy: "🌍",
     primary: [
-      "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z",
-      "M3 12h18",
-      "M12 3c3 3 4 6 4 9s-1 6-4 9",
-      "M12 3c-3 3-4 6-4 9s1 6 4 9"
+      "M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17",
+      "M4.5 12h15"
     ],
     accent: [
-      "M5 7h14"
+      "M12 3.5c2.2 2.5 3.4 5.2 3.4 8.5s-1.2 6-3.4 8.5",
+      "M12 3.5c-2.2 2.5-3.4 5.2-3.4 8.5s1.2 6 3.4 8.5"
     ]
   },
   {
@@ -2856,12 +2883,10 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "Explore",
     legacy: "🧭",
     primary: [
-      "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z",
-      "M15.5 8.5l-2 5-5 2 2-5z"
+      "M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18"
     ],
     accent: [
-      "M12 6v1",
-      "M12 17v1"
+      "M16 8l-3 6-5 2 3-6 5-2z"
     ]
   },
   {
@@ -2869,10 +2894,10 @@ const NOTION_PRESET_ICON_CHOICES = [
     label: "Trending",
     legacy: "🔥",
     primary: [
-      "M12 21c-4 0-7-3-7-7 0-3 2-5 4-7 0 3 2 4 3 5 1-3 1-5 0-7 4 2 7 6 7 10 0 4-3 7-7 7z"
+      "M12 21a7 7 0 0 1-7-7c0-3 1.8-5.3 4.5-7.5-.1 2.5 1 4 2.1 5.1.6-3 2.6-5.4 2.2-8.1C19 7 19 10.5 19 14a7 7 0 0 1-7 7z"
     ],
     accent: [
-      "M12 17c-2 0-3-1-3-3 0-1 1-3 3-4 0 2 2 2 2 4 1-2 2-3 1-5 2 2 3 4 3 5 0 2-1 3-3 3z"
+      "M12 18c-1.6 0-2.8-1.1-2.8-2.7 0-1.2.8-2.4 2.8-4.4 2 2 2.8 3.2 2.8 4.4 0 1.6-1.2 2.7-2.8 2.7z"
     ]
   }
 ];
@@ -3044,12 +3069,12 @@ function appendClipNestPresetSvg(
 
   appendPaths(
     icon.primary,
-    "#9027db"
+    "var(--cn-icon-primary, #9027db)"
   );
 
   appendPaths(
     icon.accent,
-    "#db5b27"
+    "var(--cn-icon-accent, #db5b27)"
   );
 
   target.append(
@@ -3301,28 +3326,6 @@ function createNotionBuilderIconPicker() {
   picker.className =
     "notion-builder-icon-picker hidden";
 
-  const useNotion =
-    document.createElement(
-      "button"
-    );
-
-  useNotion.type =
-    "button";
-
-  useNotion.className =
-    "notion-builder-icon-default";
-
-  useNotion.dataset.presetIcon =
-    "";
-
-  useNotion.setAttribute(
-    "aria-label",
-    "Keep Notion icon for preset"
-  );
-
-  useNotion.textContent =
-    "Keep Notion icon";
-
   const grid =
     document.createElement(
       "div"
@@ -3358,18 +3361,6 @@ function createNotionBuilderIconPicker() {
         "config"
       );
     };
-
-  useNotion.addEventListener(
-    "click",
-    (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      void selectIcon(
-        ""
-      );
-    }
-  );
 
   for (
     const icon of
@@ -3424,12 +3415,12 @@ function createNotionBuilderIconPicker() {
   }
 
   picker.append(
-    useNotion,
     grid
   );
 
   return picker;
 }
+
 
 let notionPresetChooserDraggedPresetId =
   "";
@@ -5775,7 +5766,9 @@ function renderNotionBuilderResults() {
               "New preset",
 
             presetIcon:
-              ""
+              clipNestPresetIconValue(
+                "knowledge"
+              )
           };
 
           await persistNotionPresetBuilderState(
@@ -6276,6 +6269,11 @@ function notionBuilderPresetFieldsForStore() {
           ""
         );
 
+      const showInClipForm =
+        notionBuilderEffectiveShowInClipForm(
+          field
+        );
+
       let role =
         "custom";
 
@@ -6318,7 +6316,7 @@ function notionBuilderPresetFieldsForStore() {
           "page_url";
 
         visible =
-          false;
+          showInClipForm;
       } else if (
         type ===
           "multi_select" &&
@@ -6342,6 +6340,9 @@ function notionBuilderPresetFieldsForStore() {
       ) {
         source =
           "page_author";
+
+        visible =
+          showInClipForm;
       } else if (
         (
           type === "file" ||
@@ -6402,6 +6403,8 @@ function notionBuilderPresetFieldsForStore() {
 
         order:
           index,
+
+        showInClipForm,
 
         visible,
 
@@ -6562,6 +6565,28 @@ function notionBuilderFieldFromStoredField(
     }
   }
 
+  /*
+   * Existing presets from before 2.0.62 have no explicit
+   * showInClipForm preference.
+   *
+   * Page URL migrates to hidden by default.
+   * Page author remains visible by default.
+   * Fixed/manual fields do not inherit their effective
+   * visibility as a future auto-field preference.
+   */
+  const showInClipForm =
+    typeof field?.showInClipForm ===
+      "boolean"
+      ? field.showInClipForm
+      : source ===
+          "page_url"
+        ? false
+        : source ===
+            "page_author"
+          ? field?.visible !==
+              false
+          : true;
+
   return {
     propertyId:
       field.propertyId ||
@@ -6595,6 +6620,8 @@ function notionBuilderFieldFromStoredField(
           : [],
 
     mapping,
+
+    showInClipForm,
 
     fixedValue
   };
@@ -6900,7 +6927,7 @@ async function deleteNotionPresetFromBuilder() {
       "true";
 
     button.textContent =
-      "Click again to delete";
+      "Confirm delete";
 
     button.classList.add(
       "confirming"
@@ -7698,6 +7725,67 @@ function createNotionPresetConfigScreen() {
     footer
   );
 
+  section.addEventListener(
+    "click",
+    (event) => {
+      const activeEditor =
+        fields.querySelector(
+          ".notion-builder-field-config"
+        );
+
+      if (
+        !activeEditor
+      ) {
+        return;
+      }
+
+      const target =
+        event.target instanceof
+          Element
+          ? event.target
+          : null;
+
+      if (
+        !target ||
+        activeEditor.contains(
+          target
+        )
+      ) {
+        return;
+      }
+
+      /*
+       * Mapping buttons own field-to-field switching.
+       * Do not close the editor after their click handler
+       * has just opened another field.
+       */
+      if (
+        target.closest(
+          ".notion-builder-field-mapping-button"
+        )
+      ) {
+        return;
+      }
+
+      /*
+       * Add Field explicitly handles dismissal before
+       * opening its own picker.
+       */
+      if (
+        target.closest(
+          "#notionBuilderAddField"
+        )
+      ) {
+        return;
+      }
+
+      notionPresetBuilderEditingFieldId =
+        "";
+
+      renderNotionBuilderConfiguredFields();
+    }
+  );
+
   const layoutObserver =
     new MutationObserver(
       () => {
@@ -7845,6 +7933,115 @@ function notionBuilderFieldIsConfigurable(
   );
 }
 
+/*
+ * CLIP FORM VISIBILITY MODEL - 2.0.62
+ *
+ * A field being configured in the preset determines whether
+ * ClipNest saves it.
+ *
+ * showInClipForm determines only whether the user sees an
+ * interactive control while clipping.
+ *
+ * Only deterministic/automatic mappings that are safe without
+ * a rendered input currently expose this preference.
+ */
+function notionBuilderFieldSupportsClipVisibility(
+  field
+) {
+  const type =
+    String(
+      field?.propertyType ||
+      field?.type ||
+      ""
+    );
+
+  const mapping =
+    String(
+      field?.mapping ||
+      notionBuilderDefaultMapping({
+        type,
+        name:
+          field?.propertyName ||
+          field?.name ||
+          ""
+      }) ||
+      ""
+    );
+
+  return (
+    (
+      type === "url" &&
+      mapping ===
+        "Page URL"
+    ) ||
+    (
+      notionBuilderIsAuthorProperty(
+        field
+      ) &&
+      mapping ===
+        "Page author"
+    )
+  );
+}
+
+function notionBuilderDefaultShowInClipForm(
+  field
+) {
+  const type =
+    String(
+      field?.propertyType ||
+      field?.type ||
+      ""
+    );
+
+  const mapping =
+    String(
+      field?.mapping ||
+      notionBuilderDefaultMapping({
+        type,
+        name:
+          field?.propertyName ||
+          field?.name ||
+          ""
+      }) ||
+      ""
+    );
+
+  if (
+    type === "url" &&
+    mapping ===
+      "Page URL"
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function notionBuilderEffectiveShowInClipForm(
+  field
+) {
+  return typeof field?.showInClipForm ===
+    "boolean"
+    ? field.showInClipForm
+    : notionBuilderDefaultShowInClipForm(
+        field
+      );
+}
+
+function notionBuilderFieldHasEditor(
+  field
+) {
+  return (
+    notionBuilderFieldIsConfigurable(
+      field
+    ) ||
+    notionBuilderFieldSupportsClipVisibility(
+      field
+    )
+  );
+}
+
 function notionBuilderFieldMappingLabel(
   field
 ) {
@@ -7877,13 +8074,29 @@ function notionBuilderFieldMappingLabel(
     field?.mapping ||
     notionBuilderDefaultMapping({
       type:
-        field?.propertyType
+        field?.propertyType,
+      name:
+        field?.propertyName
     });
 
-  return mapping ===
-    "Manual"
+  const label =
+    mapping ===
+      "Manual"
       ? "Ask each time"
       : mapping;
+
+  if (
+    notionBuilderFieldSupportsClipVisibility(
+      field
+    ) &&
+    !notionBuilderEffectiveShowInClipForm(
+      field
+    )
+  ) {
+    return `${label} · hidden`;
+  }
+
+  return label;
 }
 
 function findNotionBuilderConfiguredField(
@@ -7969,7 +8182,7 @@ function renderNotionBuilderFieldConfiguration(
   if (
     !container ||
     !field ||
-    !notionBuilderFieldIsConfigurable(
+    !notionBuilderFieldHasEditor(
       field
     )
   ) {
@@ -8041,17 +8254,21 @@ function renderNotionBuilderFieldConfiguration(
     "notion-builder-field-config-modes";
 
   const mappingModes =
-    notionBuilderIsAuthorProperty(
+    notionBuilderFieldIsConfigurable(
       field
     )
-      ? [
-          "Page author",
-          "Fixed value"
-        ]
-      : [
-          "Manual",
-          "Fixed value"
-        ];
+      ? notionBuilderIsAuthorProperty(
+          field
+        )
+        ? [
+            "Page author",
+            "Fixed value"
+          ]
+        : [
+            "Manual",
+            "Fixed value"
+          ]
+      : [];
 
   for (
     const mode of
@@ -8119,9 +8336,78 @@ function renderNotionBuilderFieldConfiguration(
   }
 
   editor.append(
-    heading,
-    modes
+    heading
   );
+
+  if (
+    mappingModes.length
+  ) {
+    editor.append(
+      modes
+    );
+  }
+
+  if (
+    notionBuilderFieldSupportsClipVisibility(
+      field
+    )
+  ) {
+    const visibility =
+      document.createElement(
+        "label"
+      );
+
+    visibility.className =
+      "notion-builder-checkbox-value notion-builder-clip-visibility";
+
+    const input =
+      document.createElement(
+        "input"
+      );
+
+    input.type =
+      "checkbox";
+
+    input.checked =
+      notionBuilderEffectiveShowInClipForm(
+        field
+      );
+
+    const copy =
+      document.createElement(
+        "span"
+      );
+
+    copy.textContent =
+      "Show in clip form";
+
+    input.addEventListener(
+      "change",
+      async () => {
+        field.showInClipForm =
+          input.checked;
+
+        await persistNotionPresetBuilderState(
+          "config"
+        );
+
+        /*
+         * Re-render so the configured-field row immediately
+         * reflects "· hidden" while keeping this editor open.
+         */
+        renderNotionBuilderConfiguredFields();
+      }
+    );
+
+    visibility.append(
+      input,
+      copy
+    );
+
+    editor.append(
+      visibility
+    );
+  }
 
   if (
     field.mapping ===
@@ -8706,6 +8992,40 @@ function createNotionBuilderConfiguredFieldRow(
     field.propertyType ||
     "";
 
+  /*
+   * FIELD EDITOR DISMISSAL - 2.0.63
+   *
+   * Keep hidden-state presentation separate from saving.
+   * This class is visual only.
+   */
+  const editingThisField =
+    String(
+      notionPresetBuilderEditingFieldId ||
+      ""
+    ) ===
+    String(
+      field.propertyId ||
+      ""
+    );
+
+  const hiddenInClipForm =
+    notionBuilderFieldSupportsClipVisibility(
+      field
+    ) &&
+    !notionBuilderEffectiveShowInClipForm(
+      field
+    );
+
+  row.classList.toggle(
+    "notion-builder-field-row-editing",
+    editingThisField
+  );
+
+  row.classList.toggle(
+    "notion-builder-field-hidden",
+    hiddenInClipForm
+  );
+
   const handle =
     document.createElement(
       "button"
@@ -8757,6 +9077,61 @@ function createNotionBuilderConfiguredFieldRow(
     type
   );
 
+  if (
+    editingThisField
+  ) {
+    copy.classList.add(
+      "notion-builder-field-copy-close"
+    );
+
+    copy.setAttribute(
+      "role",
+      "button"
+    );
+
+    copy.tabIndex =
+      0;
+
+    copy.setAttribute(
+      "aria-label",
+      `Close ${field.propertyName || "field"} settings`
+    );
+
+    const closeFieldEditor =
+      (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        notionPresetBuilderEditingFieldId =
+          "";
+
+        renderNotionBuilderConfiguredFields();
+      };
+
+    copy.addEventListener(
+      "click",
+      closeFieldEditor
+    );
+
+    copy.addEventListener(
+      "keydown",
+      (event) => {
+        if (
+          event.key !==
+            "Enter" &&
+          event.key !==
+            " "
+        ) {
+          return;
+        }
+
+        closeFieldEditor(
+          event
+        );
+      }
+    );
+  }
+
   const actions =
     document.createElement(
       "div"
@@ -8766,7 +9141,7 @@ function createNotionBuilderConfiguredFieldRow(
     "notion-builder-field-row-actions";
 
   if (
-    notionBuilderFieldIsConfigurable(
+    notionBuilderFieldHasEditor(
       field
     )
   ) {
@@ -8996,7 +9371,13 @@ function notionBuilderConfiguredField(
   property,
   mapping = ""
 ) {
-  return {
+  const resolvedMapping =
+    mapping ||
+    notionBuilderDefaultMapping(
+      property
+    );
+
+  const field = {
     propertyId:
       property.id ||
       "",
@@ -9024,10 +9405,7 @@ function notionBuilderConfiguredField(
         : [],
 
     mapping:
-      mapping ||
-      notionBuilderDefaultMapping(
-        property
-      ),
+      resolvedMapping,
 
     fixedValue:
       property.type ===
@@ -9035,6 +9413,13 @@ function notionBuilderConfiguredField(
         ? false
         : ""
   };
+
+  field.showInClipForm =
+    notionBuilderDefaultShowInClipForm(
+      field
+    );
+
+  return field;
 }
 
 function renderNotionBuilderConfiguredFields() {
@@ -9161,6 +9546,14 @@ function renderNotionBuilderConfiguredFields() {
       () => {
         notionPresetBuilderEditingFieldId =
           "";
+
+        /*
+         * FIELD EDITOR DISMISSAL - 2.0.63
+         *
+         * Remove the visible configuration block first so
+         * Add Field never stacks underneath/alongside it.
+         */
+        renderNotionBuilderConfiguredFields();
 
         renderNotionBuilderAddFieldPicker();
       }
@@ -12681,7 +13074,8 @@ function createNotionCustomFieldNode(
         "file",
         "files",
         "text",
-        "rich_text"
+        "rich_text",
+        "url"
       ].includes(
         type
       )
@@ -12823,6 +13217,11 @@ function createNotionCustomFieldNode(
           initialValue:
             initial,
 
+          initialPreviewCapture:
+            state.capture
+              ?.imagePreviewCapture ||
+            null,
+
           propertyId,
 
           onChange:
@@ -12844,6 +13243,69 @@ function createNotionCustomFieldNode(
 
     return wrapper;
   }
+
+  if (
+    type === "url"
+  ) {
+    const input =
+      document.createElement(
+        "input"
+      );
+
+    input.type =
+      "url";
+
+    input.autocomplete =
+      "off";
+
+    input.spellcheck =
+      false;
+
+    const usePageUrl =
+      field?.source ===
+        "page_url";
+
+    /*
+     * PAGE URL LIVE VALUE - 2.0.59
+     *
+     * Fresh Page URL mappings begin with the actual page URL.
+     * A resumed/user-edited field has source="fixed", so its
+     * preserved defaultValue wins instead.
+     */
+    input.value =
+      usePageUrl
+        ? String(
+            state.capture?.url ||
+            field?.defaultValue ||
+            ""
+          )
+        : String(
+            field?.defaultValue ??
+            ""
+          );
+
+    notionDynamicFieldValues[
+      propertyId
+    ] =
+      input.value;
+
+    input.addEventListener(
+      "input",
+      () => {
+        notionDynamicFieldValues[
+          propertyId
+        ] =
+          input.value;
+      }
+    );
+
+    wrapper.append(
+      input
+    );
+
+    return wrapper;
+  }
+
 
   if (
     type === "checkbox"

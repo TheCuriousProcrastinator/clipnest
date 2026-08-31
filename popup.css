@@ -2816,21 +2816,89 @@ body[data-destination="notion"]
   width: 100%;
   margin-top: 12px;
   padding: 12px 14px;
-  border: 1px solid rgba(219, 91, 39, .38);
+
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      var(--cn-danger, #ff7b72) 78%,
+      transparent
+    );
+
   border-radius: 10px;
+
   background: transparent;
-  color: #db5b27;
+
+  color:
+    var(
+      --cn-danger,
+      #ff7b72
+    );
+
   font-weight: 700;
   cursor: pointer;
 }
 
 .notion-builder-delete-preset:hover {
-  background: rgba(219, 91, 39, .08);
+  border-color:
+    var(
+      --cn-danger,
+      #ff7b72
+    );
+
+  background:
+    color-mix(
+      in srgb,
+      var(--cn-danger, #ff7b72) 11%,
+      transparent
+    );
+}
+
+.notion-builder-delete-preset:focus-visible {
+  outline:
+    2px solid
+    var(
+      --cn-danger,
+      #ff7b72
+    );
+
+  outline-offset: 2px;
 }
 
 .notion-builder-delete-preset.confirming {
-  border-color: #db5b27;
-  background: rgba(219, 91, 39, .14);
+  border-color:
+    var(
+      --cn-danger,
+      #ff7b72
+    );
+
+  background:
+    var(
+      --cn-danger,
+      #ff7b72
+    );
+
+  color:
+    var(
+      --cn-bg,
+      #101010
+    );
+
+  box-shadow:
+    0 0 0 2px
+    color-mix(
+      in srgb,
+      var(--cn-danger, #ff7b72) 22%,
+      transparent
+    );
+}
+
+.notion-builder-delete-preset.confirming:hover {
+  background:
+    var(
+      --cn-danger,
+      #ff7b72
+    );
 }
 
 .notion-builder-delete-preset:disabled {
@@ -3916,38 +3984,6 @@ body[data-destination="notion"]
   display: none;
 }
 
-.notion-builder-icon-default {
-  width: 100%;
-  min-height: 34px !important;
-  height: 34px !important;
-
-  margin: 0 0 7px;
-  padding: 0 10px !important;
-
-  border: 0;
-  border-radius: 7px;
-
-  background: transparent;
-  color: inherit;
-
-  text-align: left;
-
-  font-size: 12px;
-  font-weight: 650;
-
-  cursor: pointer;
-}
-
-.notion-builder-icon-default:hover,
-.notion-builder-icon-default.selected {
-  background:
-    color-mix(
-      in srgb,
-      #9027db 14%,
-      transparent
-    );
-}
-
 .notion-builder-icon-grid {
   display: grid;
   grid-template-columns:
@@ -4005,11 +4041,6 @@ body[data-destination="notion"]
 }
 
 .notion-builder-icon-option:focus-visible {
-  outline: 2px solid #9027db;
-  outline-offset: 1px;
-}
-
-.notion-builder-icon-default:focus-visible {
   outline: 2px solid #9027db;
   outline-offset: 1px;
 }
@@ -7972,3 +8003,42 @@ body[data-destination="notion"]
 }
 
 /* END CLIPNEST 2.0.15 - FINAL SCOPE PAINT */
+
+
+/* =========================================================
+   HIDDEN FIELD ROW POLISH - 2.0.63
+   ========================================================= */
+
+/*
+ * A field hidden from the clipping form still participates in
+ * the preset and still saves to Notion, so only its identity
+ * is visually de-emphasized.
+ */
+.notion-builder-field-row.notion-builder-field-hidden
+.notion-builder-field-copy strong {
+  opacity: .45;
+}
+
+/*
+ * When a row's configuration is open, its name/type area acts
+ * as a lightweight close target.
+ */
+.notion-builder-field-row-editing
+.notion-builder-field-copy-close {
+  cursor: pointer;
+}
+
+.notion-builder-field-row-editing
+.notion-builder-field-copy-close:focus-visible {
+  outline:
+    2px solid
+    var(
+      --cn-primary,
+      #9027db
+    );
+
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* END HIDDEN FIELD ROW POLISH - 2.0.63 */

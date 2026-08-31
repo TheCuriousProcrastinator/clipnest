@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ClipNest Settings</title>
   <link rel="stylesheet" href="options.css" />
+  <link rel="stylesheet" href="themes.css" />
+  <script src="themes.js"></script>
 </head>
 <body>
   <main class="page">
@@ -80,20 +82,199 @@
       </label>
     </section>
 
+    <section class="card appearance-card">
+      <h2>Appearance</h2>
+
+      <p class="help">
+        Pick a ClipNest theme. Changes apply immediately.
+      </p>
+
+      <div
+        class="clipnest-theme-grid"
+        data-clipnest-theme-picker
+        aria-label="ClipNest theme"
+      >
+        <button
+          class="clipnest-theme-option"
+          type="button"
+          data-clipnest-theme-option="night-shift"
+          aria-pressed="false"
+        >
+          <span
+            class="clipnest-theme-preview"
+            data-clipnest-theme-preview="night-shift"
+            aria-hidden="true"
+          >
+            <span class="clipnest-theme-preview-card">
+              <span class="clipnest-theme-preview-line"></span>
+              <span class="clipnest-theme-preview-line short"></span>
+              <span class="clipnest-theme-preview-button"></span>
+            </span>
+          </span>
+          <strong>Night Shift</strong>
+          <small>Original ClipNest</small>
+        </button>
+
+        <button
+          class="clipnest-theme-option"
+          type="button"
+          data-clipnest-theme-option="rose-milk"
+          aria-pressed="false"
+        >
+          <span
+            class="clipnest-theme-preview"
+            data-clipnest-theme-preview="rose-milk"
+            aria-hidden="true"
+          >
+            <span class="clipnest-theme-preview-card">
+              <span class="clipnest-theme-preview-line"></span>
+              <span class="clipnest-theme-preview-line short"></span>
+              <span class="clipnest-theme-preview-button"></span>
+            </span>
+          </span>
+          <strong>Rose Milk</strong>
+          <small>Blush + lilac</small>
+        </button>
+
+        <button
+          class="clipnest-theme-option"
+          type="button"
+          data-clipnest-theme-option="cherry-cola"
+          aria-pressed="false"
+        >
+          <span
+            class="clipnest-theme-preview"
+            data-clipnest-theme-preview="cherry-cola"
+            aria-hidden="true"
+          >
+            <span class="clipnest-theme-preview-card">
+              <span class="clipnest-theme-preview-line"></span>
+              <span class="clipnest-theme-preview-line short"></span>
+              <span class="clipnest-theme-preview-button"></span>
+            </span>
+          </span>
+          <strong>Cherry Cola</strong>
+          <small>Burgundy + pink</small>
+        </button>
+
+        <button
+          class="clipnest-theme-option"
+          type="button"
+          data-clipnest-theme-option="lavender-blush"
+          aria-pressed="false"
+        >
+          <span
+            class="clipnest-theme-preview"
+            data-clipnest-theme-preview="lavender-blush"
+            aria-hidden="true"
+          >
+            <span class="clipnest-theme-preview-card">
+              <span class="clipnest-theme-preview-line"></span>
+              <span class="clipnest-theme-preview-line short"></span>
+              <span class="clipnest-theme-preview-button"></span>
+            </span>
+          </span>
+          <strong>Lavender Blush</strong>
+          <small>Violet + rose</small>
+        </button>
+
+        <button
+          class="clipnest-theme-option"
+          type="button"
+          data-clipnest-theme-option="strawberry-cream"
+          aria-pressed="false"
+        >
+          <span
+            class="clipnest-theme-preview"
+            data-clipnest-theme-preview="strawberry-cream"
+            aria-hidden="true"
+          >
+            <span class="clipnest-theme-preview-card">
+              <span class="clipnest-theme-preview-line"></span>
+              <span class="clipnest-theme-preview-line short"></span>
+              <span class="clipnest-theme-preview-button"></span>
+            </span>
+          </span>
+          <strong>Strawberry Cream</strong>
+          <small>Coral + apricot</small>
+        </button>
+
+        <button
+          class="clipnest-theme-option"
+          type="button"
+          data-clipnest-theme-option="berry-night"
+          aria-pressed="false"
+        >
+          <span
+            class="clipnest-theme-preview"
+            data-clipnest-theme-preview="berry-night"
+            aria-hidden="true"
+          >
+            <span class="clipnest-theme-preview-card">
+              <span class="clipnest-theme-preview-line"></span>
+              <span class="clipnest-theme-preview-line short"></span>
+              <span class="clipnest-theme-preview-button"></span>
+            </span>
+          </span>
+          <strong>Berry Night</strong>
+          <small>Plum + magenta</small>
+        </button>
+
+        <button
+          class="clipnest-theme-option"
+          type="button"
+          data-clipnest-theme-option="mint-candy"
+          aria-pressed="false"
+        >
+          <span
+            class="clipnest-theme-preview"
+            data-clipnest-theme-preview="mint-candy"
+            aria-hidden="true"
+          >
+            <span class="clipnest-theme-preview-card">
+              <span class="clipnest-theme-preview-line"></span>
+              <span class="clipnest-theme-preview-line short"></span>
+              <span class="clipnest-theme-preview-button"></span>
+            </span>
+          </span>
+          <strong>Mint Candy</strong>
+          <small>Pink + mint</small>
+        </button>
+
+        <button
+          class="clipnest-theme-option"
+          type="button"
+          data-clipnest-theme-option="night-signal"
+          aria-pressed="false"
+        >
+          <span
+            class="clipnest-theme-preview"
+            data-clipnest-theme-preview="night-signal"
+            aria-hidden="true"
+          >
+            <span class="clipnest-theme-preview-card">
+              <span class="clipnest-theme-preview-line"></span>
+              <span class="clipnest-theme-preview-line short"></span>
+              <span class="clipnest-theme-preview-button"></span>
+            </span>
+          </span>
+          <strong>Night Signal</strong>
+          <small>Electric blue + signal yellow</small>
+        </button>
+      </div>
+    </section>
+
     <section id="notionSettingsCard" class="card notion-card">
       <h2>Notion</h2>
 
       <p class="help notion-popup-management-note">
-        Create and edit Notion presets from the ClipNest popup.
+        Presets sync across Chrome and are managed from the ClipNest popup. Notion login stays local to this computer.
       </p>
 
-      <p class="help">
-        ClipNest uses your existing Notion browser session to find the workspaces available to your account.
-      </p>
-
-      <div class="notion-connection">
-        <div>
+      <div class="notion-connection notion-connection-compact">
+        <div class="notion-connection-copy">
           <strong id="notionConnectionTitle">Checking Notion…</strong>
+
           <div id="notionConnectionStatus" class="help">
             Looking for your Notion browser session.
           </div>
@@ -105,10 +286,6 @@
           </button>
         </div>
       </div>
-
-      <p class="help notion-sync-note">
-        Notion presets sync across Chrome. Notion login stays local to this computer.
-      </p>
 
       <label class="field">
         <span>Preset</span>
@@ -300,7 +477,7 @@
       <div class="vault-actions">
         <button id="chooseVault" class="secondary" type="button">Connect another vault</button>
         <button id="enableQuickClipAccess" class="secondary" type="button">Enable Quick Clip access</button>
-        <button id="disconnectVault" class="vault-remove" type="button">Remove selected vault</button>
+        <button id="disconnectVault" class="vault-remove" type="button">Disconnect vault</button>
       </div>
 
       <span id="vaultName" class="vault-name">No vault connected</span>
@@ -351,10 +528,6 @@
       ></div>
     </section>
 
-    <div id="settingsSavebar" class="savebar" hidden>
-      <button id="saveSettings" class="primary" type="button">Save settings</button>
-      <div id="saveStatus" class="status"></div>
-    </div>
   </main>
 
   <script src="vault-store.js"></script>

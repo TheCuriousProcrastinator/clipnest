@@ -367,41 +367,6 @@ button:active {
   color: #3a9651;
 }
 
-/* Sticky save area */
-
-.savebar {
-  position: sticky;
-  bottom: 18px;
-  z-index: 10;
-
-  display: flex;
-  align-items: center;
-  gap: 14px;
-
-  margin-top: 24px;
-  padding: 12px;
-
-  border: 1px solid var(--border);
-  border-radius: 14px;
-
-  background:
-    color-mix(
-      in srgb,
-      Canvas 90%,
-      transparent
-    );
-
-  box-shadow:
-    0 10px 35px
-    rgba(0, 0, 0, .16);
-
-  backdrop-filter: blur(14px);
-}
-
-.savebar .primary {
-  min-width: 150px;
-}
-
 /* Existing toggle support */
 
 .toggle-row {
@@ -436,13 +401,6 @@ button:active {
     flex-direction: column;
   }
 
-  .savebar {
-    bottom: 10px;
-  }
-
-  .savebar .primary {
-    flex: 1;
-  }
 }
 
 
@@ -1115,13 +1073,6 @@ label:has(#notionDataSourceId),
   text-decoration: none;
 }
 
-.savebar[hidden] {
-  display: none;
-}
-
-.page.settings-dirty .card:last-of-type {
-  margin-bottom: 88px;
-}
 
 /* =================================
    CLIPNEST SETTINGS POLISH - 2.0.10
@@ -1198,45 +1149,72 @@ label:has(#notionDataSourceId),
 
 /* END CLIPNEST SETTINGS POLISH - 2.0.10 */
 
+
 /* =================================
-   CLIPNEST COMPACT SAVEBAR - 2.0.11
+   CLIPNEST COMPACT NOTION CARD - 2.0.52
    ================================= */
 
-/*
- * The Settings Save bar only needs enough room for its
- * action and status. Keeping it compact prevents the
- * sticky control from covering the Backup card.
- */
-
-.savebar {
-  width: fit-content;
-  max-width: 100%;
-
-  margin-top: 16px;
-  margin-left: auto;
-
-  padding: 10px;
-
-  border-radius: 12px;
+#notionSettingsCard
+.notion-popup-management-note {
+  margin-bottom: 8px;
 }
 
-.savebar .primary {
-  min-width: 140px;
+#notionSettingsCard
+.notion-connection-compact {
+  align-items: center;
+  gap: 14px;
+
+  padding-top: 6px;
+  padding-bottom: 0;
 }
 
-.savebar .status:empty {
-  display: none;
+#notionSettingsCard
+.notion-connection-copy {
+  min-width: 0;
+  flex: 1;
+
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+
+  column-gap: 8px;
+  row-gap: 2px;
+}
+
+#notionSettingsCard
+.notion-connection-copy strong {
+  margin-bottom: 0;
+}
+
+#notionSettingsCard
+.notion-connection-copy .help {
+  margin: 0;
+}
+
+#notionSettingsCard
+.notion-connection-actions {
+  margin: 0 0 0 auto;
 }
 
 @media (max-width: 620px) {
-  .savebar {
+  #notionSettingsCard
+  .notion-connection-compact {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  #notionSettingsCard
+  .notion-connection-actions {
     width: 100%;
     margin-left: 0;
   }
 
-  .savebar .primary {
+  #notionSettingsCard
+  .notion-connection-actions
+  button {
     width: 100%;
   }
 }
 
-/* END CLIPNEST COMPACT SAVEBAR - 2.0.11 */
+/* END CLIPNEST COMPACT NOTION CARD - 2.0.52 */

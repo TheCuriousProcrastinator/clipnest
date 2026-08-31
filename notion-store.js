@@ -157,6 +157,46 @@
           : "";
     }
 
+    /*
+     * CLIP FORM VISIBILITY NORMALIZATION - 2.0.62
+     *
+     * showInClipForm is the durable preference.
+     * visible is only the effective compatibility value used
+     * by the current popup renderer and popupProperties list.
+     */
+    const source =
+      cleanText(
+        field.source
+      ) ||
+      "manual";
+
+    const showInClipForm =
+      typeof field.showInClipForm ===
+        "boolean"
+        ? field.showInClipForm
+        : source ===
+            "page_url"
+          ? false
+          : source ===
+              "page_author"
+            ? field.visible !==
+                false
+            : true;
+
+    const visible =
+      source ===
+        "fixed"
+        ? false
+        : (
+            source ===
+              "page_url" ||
+            source ===
+              "page_author"
+          )
+          ? showInClipForm
+          : field.visible !==
+              false;
+
     return {
       ...field,
 
@@ -170,15 +210,11 @@
 
       order,
 
-      visible:
-        field.visible !==
-          false,
+      showInClipForm,
 
-      source:
-        cleanText(
-          field.source
-        ) ||
-        "manual",
+      visible,
+
+      source,
 
       required:
         field.required ===
@@ -1642,6 +1678,9 @@
       normalizePreset({
         name:
           "New preset",
+
+        presetIcon:
+          "clipnest:knowledge",
 
         workspaceId:
           "",
