@@ -677,9 +677,35 @@ html[data-clipnest-theme] {
 html[data-clipnest-theme]:not(
   [data-clipnest-theme="night-shift"]
 )
-.popup-toggle-row input[type="checkbox"]:checked {
+.popup-toggle-track {
+  border-color: var(--cn-border-strong);
+  background: var(--cn-surface);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.popup-toggle-track::after {
+  background: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.popup-toggle-row
+input[type="checkbox"]:checked +
+.popup-toggle-track {
   border-color: var(--cn-primary);
   background: var(--cn-primary);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.popup-toggle-row
+input[type="checkbox"]:checked +
+.popup-toggle-track::after {
+  background: var(--cn-primary-text);
 }
 
 /* Notion preset chooser */
@@ -2093,7 +2119,8 @@ html[data-clipnest-theme]:not(
   [data-clipnest-theme="night-shift"]
 )
 .popup-toggle-row
-input[type="checkbox"]:focus-visible {
+input[type="checkbox"]:focus-visible +
+.popup-toggle-track {
   box-shadow:
     0 0 0 3px
     color-mix(

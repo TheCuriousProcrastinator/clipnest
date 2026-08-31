@@ -1415,14 +1415,32 @@ async function quickClipArticle(
     const body =
       `## Article\n\n${articleMarkdown}`;
 
+    const sourceUrl =
+      capture.sourceUrl ||
+      capture.url;
+
     const markdown =
       destination === "notion"
-        ? `[Source](${capture.url})\n\n${body}`
+        ? `[Source](${sourceUrl})\n\n${body}`
         : body;
+
+    /*
+     * Match Obsidian Web Clipper behavior for YouTube embeds.
+     * Obsidian renders ![](youtube-watch-url) as a native
+     * playable YouTube embed. Notion keeps the normal link.
+     */
+    const destinationMarkdown =
+      destination ===
+        "obsidian"
+        ? markdown.replace(
+            /\[YouTube video\]\((https:\/\/www\.youtube\.com\/watch\?v=[^)]+)\)/g,
+            "![]($1)"
+          )
+        : markdown;
 
     const payload = {
       title,
-      url: capture.url,
+      url: sourceUrl,
       hostname:
         capture.hostname || "",
       siteName:
@@ -1436,7 +1454,8 @@ async function quickClipArticle(
       tags,
       notes: "",
       contentMode: "article",
-      markdown,
+      markdown:
+        destinationMarkdown,
       template
     };
 

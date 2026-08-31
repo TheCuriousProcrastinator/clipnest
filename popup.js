@@ -15429,10 +15429,14 @@ ${state.areaSelection.markdown}`
    * property, so keep the source link in the page body for all
    * three scopes. Obsidian keeps source in frontmatter.
    */
+  const sourceUrl =
+    state.capture.sourceUrl ||
+    state.capture.url;
+
   const sourceLine =
     state.destination ===
       "notion"
-      ? `[Source](${state.capture.url})`
+      ? `[Source](${sourceUrl})`
       : "";
 
   const markdown =
@@ -15445,6 +15449,26 @@ ${state.areaSelection.markdown}`
         "\n\n"
       )
       .trim();
+
+  /*
+   * Obsidian natively recognizes image-style Markdown whose
+   * target is a YouTube watch URL and renders it as a video embed.
+   *
+   * Keep the shared capture representation destination-neutral:
+   *
+   *   [YouTube video](https://www.youtube.com/watch?v=...)
+   *
+   * Only convert it when the final destination is Obsidian.
+   * Notion keeps the normal clickable link.
+   */
+  const destinationMarkdown =
+    state.destination ===
+      "obsidian"
+      ? markdown.replace(
+          /\[YouTube video\]\((https:\/\/www\.youtube\.com\/watch\?v=[^)]+)\)/g,
+          "![]($1)"
+        )
+      : markdown;
 
   const templatePath =
     els.templateSelect
@@ -15490,7 +15514,7 @@ ${state.areaSelection.markdown}`
   return {
     title,
     url:
-      state.capture.url,
+      sourceUrl,
     hostname:
       state.capture.hostname,
     siteName:
@@ -15506,7 +15530,8 @@ ${state.areaSelection.markdown}`
     contentMode,
     contentScope,
     includePageContent,
-    markdown,
+    markdown:
+      destinationMarkdown,
     template,
 
     notionFields:

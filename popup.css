@@ -104,12 +104,20 @@ body[data-destination="obsidian"]
 }
 
 .popup-toggle-row input[type="checkbox"] {
-  appearance: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.popup-toggle-track {
   position: relative;
   flex: 0 0 auto;
   width: 34px;
   height: 20px;
-  margin: 0;
+  box-sizing: border-box;
   border: 1px solid
     color-mix(
       in srgb,
@@ -130,7 +138,7 @@ body[data-destination="obsidian"]
     border-color 120ms ease;
 }
 
-.popup-toggle-row input[type="checkbox"]::before {
+.popup-toggle-track::after {
   content: "";
   position: absolute;
   top: 2px;
@@ -144,17 +152,23 @@ body[data-destination="obsidian"]
     background 120ms ease;
 }
 
-.popup-toggle-row input[type="checkbox"]:checked {
+.popup-toggle-row
+input[type="checkbox"]:checked +
+.popup-toggle-track {
   border-color: #9027db;
   background: #9027db;
 }
 
-.popup-toggle-row input[type="checkbox"]:checked::before {
-  transform: translateX(16px);
+.popup-toggle-row
+input[type="checkbox"]:checked +
+.popup-toggle-track::after {
+  transform: translateX(14px);
   background: white;
 }
 
-.popup-toggle-row input[type="checkbox"]:focus-visible {
+.popup-toggle-row
+input[type="checkbox"]:focus-visible +
+.popup-toggle-track {
   box-shadow:
     0 0 0 3px
     color-mix(

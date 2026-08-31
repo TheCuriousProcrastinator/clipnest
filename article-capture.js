@@ -450,9 +450,30 @@ function extractPage() {
     if (["script", "style", "noscript", "svg", "canvas", "form", "button", "nav", "footer"].includes(tag)) return "";
 
     if (/^h[1-6]$/.test(tag)) {
-      const level = Math.min(Number(tag[1]), 4);
-      const text = normalizeText(inline(node));
-      return text ? `${"#".repeat(level)} ${text}\n\n` : "";
+      const level =
+        Math.min(
+          Number(
+            tag[1]
+          ),
+          4
+        );
+
+      /*
+       * Headings already carry semantic emphasis in Markdown.
+       * Use their visible text rather than serializing nested
+       * strong/em/span markup, which can produce malformed runs
+       * such as:
+       *
+       *   **Cool Facts About****Hiroki Totoki**
+       */
+      const text =
+        normalizeText(
+          node.innerText
+        );
+
+      return text
+        ? `${"#".repeat(level)} ${text}\n\n`
+        : "";
     }
 
     if (tag === "p") {
@@ -500,25 +521,240 @@ function extractPage() {
       return md ? `${md}\n\n` : "";
     }
 
-    const chunks = [...node.childNodes].map((child) => block(child, listDepth)).filter(Boolean);
-    if (chunks.length) return chunks.join("");
+    if (tag === "iframe") {
+      const source =
+        absoluteUrl(
+          node.getAttribute(
+            "src"
+          )
+        );
+
+      if (!/^https?:\/\//i.test(source)) {
+        return "";
+      }
+
+      try {
+        const parsed =
+          new URL(
+            source
+          );
+
+        const hostname =
+          parsed.hostname
+            .toLowerCase()
+            .replace(
+              /^www\./,
+              ""
+            );
+
+        const youtubeHost =
+          hostname ===
+            "youtube.com" ||
+          hostname ===
+            "youtube-nocookie.com";
+
+        if (youtubeHost) {
+          const match =
+            parsed.pathname.match(
+              /^\/embed\/([^/?#]+)/
+            );
+
+          const videoId =
+            match?.[1] ||
+            "";
+
+          if (videoId) {
+            return (
+              `[YouTube video](https://www.youtube.com/watch?v=${videoId})\n\n`
+            );
+          }
+        }
+
+        if (
+          hostname ===
+          "player.vimeo.com"
+        ) {
+          const match =
+            parsed.pathname.match(
+              /^\/video\/([^/?#]+)/
+            );
+
+          const videoId =
+            match?.[1] ||
+            "";
+
+          if (videoId) {
+            return (
+              `[Vimeo video](https://vimeo.com/${videoId})\n\n`
+            );
+          }
+        }
+      } catch {
+      }
+
+      return "";
+    }
+
+    const chunks =
+      [...node.childNodes]
+        .map(
+          (child) =>
+            block(
+              child,
+              listDepth
+            )
+        )
+        .filter(Boolean);
+
+    if (chunks.length) {
+      /*
+       * Generic wrapper elements often contain a mixture of
+       * inline controls and real block content.
+       *
+       * Do not blindly add spacing between every child because
+       * that would split legitimate inline spans. Instead,
+       * protect Markdown block starts from being glued directly
+       * onto preceding text.
+       *
+       * Example:
+       *   Subscribe# A Workspace I Envy
+       * becomes:
+       *   Subscribe
+       *
+       *   # A Workspace I Envy
+       */
+      const startsMarkdownBlock =
+        (value) =>
+          /^(?:#{1,6}\s|[-*+]\s|\d+\.\s|>\s|```|---(?:\n|$)|\|\s|!\[)/
+            .test(
+              String(
+                value ||
+                ""
+              )
+            );
+
+      return chunks.reduce(
+        (
+          output,
+          chunk
+        ) => {
+          if (!output) {
+            return chunk;
+          }
+
+          const alreadySeparated =
+            /\n\s*$/
+              .test(
+                output
+              );
+
+          const separator =
+            !alreadySeparated &&
+            startsMarkdownBlock(
+              chunk
+            )
+              ? "\n\n"
+              : "";
+
+          return (
+            output +
+            separator +
+            chunk
+          );
+        },
+        ""
+      );
+    }
 
     const fallback = normalizeText(inline(node));
     return fallback ? `${fallback}\n\n` : "";
   };
 
   const pickContentRoot = () => {
-    const candidates = [
-      ...document.querySelectorAll("article"),
-      ...document.querySelectorAll("main"),
-      ...document.querySelectorAll('[role="main"]')
-    ];
+    const pickLongest = (
+      elements
+    ) =>
+      elements
+        .map(
+          (element) => ({
+            element,
+            score:
+              normalizeText(
+                element.innerText
+              ).length
+          })
+        )
+        .sort(
+          (a, b) =>
+            b.score -
+            a.score
+        )[0]
+        ?.element ||
+      null;
 
-    if (!candidates.length) return document.body;
+    /*
+     * Prefer explicit article-body containers before broader
+     * document landmarks. Modern publishing platforms do not
+     * always use semantic <article> or <main> elements.
+     *
+     * Beehiiv, for example, exposes the actual post body as
+     * #content-blocks.post-content-node while surrounding page
+     * chrome, comments, recommendations and footer live outside it.
+     */
+    const explicitContent =
+      [
+        ...document.querySelectorAll(
+          [
+            '[itemprop="articleBody"]',
+            '#content-blocks.post-content-node',
+            '.post-content-node'
+          ].join(",")
+        )
+      ];
 
-    return candidates
-      .map((element) => ({ element, score: normalizeText(element.innerText).length }))
-      .sort((a, b) => b.score - a.score)[0].element;
+    const explicitRoot =
+      pickLongest(
+        explicitContent
+      );
+
+    if (explicitRoot) {
+      return explicitRoot;
+    }
+
+    /*
+     * Prefer a semantic article over a broader main container.
+     * A <main> often contains the article plus comments,
+     * recommendations and other surrounding page content.
+     */
+    const articleRoot =
+      pickLongest(
+        [
+          ...document.querySelectorAll(
+            "article"
+          )
+        ]
+      );
+
+    if (articleRoot) {
+      return articleRoot;
+    }
+
+    const mainRoot =
+      pickLongest(
+        [
+          ...document.querySelectorAll(
+            "main"
+          ),
+          ...document.querySelectorAll(
+            '[role="main"]'
+          )
+        ]
+      );
+
+    return (
+      mainRoot ||
+      document.body
+    );
   };
 
   const root = pickContentRoot().cloneNode(true);
@@ -1164,9 +1400,47 @@ function extractPage() {
   const image =
     extractPrimaryImage();
 
+  /*
+   * Keep location.href as the exact browser-page identity used
+   * by selection / Quick Clip restoration.
+   *
+   * sourceUrl is the stable URL saved to Obsidian and Notion.
+   */
+  const canonicalUrl =
+    absoluteUrl(
+      document
+        .querySelector(
+          'link[rel="canonical"]'
+        )
+        ?.getAttribute(
+          "href"
+        ) ||
+      ""
+    );
+
+  const openGraphUrl =
+    absoluteUrl(
+      getMeta(
+        'meta[property="og:url"]'
+      )
+    );
+
+  const sourceUrlCandidate =
+    canonicalUrl ||
+    openGraphUrl ||
+    location.href;
+
+  const sourceUrl =
+    /^https?:\/\//i.test(
+      sourceUrlCandidate
+    )
+      ? sourceUrlCandidate
+      : location.href;
+
   return {
     title: normalizeText(title),
     url: location.href,
+    sourceUrl,
     hostname: location.hostname,
     siteName: normalizeText(siteName),
     author: normalizeText(author),
