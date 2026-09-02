@@ -202,4 +202,4 @@ Development-only diagnostics live under `tools/dev/` and are not included in pac
 
 Active development.
 
-Latest packaged release: **2.0.63**
+Latest packaged release: **2.0.81**

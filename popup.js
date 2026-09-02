@@ -1991,7 +1991,7 @@ function createNotionConnectionGate() {
         class="notion-connection-secondary hidden"
         type="button"
       >
-        Open Notion
+        Sign in to Notion
       </button>
     </div>
 
@@ -2060,6 +2060,24 @@ function showNotionConnectionGate(
   setNotionClipRangeHidden(
     true
   );
+
+  /*
+   * CONNECTION GATE IS A FULL REPLACEMENT SCREEN - 2.0.80
+   *
+   * Dynamic Notion preset fields live outside the normal
+   * clip range, so hide their separate host explicitly.
+   * Also clear any in-progress save status such as
+   * "Writing to Notion..." before showing the gate.
+   *
+   * renderNotionPresetFields() restores this host when the
+   * user returns to a preset.
+   */
+  notionDynamicFieldsHost
+    ?.classList.add(
+      "hidden"
+    );
+
+  setStatus("");
 
   notionConnectionGateEl
     .classList.remove(
@@ -2144,6 +2162,21 @@ function showNotionConnectionGate(
 
     note.textContent =
       "This should only take a moment.";
+  } else if (
+    mode === "signin"
+  ) {
+    title.textContent =
+      "Sign in to Notion";
+
+    message.textContent =
+      "Open Notion in this browser and sign in.";
+
+    note.textContent =
+      "";
+
+    open?.classList.remove(
+      "hidden"
+    );
   } else {
     title.textContent =
       "Sign in to Notion";
@@ -6066,14 +6099,14 @@ async function persistNotionPresetBuilderState(
       "notionBuilderFilter"
     );
 
-  if (
-    notionPresetBuilderDraft &&
-    nameInput
-  ) {
-    notionPresetBuilderDraft
-      .presetName =
-      nameInput.value;
-  }
+  /*
+   * The preset-name input may still contain the previous
+   * preset while a different builder draft is loading.
+   *
+   * The input event already owns DOM -> draft syncing.
+   * Persistence must serialize the active draft without
+   * overwriting it from potentially stale UI.
+   */
 
   await chrome.storage.local.set({
     [NOTION_PRESET_BUILDER_STATE_KEY]: {
@@ -6705,7 +6738,7 @@ async function openNotionPresetInBuilder(
   notionPresetBuilderDraggedFieldId =
     "";
 
-  notionPresetBuilderDraft = {
+  const draft = {
     mode:
       "edit",
 
@@ -6734,6 +6767,9 @@ async function openNotionPresetInBuilder(
       ""
   };
 
+  notionPresetBuilderDraft =
+    draft;
+
   if (
     destination.type ===
       "page"
@@ -6752,7 +6788,7 @@ async function openNotionPresetInBuilder(
         []
     };
 
-    notionPresetBuilderDraft
+    draft
       .properties = [
         property
       ];
@@ -6776,7 +6812,7 @@ async function openNotionPresetInBuilder(
             )
         : [];
 
-    notionPresetBuilderDraft
+    draft
       .configuredFields =
       stored.length
         ? stored.map(
@@ -6824,6 +6860,13 @@ async function openNotionPresetInBuilder(
             parentPageId
           });
 
+      if (
+        notionPresetBuilderDraft !==
+          draft
+      ) {
+        return;
+      }
+
       const properties =
         Array.isArray(
           schema?.properties
@@ -6831,11 +6874,11 @@ async function openNotionPresetInBuilder(
           ? schema.properties
           : [];
 
-      notionPresetBuilderDraft
+      draft
         .schema =
         schema;
 
-      notionPresetBuilderDraft
+      draft
         .properties =
         properties;
 
@@ -6858,7 +6901,7 @@ async function openNotionPresetInBuilder(
               )
           : [];
 
-      notionPresetBuilderDraft
+      draft
         .configuredFields =
         stored.map(
           (field) => {
@@ -6882,6 +6925,13 @@ async function openNotionPresetInBuilder(
           }
         );
     } catch (error) {
+      if (
+        notionPresetBuilderDraft !==
+          draft
+      ) {
+        return;
+      }
+
       setStatus(
         error?.message ||
         String(error),
@@ -6892,9 +6942,23 @@ async function openNotionPresetInBuilder(
     }
   }
 
+  if (
+    notionPresetBuilderDraft !==
+      draft
+  ) {
+    return;
+  }
+
   await persistNotionPresetBuilderState(
     "config"
   );
+
+  if (
+    notionPresetBuilderDraft !==
+      draft
+  ) {
+    return;
+  }
 
   renderNotionPresetConfigScreen({
     restore:
@@ -10122,6 +10186,13 @@ async function loadNotionPresetConfigFields() {
           parentPageId
         });
 
+    if (
+      notionPresetBuilderDraft !==
+        draft
+    ) {
+      return;
+    }
+
     const properties =
       Array.isArray(
         schema?.properties
@@ -10216,6 +10287,13 @@ async function loadNotionPresetConfigFields() {
 
     renderNotionBuilderConfiguredFields();
   } catch (error) {
+    if (
+      notionPresetBuilderDraft !==
+        draft
+    ) {
+      return;
+    }
+
     fields.replaceChildren();
 
     const failed =
@@ -13823,12 +13901,15 @@ async function refreshNotionPresetFromLiveSchema(
       ...preset,
       fields
     };
-  } catch (error) {
-    console.warn(
-      "ClipNest could not refresh Notion preset schema:",
-      error
-    );
-
+  } catch {
+    /*
+     * Live schema refresh is opportunistic.
+     *
+     * Signed-out, offline, or temporarily unavailable Notion
+     * sessions should simply fall back to the locally cached
+     * preset schema. Do not surface an extension warning for
+     * this expected fallback path.
+     */
     return preset;
   }
 }
@@ -15279,6 +15360,73 @@ async function save() {
 
     setTimeout(() => window.close(), 450);
   } catch (error) {
+    /*
+     * NOTION SAVE AUTH RECOVERY - 2.0.78
+     *
+     * Cached presets are intentionally usable before a live
+     * Notion request. If Save fails, distinguish a signed-out
+     * browser session from a genuine Notion write failure.
+     *
+     * Only the signed-out case replaces the form with the
+     * dedicated login screen.
+     */
+    if (
+      state.destination ===
+        "notion" &&
+      globalThis
+        .ClipNestNotionSession
+    ) {
+      try {
+        await withNotionConnectionTimeout(
+          ClipNestNotionSession
+            .getWorkspaces({
+              requestPermission:
+                false
+            }),
+          5000
+        );
+      } catch (sessionError) {
+        const sessionMessage =
+          sessionError?.message ||
+          String(sessionError);
+
+        if (
+          sessionMessage.includes(
+            "Notion browser session is unavailable"
+          )
+        ) {
+          /*
+           * Preserve the current form for the next popup open.
+           * This reuses ClipNest's existing one-time full-form
+           * resume mechanism rather than creating parallel
+           * persistence.
+           */
+          try {
+            const snapshot =
+              buildNotionCaptureResumeSnapshot(
+                notionOpenPresetId
+              );
+
+            await chrome.storage.local.set({
+              [NOTION_CAPTURE_RESUME_KEY]:
+                snapshot
+            });
+          } catch {
+            /*
+             * Login recovery still works if form-state
+             * persistence itself happens to fail.
+             */
+          }
+
+          showNotionConnectionGate(
+            "signin"
+          );
+
+          return;
+        }
+      }
+    }
+
     setStatus(
       error?.message ||
         String(error),

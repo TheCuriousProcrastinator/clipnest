@@ -1717,16 +1717,18 @@
     const maxOutputWidth =
       2800;
 
-    const maxOutputHeight =
-      30000;
-
     /*
-     * Keep the worst-case raw canvas allocation
-     * roughly within the range the previous
-     * implementation could already reach.
+     * Keep the stitched image inside a conservative
+     * browser canvas export envelope. Very large
+     * canvases can make toDataURL() return "data:,"
+     * instead of an image. Scale when necessary;
+     * never crop the captured page.
      */
+    const maxOutputHeight =
+      16000;
+
     const maxCanvasPixels =
-      28000000;
+      16000000;
 
     const widthScale =
       maxOutputWidth /
@@ -2114,10 +2116,15 @@ ${scroller}::-webkit-scrollbar-thumb:vertical {
           continue;
         }
 
+        /*
+         * Chrome limits captureVisibleTab to 2 calls per second.
+         * Stay safely outside the 500 ms quota boundary between
+         * stitched viewport captures.
+         */
         await sleep(
           index === 0
             ? 180
-            : 450
+            : 600
         );
 
         if (index > 0) {

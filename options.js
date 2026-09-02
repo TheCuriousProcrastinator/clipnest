@@ -18,6 +18,9 @@ let notionOptionsReady =
 let notionOptionsIntentHandling =
   false;
 
+let notionSessionUnavailable =
+  false;
+
 document.addEventListener(
   "DOMContentLoaded",
   init
@@ -142,15 +145,18 @@ async function init() {
   els.refreshNotionWorkspaces.addEventListener(
     "click",
     async () => {
-      const preset =
-        await ClipNestNotionStore
-          .getActivePreset();
+      if (
+        notionSessionUnavailable
+      ) {
+        await chrome.tabs.create({
+          url:
+            "https://www.notion.so/login"
+        });
 
-      await refreshNotionWorkspacePicker({
-        preferredWorkspaceId:
-          preset?.workspaceId ||
-          "",
+        return;
+      }
 
+      await refreshNotionConnection({
         requestPermission:
           true
       });
@@ -307,6 +313,40 @@ async function init() {
 
   await handleNotionOptionsIntent();
 }
+
+async function refreshNotionConnection({
+  requestPermission =
+    false
+} = {}) {
+  const preset =
+    await ClipNestNotionStore
+      .getActivePreset();
+
+  await refreshNotionWorkspacePicker({
+    preferredWorkspaceId:
+      preset?.workspaceId ||
+      "",
+
+    requestPermission
+  });
+}
+
+window.addEventListener(
+  "focus",
+  () => {
+    if (
+      !notionOptionsReady ||
+      !notionSessionUnavailable
+    ) {
+      return;
+    }
+
+    void refreshNotionConnection({
+      requestPermission:
+        false
+    });
+  }
+);
 
 function updateQuickClipPresetVisibility() {
   els.quickClipNotionPresetField.hidden =
@@ -4221,6 +4261,9 @@ async function refreshNotionWorkspacePicker({
   preferredWorkspaceId = "",
   requestPermission = false
 } = {}) {
+  notionSessionUnavailable =
+    false;
+
   els.notionWorkspaceSelect
     .replaceChildren();
 
@@ -4392,18 +4435,43 @@ async function refreshNotionWorkspacePicker({
       failed
     );
 
-    els.notionConnectionTitle.textContent =
-      "Notion session unavailable";
-
-    els.notionConnectionStatus.textContent =
-      error.message ||
+    const errorMessage =
+      error?.message ||
       String(error);
 
-    els.refreshNotionWorkspaces.textContent =
-      "Try again";
+    const signedOut =
+      errorMessage.includes(
+        "Notion browser session is unavailable"
+      );
 
-    els.notionWorkspaceHelp.textContent =
-      "Open Notion in Chrome and make sure you are signed in.";
+    notionSessionUnavailable =
+      signedOut;
+
+    if (signedOut) {
+      els.notionConnectionTitle.textContent =
+        "Notion not connected";
+
+      els.notionConnectionStatus.textContent =
+        "Sign in to Notion in Chrome to connect ClipNest.";
+
+      els.refreshNotionWorkspaces.textContent =
+        "Sign in to Notion";
+
+      els.notionWorkspaceHelp.textContent =
+        "ClipNest will check again when you return.";
+    } else {
+      els.notionConnectionTitle.textContent =
+        "Notion connection unavailable";
+
+      els.notionConnectionStatus.textContent =
+        errorMessage;
+
+      els.refreshNotionWorkspaces.textContent =
+        "Try again";
+
+      els.notionWorkspaceHelp.textContent =
+        "Try connecting again.";
+    }
   } finally {
     els.refreshNotionWorkspaces.disabled =
       false;
