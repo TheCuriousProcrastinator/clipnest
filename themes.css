@@ -2385,3 +2385,294 @@ body[data-destination="notion"].notion-preset-open
 
 
 /* END NOTION PRESET CONTROL SPECIFICITY FIX - 2.0.61 */
+
+/* =========================================================
+   CLIPNEST 2.0.82 - NOTION LIGHT-THEME COLOR + BUILDER HARDENING
+
+   Notion option colors are data, not ClipNest theme accents.
+
+   The original chip palette was designed for Night Shift.
+   Its translucent dark-theme backgrounds became nearly
+   invisible when composited onto the four light themes.
+
+   Light themes therefore keep the same Notion hue identity
+   but use dark semantic text with a subtle 12% tinted
+   background. Dark themes remain untouched.
+
+   The preset-builder remove icon and normal mapping pill
+   also previously inherited translucent-white Night Shift
+   styling. Route those through the active light theme.
+   ========================================================= */
+
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+body[data-destination="notion"]
+:is(
+  .notion-tag-pill[data-notion-color="default"],
+  .notion-custom-select-chip[data-color="default"],
+  .notion-custom-multiselect-chip[data-color="default"]
+) {
+  background:
+    color-mix(
+      in srgb,
+      #373737 12%,
+      var(--cn-surface)
+    ) !important;
+
+  color:
+    #373737 !important;
+}
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+body[data-destination="notion"]
+:is(
+  .notion-tag-pill[data-notion-color="gray"],
+  .notion-custom-select-chip[data-color="gray"],
+  .notion-custom-multiselect-chip[data-color="gray"]
+) {
+  background:
+    color-mix(
+      in srgb,
+      #5a5a5a 12%,
+      var(--cn-surface)
+    ) !important;
+
+  color:
+    #5a5a5a !important;
+}
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+body[data-destination="notion"]
+:is(
+  .notion-tag-pill[data-notion-color="brown"],
+  .notion-custom-select-chip[data-color="brown"],
+  .notion-custom-multiselect-chip[data-color="brown"]
+) {
+  background:
+    color-mix(
+      in srgb,
+      #603b2c 12%,
+      var(--cn-surface)
+    ) !important;
+
+  color:
+    #603b2c !important;
+}
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+body[data-destination="notion"]
+:is(
+  .notion-tag-pill[data-notion-color="orange"],
+  .notion-custom-select-chip[data-color="orange"],
+  .notion-custom-multiselect-chip[data-color="orange"]
+) {
+  background:
+    color-mix(
+      in srgb,
+      #854c1d 12%,
+      var(--cn-surface)
+    ) !important;
+
+  color:
+    #854c1d !important;
+}
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+body[data-destination="notion"]
+:is(
+  .notion-tag-pill[data-notion-color="yellow"],
+  .notion-custom-select-chip[data-color="yellow"],
+  .notion-custom-multiselect-chip[data-color="yellow"]
+) {
+  background:
+    color-mix(
+      in srgb,
+      #89632a 12%,
+      var(--cn-surface)
+    ) !important;
+
+  color:
+    #89632a !important;
+}
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+body[data-destination="notion"]
+:is(
+  .notion-tag-pill[data-notion-color="green"],
+  .notion-custom-select-chip[data-color="green"],
+  .notion-custom-multiselect-chip[data-color="green"]
+) {
+  background:
+    color-mix(
+      in srgb,
+      #2b593f 12%,
+      var(--cn-surface)
+    ) !important;
+
+  color:
+    #2b593f !important;
+}
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+body[data-destination="notion"]
+:is(
+  .notion-tag-pill[data-notion-color="blue"],
+  .notion-custom-select-chip[data-color="blue"],
+  .notion-custom-multiselect-chip[data-color="blue"]
+) {
+  background:
+    color-mix(
+      in srgb,
+      #28456c 12%,
+      var(--cn-surface)
+    ) !important;
+
+  color:
+    #28456c !important;
+}
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+body[data-destination="notion"]
+:is(
+  .notion-tag-pill[data-notion-color="purple"],
+  .notion-custom-select-chip[data-color="purple"],
+  .notion-custom-multiselect-chip[data-color="purple"]
+) {
+  background:
+    color-mix(
+      in srgb,
+      #492f64 12%,
+      var(--cn-surface)
+    ) !important;
+
+  color:
+    #492f64 !important;
+}
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+body[data-destination="notion"]
+:is(
+  .notion-tag-pill[data-notion-color="pink"],
+  .notion-custom-select-chip[data-color="pink"],
+  .notion-custom-multiselect-chip[data-color="pink"]
+) {
+  background:
+    color-mix(
+      in srgb,
+      #69314c 12%,
+      var(--cn-surface)
+    ) !important;
+
+  color:
+    #69314c !important;
+}
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+body[data-destination="notion"]
+:is(
+  .notion-tag-pill[data-notion-color="red"],
+  .notion-custom-select-chip[data-color="red"],
+  .notion-custom-multiselect-chip[data-color="red"]
+) {
+  background:
+    color-mix(
+      in srgb,
+      #6e3630 12%,
+      var(--cn-surface)
+    ) !important;
+
+  color:
+    #6e3630 !important;
+}
+
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+.notion-builder-field-remove-button {
+  color:
+    var(--cn-muted) !important;
+}
+
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+.notion-builder-field-remove-button:hover {
+  background:
+    var(--cn-surface-hover) !important;
+
+  color:
+    var(--cn-text) !important;
+}
+
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+.notion-builder-field-remove-button:focus-visible {
+  color:
+    var(--cn-text) !important;
+}
+
+html:is(
+  [data-clipnest-theme="rose-milk"],
+  [data-clipnest-theme="lavender-blush"],
+  [data-clipnest-theme="strawberry-cream"],
+  [data-clipnest-theme="mint-candy"]
+)
+.notion-builder-field-mapping-button {
+  background:
+    var(--cn-surface-hover) !important;
+
+  color:
+    var(--cn-text);
+}
+
+/* END CLIPNEST 2.0.82 - NOTION LIGHT-THEME COLOR + BUILDER HARDENING */
