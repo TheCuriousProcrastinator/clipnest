@@ -73,7 +73,7 @@ Notion authentication stays local to each computer. Preset configuration can syn
 
 ## Quick Clip
 
-Right-click a webpage or selected text to save without opening the normal ClipNest popup.
+Select text and right-click **Clip selected text** to save without opening the normal ClipNest popup. Obsidian Quick Clips open the saved note immediately.
 
 Quick Clip can use its own dedicated Notion preset or your configured Obsidian destination.
 
@@ -202,4 +202,4 @@ Development-only diagnostics live under `tools/dev/` and are not included in pac
 
 Active development.
 
-Latest packaged release: **2.0.82**
+Latest packaged release: **2.0.83**

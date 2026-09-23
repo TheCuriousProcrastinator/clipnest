@@ -24,64 +24,37 @@ try {
    ClipNest Quick Clip - V0.6.0
    ================================================== */
 
-const CLIPNEST_CONTEXT_MENU_ID =
-  "clipnest.contextMenu";
-
 const QUICK_CLIP_TEXT_MENU_ID =
   "clipnest.quickClip.selectedText";
 
-function ensureClipNestContextMenu() {
-  chrome.contextMenus.create(
-    {
-      id: CLIPNEST_CONTEXT_MENU_ID,
-      title: "ClipNest",
-      contexts: [
-        "page",
-        "selection"
-      ],
-      documentUrlPatterns: [
-        "http://*/*",
-        "https://*/*"
-      ]
-    },
-    () => {
-      void chrome.runtime.lastError;
-    }
-  );
-}
-
 function ensureQuickClipContextMenu() {
-  ensureClipNestContextMenu();
+  chrome.contextMenus.removeAll(() => {
+    void chrome.runtime.lastError;
 
-  chrome.contextMenus.create(
-    {
-      id: QUICK_CLIP_TEXT_MENU_ID,
-      parentId:
-        CLIPNEST_CONTEXT_MENU_ID,
-      title: "Clip selected text",
-      contexts: ["selection"],
-      documentUrlPatterns: [
-        "http://*/*",
-        "https://*/*"
-      ]
-    },
-    () => {
-      void chrome.runtime.lastError;
-    }
-  );
+    chrome.contextMenus.create(
+      {
+        id: QUICK_CLIP_TEXT_MENU_ID,
+        title: "Clip selected text",
+        contexts: ["selection"],
+        documentUrlPatterns: [
+          "http://*/*",
+          "https://*/*"
+        ]
+      },
+      () => {
+        void chrome.runtime.lastError;
+      }
+    );
+  });
 }
 
 ensureQuickClipContextMenu();
-
-chrome.runtime.onInstalled.addListener(() => {
-  ensureQuickClipContextMenu();
-});
 
 chrome.contextMenus.onClicked.addListener(
   (info, tab) => {
     if (
       info.menuItemId !==
-      QUICK_CLIP_TEXT_MENU_ID
+        QUICK_CLIP_TEXT_MENU_ID
     ) {
       return;
     }
@@ -644,6 +617,7 @@ async function quickClipSelectedText(
     };
 
     let successMessage = "";
+    let successKind = "success";
 
     if (destination === "notion") {
       const quickClipPreset =
@@ -659,11 +633,35 @@ async function quickClipSelectedText(
       successMessage =
         "Saved selected text to Notion";
     } else {
-      const filename =
+      const savedNote =
         await quickSaveToObsidian(
           payload,
-          settings.obsidianSubfolder || ""
+          settings.obsidianSubfolder || "",
+          {
+            returnDetails: true
+          }
         );
+
+      const filename =
+        savedNote.filename;
+
+      try {
+        await openQuickClipObsidianNote(
+          savedNote.vaultName,
+          savedNote.filePath,
+          tab?.id
+        );
+      } catch (openError) {
+        console.warn(
+          "ClipNest saved the Quick Clip but could not open it in Obsidian:",
+          openError
+        );
+
+        successMessage =
+          "Saved to Obsidian, but could not open the note.";
+
+        successKind = "error";
+      }
 
       if (tags.length) {
         try {
@@ -678,16 +676,18 @@ async function quickClipSelectedText(
         }
       }
 
-      successMessage =
-        filename
-          ? `Saved to Obsidian · ${filename}`
-          : "Saved selected text to Obsidian";
+      if (!successMessage) {
+        successMessage =
+          filename
+            ? `Saved to Obsidian · ${filename}`
+            : "Saved selected text to Obsidian";
+      }
     }
 
     await showQuickClipToast(
       tab?.id,
       successMessage,
-      "success"
+      successKind
     );
   } catch (error) {
     console.error(
@@ -1105,57 +1105,6 @@ async function showQuickClipToast(
 /* ==================================================
    ClipNest Quick Article - V0.6.4
    ================================================== */
-
-const QUICK_CLIP_ARTICLE_MENU_ID =
-  "clipnest.quickClip.article";
-
-function ensureQuickArticleContextMenu() {
-  ensureClipNestContextMenu();
-
-  chrome.contextMenus.create(
-    {
-      id: QUICK_CLIP_ARTICLE_MENU_ID,
-      parentId:
-        CLIPNEST_CONTEXT_MENU_ID,
-      title: "Clip article",
-      contexts: [
-        "page",
-        "selection"
-      ],
-      documentUrlPatterns: [
-        "http://*/*",
-        "https://*/*"
-      ]
-    },
-    () => {
-      void chrome.runtime.lastError;
-    }
-  );
-}
-
-ensureQuickArticleContextMenu();
-
-chrome.runtime.onInstalled.addListener(
-  () => {
-    ensureQuickArticleContextMenu();
-  }
-);
-
-chrome.contextMenus.onClicked.addListener(
-  (info, tab) => {
-    if (
-      info.menuItemId !==
-      QUICK_CLIP_ARTICLE_MENU_ID
-    ) {
-      return;
-    }
-
-    void quickClipArticle(
-      info,
-      tab
-    );
-  }
-);
 
 async function captureQuickArticlePage(
   tabId
@@ -3752,9 +3701,115 @@ function buildQuickSelectionPayload(
   };
 }
 
+function buildQuickClipObsidianOpenUri(
+  vaultName,
+  filePath
+) {
+  const vault =
+    String(
+      vaultName ||
+        ""
+    ).trim();
+
+  const file =
+    String(
+      filePath ||
+        ""
+    ).trim();
+
+  if (!vault) {
+    throw new Error(
+      "The connected Obsidian vault has no name."
+    );
+  }
+
+  if (!file) {
+    throw new Error(
+      "The saved Obsidian note has no file path."
+    );
+  }
+
+  return (
+    "obsidian://open?vault=" +
+    encodeURIComponent(vault) +
+    "&file=" +
+    encodeURIComponent(file)
+  );
+}
+
+async function openQuickClipObsidianNote(
+  vaultName,
+  filePath,
+  sourceTabId = null
+) {
+  const uri =
+    buildQuickClipObsidianOpenUri(
+      vaultName,
+      filePath
+    );
+
+  let tabId =
+    Number.isInteger(
+      sourceTabId
+    )
+      ? sourceTabId
+      : null;
+
+  if (!Number.isInteger(tabId)) {
+    const [tab] =
+      await chrome.tabs.query({
+        active: true,
+        currentWindow: true
+      });
+
+    tabId =
+      Number.isInteger(
+        tab?.id
+      )
+        ? tab.id
+        : null;
+  }
+
+  if (!Number.isInteger(tabId)) {
+    throw new Error(
+      "No Chrome tab is available to open the saved Obsidian note."
+    );
+  }
+
+  await chrome.tabs.update(
+    tabId,
+    {
+      url: uri
+    }
+  );
+
+  await new Promise(
+    (resolve) =>
+      setTimeout(
+        resolve,
+        1400
+      )
+  );
+
+  try {
+    await chrome.tabs.update(
+      tabId,
+      {
+        url: uri
+      }
+    );
+  } catch (retryError) {
+    console.debug(
+      "ClipNest Obsidian URI retry failed:",
+      retryError
+    );
+  }
+}
+
 async function quickSaveToObsidian(
   payload,
-  rawSubfolder
+  rawSubfolder,
+  options = {}
 ) {
   const handle =
     await getQuickVaultHandle();
@@ -3822,6 +3877,37 @@ async function quickSaveToObsidian(
     );
   } catch {
     // Saving the note is more important than updating the tag cache.
+  }
+
+  if (options.returnDetails === true) {
+    const subfolder =
+      String(rawSubfolder || "")
+        .split("/")
+        .map((part) =>
+          part.trim()
+        )
+        .filter(Boolean)
+        .filter(
+          (part) =>
+            part !== "." &&
+            part !== ".."
+        )
+        .join("/");
+
+    return {
+      filename,
+      filePath: [
+        subfolder,
+        filename
+      ]
+        .filter(Boolean)
+        .join("/"),
+      vaultName:
+        String(
+          handle.name ||
+            ""
+        ).trim()
+    };
   }
 
   return filename;
