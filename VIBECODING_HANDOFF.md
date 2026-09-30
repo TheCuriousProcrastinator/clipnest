@@ -686,3 +686,20 @@ Never guess about implementation details that can be inspected.
 Preserve existing working behavior and continue from the current verified state.
 
 For release work, preserve ClipNest's rule that every code/UI test change bumps the version, browser testing happens before production release, `scripts/build-release.py` builds the canonical ZIP, and the verified release ZIP is then placed in `/Users/alex/Downloads/`.
+
+
+<!-- VIBE-CI-POLICY-2026-09-30 -->
+## Local validation and GitHub Actions policy
+
+This section is authoritative and supersedes older CI wording elsewhere in this handoff.
+
+- Normal development is validated in the user's actual local checkout before any GitHub write.
+- Only the exact locally tested files may be committed and pushed.
+- GitHub Actions is not the routine development validation loop.
+- Ordinary feature-branch pushes, ordinary `main` pushes, and pull requests must not automatically trigger GitHub Actions.
+- If a GitHub Actions workflow exists, it may run only when explicitly started with `workflow_dispatch` or from a release/version tag such as `v1.0.2`.
+- Do not broaden automatic CI triggers without the user's explicit approval.
+- Use the project's existing local build/test process before committing. For Xcode projects, use `xcodebuild` unless the project specifies otherwise, and leave the freshly built development app running for manual testing when relevant.
+- UI, interaction, layout, animation, drag/drop, focus, persistence, timing, and similar behavior changes require explicit user confirmation after local testing.
+- A documentation-only handoff update does not require rebuilding.
+- Release requests still require local validation first; release-tag GitHub Actions may then provide the final clean-environment validation.
