@@ -54,13 +54,18 @@ Always verify current GitHub HEAD before changing anything because this handoff 
 Verified from current GitHub source:
 
 - manifest version: **2.0.84**
-- release state: **2.0.84 locally validated; release publication in progress**
-- latest packaged release target: **2.0.84**
+- release state: **2.0.84 released**
+- latest packaged/released version: **2.0.84**
 - README packaged-release marker: **2.0.84**
 - previous release commit: `b44906b6d79ecb2b41d0061114568bfa80c02974` for 2.0.83
 - earlier release commit: `9a80dd25c37ef4ec8dfb7b16659e5f08f8c8e8a8` for 2.0.82
 - branch: `main`
 - Chrome Web Store extension ID: `bjcapemjamlbdnicmljahhjbakingmln`
+- 2.0.84 release commit/tag target: `0ffe58acc70a49d7f095ca1dd3b7659c72db8663`
+- release tag: `v2.0.84`
+- canonical ZIP SHA-256: `fce381afdb1031f21288cc728f9795daa040101db12e5e3a3cc9d558acbf1550`
+- release-tag GitHub Actions run: `36905925692` - success
+- Chrome Web Store upload ZIP: `/Users/alex/Downloads/clipnest-2.0.84.zip`
 
 Historical release workflow for 2.0.83 reported:
 
@@ -281,7 +286,7 @@ Manual browser verification passed:
 - switching between destinations preserved each independent choice
 - user confirmed: `it works`
 
-This 2.0.84 state passed local validation and is authorized for release. Chrome Web Store upload remains a separate user action.
+ClipNest 2.0.84 was locally validated, release-tag validation succeeded, the GitHub Release was published, and the verified Chrome Web Store ZIP was copied to Downloads. Chrome Web Store submission remains a user action.
 
 ## 2.0.83 main feature: selected-text-only Quick Clip
 
