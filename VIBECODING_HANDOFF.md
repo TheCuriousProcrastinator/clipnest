@@ -53,7 +53,9 @@ Always verify current GitHub HEAD before changing anything because this handoff 
 
 Verified from current GitHub source:
 
-- manifest version: **2.0.83**
+- manifest version: **2.0.84**
+- current development state: **2.0.84 locally validated, not released**
+- latest packaged/released version remains **2.0.83**
 - README packaged-release marker: **2.0.83**
 - release commit: `b44906b6d79ecb2b41d0061114568bfa80c02974`
 - previous release commit: `9a80dd25c37ef4ec8dfb7b16659e5f08f8c8e8a8` for 2.0.82
@@ -214,6 +216,63 @@ Do not make a production release before successful browser testing unless explic
 ### Documentation
 
 - `README.md`
+
+## 2.0.84 development fix: destination-specific content scope memory
+
+### User requirement
+
+The `Title + link` / `Page` content-scope preference must be remembered independently for:
+
+- Obsidian
+- Notion
+
+Changing the scope in one destination must not carry that choice into the other destination.
+
+### Implementation
+
+`popup.js` now stores non-selected content scope per destination using:
+
+`clipnestLastNonSelectedContentScopeByDestinationV1`
+
+The existing single-value key remains for compatibility.
+
+Behavior:
+
+- Obsidian remembers its own `Title + link` or `Page` choice
+- Notion remembers its own `Title + link` or `Page` choice
+- switching destination restores that destination's remembered choice
+- `Selected` remains contextual and does not overwrite either remembered non-selected preference
+- the old Notion page-content compatibility boolean is updated only by Notion changes, so Obsidian choices no longer overwrite it
+
+Relevant functions:
+
+- `normalizeContentScopeDestination()`
+- `getRememberedContentScope()`
+- `activateRememberedContentScope()`
+- `persistNonSelectedContentScope()`
+- `setDestination()`
+- `installContentScopeControl()`
+
+### Validation
+
+Validated locally on macOS in the user's real ClipNest checkout.
+
+Source/build validation passed:
+
+- `git diff --check`
+- JavaScript syntax validation through `scripts/build-release.py`
+- development package built successfully as 2.0.84
+- package SHA-256 during validation:
+  `fce381afdb1031f21288cc728f9795daa040101db12e5e3a3cc9d558acbf1550`
+
+Manual browser verification passed:
+
+- Obsidian set to `Title + link`
+- Notion set to `Page`
+- switching between destinations preserved each independent choice
+- user confirmed: `it works`
+
+This 2.0.84 state is validated development code only. It has not been released or submitted to the Chrome Web Store.
 
 ## 2.0.83 main feature: selected-text-only Quick Clip
 
@@ -544,6 +603,12 @@ Use something like:
 - nearly invisible preset-builder trash icons in light themes
 - nearly invisible `Ask each time` mapping control in light themes
 
+### Validated in development 2.0.84
+
+- `Title + link` / `Page` preference is remembered independently for Obsidian and Notion
+- switching destinations restores each destination's own preference
+- contextual `Selected` behavior remains separate from remembered non-selected preferences
+
 ### Released in 2.0.83
 
 - removed right-click `Clip article`
@@ -649,7 +714,8 @@ done
 Expected source state:
 
 - branch `main`
-- version `2.0.83`
+- development version `2.0.84`
+- latest packaged/released version `2.0.83`
 - README latest packaged release `2.0.83`
 - direct selection-only context action
 - no article context-menu UI

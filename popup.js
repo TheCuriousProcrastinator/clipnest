@@ -14079,8 +14079,35 @@ async function choosePopupDestination(
 }
 
 function setDestination(destination) {
+  const previousContentScope =
+    getContentScope();
+
   state.destination =
     destination;
+
+  activateRememberedContentScope(
+    destination
+  );
+
+  if (
+    previousContentScope !==
+      "selected"
+  ) {
+    clipnestContentScope =
+      clipnestRememberedContentScope;
+
+    syncLegacyPageContentInput(
+      clipnestContentScope
+    );
+
+    renderContentScopeControl();
+
+    document.dispatchEvent(
+      new CustomEvent(
+        "clipnest:notion-page-content-change"
+      )
+    );
+  }
 
   /*
    * PRE-COLLAPSE NOTION STARTUP - 1.9.13
@@ -15974,6 +16001,9 @@ function quoteMarkdown(text) {
 const CLIPNEST_CONTENT_SCOPE_KEY =
   "clipnestLastNonSelectedContentScope";
 
+const CLIPNEST_CONTENT_SCOPE_BY_DESTINATION_KEY =
+  "clipnestLastNonSelectedContentScopeByDestinationV1";
+
 const CLIPNEST_CONTENT_SCOPE_RESUME_KEY =
   "clipnestContentScopeResumeV1";
 
@@ -15982,6 +16012,57 @@ let clipnestContentScope =
 
 let clipnestRememberedContentScope =
   "page";
+
+let clipnestRememberedContentScopes = {
+  obsidian:
+    "page",
+  notion:
+    "page"
+};
+
+function normalizeContentScopeDestination(
+  destination =
+    state.destination
+) {
+  return destination ===
+    "notion"
+    ? "notion"
+    : "obsidian";
+}
+
+function getRememberedContentScope(
+  destination =
+    state.destination
+) {
+  const normalized =
+    normalizeContentScopeDestination(
+      destination
+    );
+
+  const remembered =
+    clipnestRememberedContentScopes[
+      normalized
+    ];
+
+  return remembered ===
+      "minimal" ||
+    remembered ===
+      "page"
+    ? remembered
+    : "page";
+}
+
+function activateRememberedContentScope(
+  destination =
+    state.destination
+) {
+  clipnestRememberedContentScope =
+    getRememberedContentScope(
+      destination
+    );
+
+  return clipnestRememberedContentScope;
+}
 
 let clipnestSelectionSnapshot = {
   markdown: "",
@@ -16197,22 +16278,45 @@ async function persistNonSelectedContentScope(
     return;
   }
 
+  const destination =
+    normalizeContentScopeDestination();
+
+  clipnestRememberedContentScopes[
+    destination
+  ] =
+    scope;
+
   clipnestRememberedContentScope =
     scope;
 
-  await chrome.storage.local.set({
+  const updates = {
     [CLIPNEST_CONTENT_SCOPE_KEY]:
       scope,
 
-    /*
-     * Keep the old boolean synchronized for downgrade /
-     * capture-resume compatibility. It no longer drives
-     * the 2.0.12 UI.
-     */
-    clipnestNotionIncludePageContent:
-      scope ===
-        "page"
-  });
+    [CLIPNEST_CONTENT_SCOPE_BY_DESTINATION_KEY]:
+      {
+        ...clipnestRememberedContentScopes
+      }
+  };
+
+  /*
+   * Keep the old Notion boolean synchronized for downgrade /
+   * capture-resume compatibility without allowing Obsidian
+   * changes to overwrite the old Notion-specific preference.
+   */
+  if (
+    destination ===
+      "notion"
+  ) {
+    updates
+      .clipnestNotionIncludePageContent =
+        scope ===
+          "page";
+  }
+
+  await chrome.storage.local.set(
+    updates
+  );
 }
 
 async function setContentScope(
@@ -16447,30 +16551,62 @@ async function installContentScopeControl() {
   const stored =
     await chrome.storage.local.get([
       CLIPNEST_CONTENT_SCOPE_KEY,
+      CLIPNEST_CONTENT_SCOPE_BY_DESTINATION_KEY,
       "clipnestNotionIncludePageContent"
     ]);
 
-  const remembered =
+  const legacyRemembered =
     stored[
       CLIPNEST_CONTENT_SCOPE_KEY
-    ];
-
-  if (
-    remembered ===
+    ] ===
       "minimal" ||
-    remembered ===
+    stored[
+      CLIPNEST_CONTENT_SCOPE_KEY
+    ] ===
       "page"
-  ) {
-    clipnestRememberedContentScope =
-      remembered;
-  } else {
-    clipnestRememberedContentScope =
-      stored
-        .clipnestNotionIncludePageContent ===
-        false
+      ? stored[
+          CLIPNEST_CONTENT_SCOPE_KEY
+        ]
+      : stored
+          .clipnestNotionIncludePageContent ===
+          false
         ? "minimal"
         : "page";
+
+  const storedByDestination =
+    stored[
+      CLIPNEST_CONTENT_SCOPE_BY_DESTINATION_KEY
+    ];
+
+  for (
+    const destination of [
+      "obsidian",
+      "notion"
+    ]
+  ) {
+    const remembered =
+      storedByDestination &&
+      typeof storedByDestination ===
+        "object"
+        ? storedByDestination[
+            destination
+          ]
+        : "";
+
+    clipnestRememberedContentScopes[
+      destination
+    ] =
+      remembered ===
+          "minimal" ||
+        remembered ===
+          "page"
+        ? remembered
+        : legacyRemembered;
   }
+
+  activateRememberedContentScope(
+    state.destination
+  );
 
   clipnestContentScope =
     clipnestRememberedContentScope;
