@@ -54,11 +54,11 @@ Always verify current GitHub HEAD before changing anything because this handoff 
 Verified from current GitHub source:
 
 - manifest version: **2.0.84**
-- current development state: **2.0.84 locally validated, not released**
-- latest packaged/released version remains **2.0.83**
-- README packaged-release marker: **2.0.83**
-- release commit: `b44906b6d79ecb2b41d0061114568bfa80c02974`
-- previous release commit: `9a80dd25c37ef4ec8dfb7b16659e5f08f8c8e8a8` for 2.0.82
+- release state: **2.0.84 locally validated; release publication in progress**
+- latest packaged release target: **2.0.84**
+- README packaged-release marker: **2.0.84**
+- previous release commit: `b44906b6d79ecb2b41d0061114568bfa80c02974` for 2.0.83
+- earlier release commit: `9a80dd25c37ef4ec8dfb7b16659e5f08f8c8e8a8` for 2.0.82
 - branch: `main`
 - Chrome Web Store extension ID: `bjcapemjamlbdnicmljahhjbakingmln`
 
@@ -105,11 +105,20 @@ Do not create tags or GitHub Releases for normal ClipNest releases unless explic
 
 ## GitHub Actions
 
-There is no custom product validation workflow for ClipNest.
+ClipNest has a release-only validation workflow:
 
-GitHub Pages deployment runs automatically for repo changes. The Pages workflow for the 2.0.83 code commit `b44906b...` completed successfully.
+`.github/workflows/release-validation.yml`
 
-Do not treat the Pages deployment as extension build/test validation.
+Allowed triggers:
+
+- manual `workflow_dispatch`
+- release/version tags matching `v*`
+
+The workflow does not run for ordinary branch pushes or pull requests.
+
+Release-tag validation runs source checks, builds the canonical package with `scripts/build-release.py`, and uploads the validated ZIP as a workflow artifact.
+
+GitHub Pages deployment is separate and must not be treated as extension build/test validation.
 
 ## Manifest / platform
 
@@ -117,7 +126,7 @@ Current `manifest.json`:
 
 - Manifest V3
 - name: `ClipNest`
-- version: `2.0.83`
+- version: `2.0.84`
 - minimum Chrome version: `122`
 - permissions:
   - `activeTab`
@@ -217,7 +226,7 @@ Do not make a production release before successful browser testing unless explic
 
 - `README.md`
 
-## 2.0.84 development fix: destination-specific content scope memory
+## 2.0.84 release: destination-specific content scope memory
 
 ### User requirement
 
@@ -272,7 +281,7 @@ Manual browser verification passed:
 - switching between destinations preserved each independent choice
 - user confirmed: `it works`
 
-This 2.0.84 state is validated development code only. It has not been released or submitted to the Chrome Web Store.
+This 2.0.84 state passed local validation and is authorized for release. Chrome Web Store upload remains a separate user action.
 
 ## 2.0.83 main feature: selected-text-only Quick Clip
 
@@ -603,7 +612,7 @@ Use something like:
 - nearly invisible preset-builder trash icons in light themes
 - nearly invisible `Ask each time` mapping control in light themes
 
-### Validated in development 2.0.84
+### Released in 2.0.84
 
 - `Title + link` / `Page` preference is remembered independently for Obsidian and Notion
 - switching destinations restores each destination's own preference
@@ -650,7 +659,7 @@ Do not remove or rewrite without a separate task and evidence:
 
 ## Backlog
 
-No new feature was selected after 2.0.83.
+No new feature was selected after 2.0.84.
 
 Current practical backlog:
 
@@ -699,8 +708,8 @@ git --no-pager log -5 --oneline --decorate
 printf '\n===== README RELEASE MARKER =====\n'
 grep -n 'Latest packaged release' README.md || true
 
-printf '\n===== 2.0.83 PACKAGE LOCATIONS =====\n'
-for f in "dist/clipnest-2.0.83.zip" "/Users/alex/Downloads/clipnest-2.0.83.zip"; do
+printf '\n===== 2.0.84 PACKAGE LOCATIONS =====\n'
+for f in "dist/clipnest-2.0.84.zip" "/Users/alex/Downloads/clipnest-2.0.84.zip"; do
   if [ -f "$f" ]; then
     echo "FOUND: $f"
     ls -lh "$f"
@@ -714,9 +723,9 @@ done
 Expected source state:
 
 - branch `main`
-- development version `2.0.84`
-- latest packaged/released version `2.0.83`
-- README latest packaged release `2.0.83`
+- version `2.0.84`
+- latest packaged/released version `2.0.84`
+- README latest packaged release `2.0.84`
 - direct selection-only context action
 - no article context-menu UI
 - `quickClipArticle()` still present for compatibility
