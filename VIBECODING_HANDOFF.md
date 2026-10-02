@@ -782,4 +782,29 @@ This section is authoritative and supersedes older CI wording elsewhere in this 
 - Use the project's existing local build/test process before committing. For Xcode projects, use `xcodebuild` unless the project specifies otherwise, and leave the freshly built development app running for manual testing when relevant.
 - UI, interaction, layout, animation, drag/drop, focus, persistence, timing, and similar behavior changes require explicit user confirmation after local testing.
 - A documentation-only handoff update does not require rebuilding.
-- Release requests still require local validation first; release-tag GitHub Actions may then provide the final clean-environment validation.
+- Release requests still require the executable behavior to have passed the required local validation first. Once that has happened, do not ask for another manual PASS solely because the release version/build changed or because a final Release build was produced.
+
+### Release / publish authorization
+
+This section is authoritative and supersedes older release-confirmation wording elsewhere in this handoff.
+
+When the user says **release**, **publish**, **make update**, or equivalent, treat that as authorization to complete the full release workflow without an additional publication confirmation.
+
+After the underlying executable change has already passed required local validation, continue automatically through every applicable release step:
+
+- verify the current clean local checkout and release baseline
+- bump version/build as required
+- build and validate the final Release configuration
+- create the final package/ZIP and perform signing/package checks where applicable
+- commit and push the validated release changes
+- create and push the release/version tag
+- allow release-tag GitHub Actions validation to run when configured, and verify it succeeds
+- publish GitHub release(s) and downloadable assets
+- update the appcast/update feed or other upgrade metadata where applicable
+- verify the public release asset and live upgrade/update path
+- update this handoff to the final verified release state
+- launch or install the final released build when appropriate
+
+A version/build bump, packaging step, signing step, generated appcast/feed change, or final Release-configuration build does **not** by itself require another manual user approval if the executable behavior being released already passed local validation.
+
+Stop only for a genuine blocker, a failed validation that requires an executable behavior change, or an authorization/credential action that only the user can perform. If release preparation introduces a new executable or build-affecting behavior change beyond what was already validated, the local validation gate reopens before publication.
