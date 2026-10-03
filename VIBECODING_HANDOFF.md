@@ -110,18 +110,29 @@ Do not create tags or GitHub Releases for normal ClipNest releases unless explic
 
 ## GitHub Actions
 
-ClipNest has a release-only validation workflow:
+ClipNest has a release-validation workflow:
 
 `.github/workflows/release-validation.yml`
 
-Allowed triggers:
+Current allowed trigger:
 
-- manual `workflow_dispatch`
-- release/version tags matching `v*`
+- manual `workflow_dispatch` only
 
-The workflow does not run for ordinary branch pushes or pull requests.
+GitHub Actions must not run automatically for:
 
-Release-tag validation runs source checks, builds the canonical package with `scripts/build-release.py`, and uploads the validated ZIP as a workflow artifact.
+- ordinary branch pushes
+- pull requests
+- release/version tag pushes
+- schedules
+- other repository events
+
+The workflow remains available only for explicitly requested clean-environment verification.
+
+Normal development and release validation is authoritative on the user's local Mac. A ClipNest release does not depend on GitHub Actions.
+
+The existing workflow body is preserved. It still runs source/package validation and uploads a workflow artifact when manually invoked.
+
+Historical GitHub Actions runs documented elsewhere in this handoff remain historical facts. Do not interpret them as the current trigger policy.
 
 GitHub Pages deployment is separate and must not be treated as extension build/test validation.
 
