@@ -1432,6 +1432,26 @@ html[data-clipnest-theme]:not(
 html[data-clipnest-theme]:not(
   [data-clipnest-theme="night-shift"]
 )
+.notion-builder-workspace-menu {
+  border-color: var(--cn-border-strong);
+  background: var(--cn-surface);
+  color: var(--cn-text);
+
+  box-shadow:
+    0 14px 32px
+    var(--cn-shadow);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
+.notion-builder-workspace-option {
+  color: var(--cn-text);
+}
+
+html[data-clipnest-theme]:not(
+  [data-clipnest-theme="night-shift"]
+)
 :is(
   .notion-builder-workspace-option:hover,
   .notion-builder-workspace-option.selected

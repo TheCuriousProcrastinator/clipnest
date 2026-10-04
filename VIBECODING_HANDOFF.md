@@ -53,7 +53,7 @@ Always verify current GitHub HEAD before changing anything because this handoff 
 
 Verified from current GitHub source:
 
-- manifest version: **2.0.89**
+- manifest version: **2.0.90**
 - release state: **2.0.84 released**
 - latest packaged/released version: **2.0.84**
 - README packaged-release marker: **2.0.84**
@@ -241,6 +241,42 @@ Do not make a production release before successful browser testing unless explic
 ### Documentation
 
 - `README.md`
+
+## 2.0.90 validated development state: Notion workspace menu theming
+
+This change has passed local manual browser validation in the user's real ClipNest checkout.
+
+Current development version: **2.0.90**
+
+Latest published/released version remains: **2.0.84**
+
+Validated behavior:
+
+- Notion workspace dropdown now respects all ClipNest themes
+- Rose Milk, Lavender Blush, Strawberry Cream, and Mint Candy no longer render dark text on the hard-coded dark workspace menu
+- Cherry Cola, Berry Night, and Night Signal now use their own theme surfaces instead of Night Shift gray
+- Night Shift keeps its existing original dark appearance
+- workspace menu border, background, text, selected/hover state, and shadow now use semantic theme tokens
+- no Notion workspace logic changed
+
+Relevant implementation:
+
+- `themes.css`
+  - added alternate-theme override for `.notion-builder-workspace-menu`
+  - added explicit themed text color for `.notion-builder-workspace-option`
+  - reused existing `--cn-border-strong`, `--cn-surface`, `--cn-text`, `--cn-shadow`, and existing selected/hover theme rules
+- `manifest.json`
+  - development version bumped to `2.0.90`
+
+Manual validation result: **PASS** on 2026-10-04.
+
+No release has been published for 2.0.90 yet.
+
+Exact next task:
+
+- continue from this validated 2.0.90 development state
+- if the user requests release/publish, run the normal ClipNest local release workflow
+- otherwise inspect the next requested feature/bug before changing anything
 
 ## 2.0.89 validated development state: Notion connect/disconnect UX
 
