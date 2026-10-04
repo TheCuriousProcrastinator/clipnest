@@ -48,6 +48,7 @@ chrome.storage.onChanged.addListener(
 
 async function init() {
   for (const id of [
+    "settingsVersion",
     "defaultDestination",
     "defaultImageFormat",
     "quickClipNotionPresetField",
@@ -55,6 +56,7 @@ async function init() {
     "notionConnectionTitle",
     "notionConnectionStatus",
     "refreshNotionWorkspaces",
+    "disconnectNotion",
     "notionPresetSelect",
     "newNotionPreset",
     "removeNotionPreset",
@@ -87,6 +89,9 @@ async function init() {
     els[id] =
       document.getElementById(id);
   }
+
+  els.settingsVersion.textContent =
+    `Version ${chrome.runtime.getManifest().version}`;
 
   els.defaultDestination.addEventListener(
     "change",
@@ -160,6 +165,13 @@ async function init() {
         requestPermission:
           true
       });
+    }
+  );
+
+  els.disconnectNotion.addEventListener(
+    "click",
+    () => {
+      void disconnectNotion();
     }
   );
 
@@ -329,6 +341,80 @@ async function refreshNotionConnection({
 
     requestPermission
   });
+}
+
+function setNotionDisconnectAvailability(
+  available
+) {
+  if (!els.disconnectNotion) {
+    return;
+  }
+
+  els.disconnectNotion.hidden =
+    !available;
+
+  els.disconnectNotion.disabled =
+    !available;
+}
+
+async function disconnectNotion() {
+  const confirmed =
+    window.confirm(
+      "Disconnect Notion from ClipNest?\n\n" +
+      "This removes ClipNest's permission to access Notion websites. " +
+      "Your presets will stay saved and you will remain signed in to Notion."
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  els.disconnectNotion.disabled =
+    true;
+
+  try {
+    await ClipNestNotionSession
+      .revokePermission();
+
+    const stillConnected =
+      await ClipNestNotionSession
+        .hasPermission();
+
+    if (stillConnected) {
+      throw new Error(
+        "Chrome did not remove ClipNest's Notion permission."
+      );
+    }
+
+    notionSessionUnavailable =
+      false;
+
+    await refreshNotionConnectionStatus();
+
+    showStatus(
+      els.notionStatus,
+      "Notion disconnected. Your presets were kept.",
+      "success"
+    );
+  } catch (error) {
+    const hasPermission =
+      await ClipNestNotionSession
+        .hasPermission()
+        .catch(
+          () => false
+        );
+
+    setNotionDisconnectAvailability(
+      hasPermission
+    );
+
+    showStatus(
+      els.notionStatus,
+      error?.message ||
+        String(error),
+      "error"
+    );
+  }
 }
 
 window.addEventListener(
@@ -4292,6 +4378,10 @@ async function refreshNotionWorkspacePicker({
       await ClipNestNotionSession
         .hasPermission();
 
+    setNotionDisconnectAvailability(
+      hasPermission
+    );
+
     if (
       !hasPermission &&
       !requestPermission
@@ -4331,6 +4421,10 @@ async function refreshNotionWorkspacePicker({
     notionWorkspaceCache =
       result.workspaces ||
       [];
+
+    setNotionDisconnectAvailability(
+      true
+    );
 
     els.notionWorkspaceSelect
       .replaceChildren();
@@ -4446,6 +4540,17 @@ async function refreshNotionWorkspacePicker({
 
     notionSessionUnavailable =
       signedOut;
+
+    const stillHasPermission =
+      await ClipNestNotionSession
+        .hasPermission()
+        .catch(
+          () => false
+        );
+
+    setNotionDisconnectAvailability(
+      stillHasPermission
+    );
 
     if (signedOut) {
       els.notionConnectionTitle.textContent =

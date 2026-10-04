@@ -99,6 +99,19 @@ body {
   letter-spacing: -.025em;
 }
 
+.brand-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.settings-version {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
 .settings-header p {
   max-width: 600px;
   margin: 14px 0 0;

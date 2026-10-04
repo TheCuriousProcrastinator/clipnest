@@ -2047,6 +2047,32 @@ function createNotionConnectionGate() {
   return section;
 }
 
+function classifyNotionConnectionError(
+  error
+) {
+  const message =
+    error?.message ||
+    String(error || "");
+
+  if (
+    message.includes(
+      "does not have permission to access Notion websites"
+    )
+  ) {
+    return "permission";
+  }
+
+  if (
+    message.includes(
+      "Notion browser session is unavailable"
+    )
+  ) {
+    return "signin";
+  }
+
+  return "";
+}
+
 function showNotionConnectionGate(
   mode,
   detail = ""
@@ -2325,13 +2351,34 @@ async function ensureNotionConnectionForPopup() {
 
     return true;
   } catch (error) {
-    showNotionConnectionGate(
-      "unavailable",
+    const detail =
       error?.message ||
-        String(error)
+      String(error);
+
+    const connectionMode =
+      classifyNotionConnectionError(
+        error
+      ) ||
+      "unavailable";
+
+    showNotionConnectionGate(
+      connectionMode,
+      connectionMode ===
+        "unavailable"
+        ? detail
+        : ""
     );
 
     return false;
+  }
+}
+
+async function resumeNotionConnectionRoute() {
+  const builderRestored =
+    await restoreNotionPresetBuilderState();
+
+  if (!builderRestored) {
+    await showNotionPresetChooser();
   }
 }
 
@@ -2360,7 +2407,7 @@ async function connectNotionFromPopup() {
     if (
       await ensureNotionConnectionForPopup()
     ) {
-      await showNotionPresetChooser();
+      await resumeNotionConnectionRoute();
     }
   } catch (error) {
     showNotionConnectionGate(
@@ -2378,7 +2425,7 @@ async function retryNotionConnectionFromPopup() {
   if (
     await ensureNotionConnectionForPopup()
   ) {
-    await showNotionPresetChooser();
+    await resumeNotionConnectionRoute();
   }
 }
 
@@ -5896,6 +5943,23 @@ async function searchNotionBuilderDestinations() {
 
     renderNotionBuilderResults();
   } catch (error) {
+    const connectionMode =
+      classifyNotionConnectionError(
+        error
+      );
+
+    if (connectionMode) {
+      await persistNotionPresetBuilderState(
+        "destination"
+      );
+
+      showNotionConnectionGate(
+        connectionMode
+      );
+
+      return;
+    }
+
     notionPresetBuilderDestinations =
       [];
 
@@ -5948,6 +6012,30 @@ async function loadNotionDestinationPicker(
       throw new Error(
         "Notion session module did not load."
       );
+    }
+
+    const hasPermission =
+      await ClipNestNotionSession
+        .hasPermission();
+
+    if (!hasPermission) {
+      /*
+       * NEW PRESET CONNECTION GATE
+       *
+       * Remember that the user was creating a preset, then
+       * replace the destination picker with the normal Notion
+       * connection screen. After permission is granted,
+       * resumeNotionConnectionRoute() restores this picker.
+       */
+      await persistNotionPresetBuilderState(
+        "destination"
+      );
+
+      showNotionConnectionGate(
+        "permission"
+      );
+
+      return;
     }
 
     const response =
@@ -6049,6 +6137,23 @@ async function loadNotionDestinationPicker(
       "destination"
     );
   } catch (error) {
+    const connectionMode =
+      classifyNotionConnectionError(
+        error
+      );
+
+    if (connectionMode) {
+      await persistNotionPresetBuilderState(
+        "destination"
+      );
+
+      showNotionConnectionGate(
+        connectionMode
+      );
+
+      return;
+    }
+
     notionPresetBuilderWorkspaces =
       [];
 

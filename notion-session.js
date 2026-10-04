@@ -765,6 +765,21 @@
       });
   }
 
+  async function revokePermission() {
+    const granted =
+      await hasPermission();
+
+    if (!granted) {
+      return true;
+    }
+
+    return chrome.permissions
+      .remove({
+        origins:
+          NOTION_ORIGINS
+      });
+  }
+
   async function postNotion(
     host,
     path,
@@ -5584,6 +5599,7 @@ function encodeDatabaseProperties({
     Object.freeze({
       hasPermission,
       requestPermission,
+      revokePermission,
       getWorkspaces,
       searchDestinations,
       getDatabaseSchema,

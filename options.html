@@ -21,7 +21,11 @@
         />
         <div class="brand-copy">
           <div class="brand-label">SETTINGS</div>
-          <h1>ClipNest</h1>
+
+          <div class="brand-title-row">
+            <h1>ClipNest</h1>
+            <span id="settingsVersion" class="settings-version"></span>
+          </div>
         </div>
       </div>
 
@@ -283,6 +287,10 @@
         <div class="vault-actions notion-connection-actions">
           <button id="refreshNotionWorkspaces" class="secondary" type="button">
             Refresh workspaces
+          </button>
+
+          <button id="disconnectNotion" class="vault-remove" type="button" hidden>
+            Disconnect Notion
           </button>
         </div>
       </div>

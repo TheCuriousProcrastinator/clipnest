@@ -53,7 +53,7 @@ Always verify current GitHub HEAD before changing anything because this handoff 
 
 Verified from current GitHub source:
 
-- manifest version: **2.0.84**
+- manifest version: **2.0.89**
 - release state: **2.0.84 released**
 - latest packaged/released version: **2.0.84**
 - README packaged-release marker: **2.0.84**
@@ -241,6 +241,56 @@ Do not make a production release before successful browser testing unless explic
 ### Documentation
 
 - `README.md`
+
+## 2.0.89 validated development state: Notion connect/disconnect UX
+
+This change has passed local manual browser validation in the user's real ClipNest checkout.
+
+Current development version: **2.0.89**
+
+Latest published/released version remains: **2.0.84**
+
+Validated behavior:
+
+- Notion can be disconnected from ClipNest Settings
+- disconnecting revokes only ClipNest's optional Notion website permission
+- disconnecting does not sign the user out of Notion
+- disconnecting does not delete Notion presets
+- Settings exposes `Disconnect Notion` only when Notion website permission is present
+- Settings shows the current ClipNest version beside the ClipNest title
+- creating a new Notion preset while permission is missing now shows the proper full-screen `Connect Notion` gate
+- after permission is granted, the new-preset destination route resumes
+- when the browser is not signed in to Notion, the popup shows the proper full-screen `Sign in to Notion` gate instead of a raw inline session error
+- the new-preset builder state is preserved across the connect/sign-in flow
+- Obsidian behavior is unchanged
+
+Relevant implementation:
+
+- `notion-session.js`
+  - added `revokePermission()`
+- `options.html`
+  - added `Disconnect Notion`
+  - added settings version display
+- `options.js`
+  - manages Notion disconnect state and permission revocation
+  - renders version from `chrome.runtime.getManifest().version`
+- `options.css`
+  - styles the settings version beside the ClipNest title
+- `popup.js`
+  - classifies Notion connection errors
+  - routes permission/session failures into the existing full-screen connection gate
+  - resumes the preset-builder destination route after reconnecting
+  - new-preset destination loading no longer exposes raw permission/session errors
+
+Manual validation result: **PASS** on 2026-10-04.
+
+No release has been published for 2.0.89 yet.
+
+Exact next task:
+
+- continue from this validated 2.0.89 development state
+- if the user requests release/publish, run the normal ClipNest local release workflow first
+- otherwise inspect the next requested feature/bug before changing anything
 
 ## 2.0.84 release: destination-specific content scope memory
 
