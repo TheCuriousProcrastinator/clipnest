@@ -901,13 +901,15 @@ For release work, preserve ClipNest's rule that every code/UI test change bumps 
 <!-- VIBE-CI-POLICY-2026-09-30 -->
 ## Local validation and GitHub Actions policy
 
+> **Verified against `.github/workflows/release-validation.yml` on 2026-10-13:** the sole trigger is `workflow_dispatch`. Earlier notes recording release-tag CI runs are historical only and must not be used to enable tag-triggered CI again.
+
 This section is authoritative and supersedes older CI wording elsewhere in this handoff.
 
 - Normal development is validated in the user's actual local checkout before any GitHub write.
 - Only the exact locally tested files may be committed and pushed.
 - GitHub Actions is not the routine development validation loop.
 - Ordinary feature-branch pushes, ordinary `main` pushes, and pull requests must not automatically trigger GitHub Actions.
-- If a GitHub Actions workflow exists, it may run only when explicitly started with `workflow_dispatch` or from a release/version tag such as `v1.0.2`.
+- All GitHub Actions workflows must use `workflow_dispatch` only. Version/release tags must **not** trigger Actions; optional clean-environment verification may run only when the user explicitly requests a manual dispatch.
 - Do not broaden automatic CI triggers without the user's explicit approval.
 - Use the project's existing local build/test process before committing. For Xcode projects, use `xcodebuild` unless the project specifies otherwise, and leave the freshly built development app running for manual testing when relevant.
 - UI, interaction, layout, animation, drag/drop, focus, persistence, timing, and similar behavior changes require explicit user confirmation after local testing.
@@ -928,7 +930,7 @@ After the underlying executable change has already passed required local validat
 - create the final package/ZIP and perform signing/package checks where applicable
 - commit and push the validated release changes
 - create and push the release/version tag
-- allow release-tag GitHub Actions validation to run when configured, and verify it succeeds
+- do **not** automatically run GitHub Actions for release tags; use only explicit user-requested `workflow_dispatch` verification
 - publish GitHub release(s) and downloadable assets
 - update the appcast/update feed or other upgrade metadata where applicable
 - verify the public release asset and live upgrade/update path
